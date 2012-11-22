@@ -15,13 +15,14 @@
 #define BANDERA "el sabueso olfatea\n"
 #define WATCH "aqui estoy\n"
 #define MSG_USO "uso: sabueso <archivo_de_configuracion>\n"
+#define ERR_CONF "Error al parsear el fichero de configuracion\n"
 
 int main(int argc, char *argv[]){
 	if(0>=write(1,BANDERA, strlen(BANDERA)))
 		return -1;
 
 	//variables
-	char buf[1024];
+	char bufConf[1024];
 //	char mac2guard[1024]={};
 	int fd, n;
 
@@ -37,33 +38,56 @@ int main(int argc, char *argv[]){
 	}
 
 	//me va que esta mal. deberia leer con limite esperable y capturar error
-	n=read(fd,buf,sizeof(buf));
+	n=read(fd,bufConf,sizeof(bufConf));
 
 	//termina en 0 por ser string
-	buf[n]=0;
+	bufConf[n]=0;
 
 //	write(1,buf,strlen(buf)); //muestro lo que lei
 
-	//aqui parsear
+	//desde aqui parsear lo que he leido
+
 	char *rightside;
 	char *leftside;
-	//leftside tiene el primer nombre de comando, rightside tiene el resto
-	//podria hacerlo por cada \n tal que me quede \n anidado en " = "
+	char *aux;//esta variable explico luego por que
+	char mac2guard, mode;
 	
-	leftside = strtok_r(buf, " = ", &rightside);
-	write(1,"izquierda: ",strlen("izquierda: "));
-	write(1,leftside,strlen(leftside));
-	write(1,"\n",1);
-	write(1,rightside,strlen(rightside));
+	//leftside tiene el primer nombre de comando, rightside tiene el resto
+	
+	aux = bufConf;//porque me joroba con char** en el 3° arg de strtok_r =( corregir luego esto
 
+	while((leftside = strtok_r(aux, " = ",&aux))){
+//		leftside = strtok_r(aux, " = ",&aux); //lo puse en el arg del while asi evalua y corta a la vez :-)
+		rightside = strtok_r(aux, "\n",&aux);
 
+		write(1,"izquierda: ",strlen("izquierda: "));
+		write(1,leftside,strlen(leftside));
+		write(1,"\n",1);
 
-//	sscanf(buf, "%d %s %d", &max_childs, root, &puerto); //parseo del archivo de configuracion
-//	printf("hijos: %d\nroot: %s\npuerto: %d\n\n", max_childs, root, puerto);
+		write(1,"derecha: ",strlen("derecha: "));
+	        write(1,rightside,strlen(rightside));
+	        write(1,"\n",1);
 
-	//ahora hecho el ojo al buf
+		//muy bonito mostrarlo pero ahora hay que guardarlo!
 
-
+		//para omitir comentarios:
+		//if(leftside[0]=="#")
+		//	break;
+		//seteo los valores a las variables... proximamente seteare a la estructura de argumentos mejor :-)
+		switch (leftside) {
+			case "mac2guard":
+				mac2guard=rightside;
+				break;
+			case "mode":
+				mode = rightside;
+				break;
+			default:
+				f(0>=write(1,ERR_CONF,strlen(ERR_CONF)))
+	                        return -2;
+				break;
+		}
+	}
+	//fin del programa
 	if(0<=write(1,WATCH,strlen(WATCH)))
 		return -1;
 	sleep(1);
