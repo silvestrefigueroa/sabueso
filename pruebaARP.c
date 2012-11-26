@@ -20,14 +20,37 @@
 #include <netinet/if_ether.h>
 #include <sys/ioctl.h>
 
-int main(int argc,const char* argv[]) {
+
+#define MSG_SHOW_PARAMS "Parametros recibidos :\n"
+
+
+//int main(int argc,const char* argv[]) {
+
+int arpeador(const char* mac2guard, const char* if_name, const char* target_ip_string){
+
+//Por ser funcion, no voy a necesitar esto:
+/*
     // Get interface name and target IP address from command line.
     if (argc<2) {
         fprintf(stderr,"usage: send_arp <interface> <ipv4-address>\n");
         exit(1);
     }
+*/
+
+write(1,MSG_SHOW_PARAMS,sizeof(MSG_SHOW_PARAMS));
+write(1,if_name,(int)strlen(if_name));
+write(1,"\n",(int)strlen("\n"));
+write(1,mac2guard,(int)strlen(mac2guard));
+write(1,"\n",(int)strlen("\n"));
+return -1;
+
+
+
+//las siguientes variables las seteo en la cabecera junto a la mac2guard:
+/*
     const char* if_name=argv[1];
     const char* target_ip_string=argv[2];
+*/		
 
     // Construct Ethernet header (except for source MAC address).
     // (Destination set to broadcast address, FF:FF:FF:FF:FF:FF.)
