@@ -42,6 +42,8 @@ write(1,if_name,(int)strlen(if_name));
 write(1,"\n",(int)strlen("\n"));
 write(1,mac2guard,(int)strlen(mac2guard));
 write(1,"\n",(int)strlen("\n"));
+
+printf("\nholaaa aqui el arper con: \n MAC: %s \nplaca: %s\n",mac2guard,if_name);
 return -1;
 
 
