@@ -7,7 +7,7 @@
 
 //MIS PROPIAS CABECERAS
 //#include "sabueso.h"
-#include "pruebaARP.h"
+#include "arper.h"
 
 //Defino mensajes estaticos (para no hardcodear)
 #define BANDERA "el sabueso olfatea\n"
@@ -176,7 +176,7 @@ int main(int argc, char *argv[]){
 
 	printf("LLamando a la funcion arpeador\n\n");
 
-	arpeador("aa:aa:aa:aa:aa:aa", "Net0", "10.0.0.4");
+	arper("aa:aa:aa:aa:aa:aa", "Net0", "10.0.0.4");
 
 	//fin del programa
 	if(0<=write(1,WATCH,strlen(WATCH)))

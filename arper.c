@@ -26,7 +26,7 @@
 
 //int main(int argc,const char* argv[]) {
 
-int arpeador(const char* mac2guard, const char* if_name, const char* target_ip_string){
+int arper(const char* mac2guard, const char* if_name, const char* target_ip_string){
 
 //Por ser funcion, no voy a necesitar esto:
 /*
