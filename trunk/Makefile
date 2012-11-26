@@ -4,7 +4,7 @@ CFLAGS= -Wall -g -lpcap
 
 all: sabueso
 #sabueso: sabueso.o servicio_conn.o funcionHilo.o
-sabueso: sabueso.o pruebaARP.o
+sabueso: sabueso.o arper.o
 	$(CC) $(CFLAGS) -o $@ $^ 
 clean:
 #	rm -fv /dev/shm/sharedMemPartida
