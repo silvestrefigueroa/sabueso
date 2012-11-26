@@ -20,8 +20,13 @@
 #include <netinet/if_ether.h>
 #include <sys/ioctl.h>
 
-
+//MENSAJES
 #define MSG_SHOW_PARAMS "Parametros recibidos :\n"
+//ERRORES
+#define ERR_PARAM_IP "La direccion IP no es valida. Revisar formato\n"
+#define ERR_PARAM_IFLONG "El nombre de la interfaz es muy largo\n"
+
+
 
 
 //int main(int argc,const char* argv[]) {
@@ -43,8 +48,8 @@ write(1,"\n",(int)strlen("\n"));
 write(1,mac2guard,(int)strlen(mac2guard));
 write(1,"\n",(int)strlen("\n"));
 
-printf("\nholaaa aqui el arper con: \n MAC: %s \nplaca: %s\n",mac2guard,if_name);
-return -1;
+printf("\nholaaa aqui el arper con: \n MAC: %s \nplaca: %s\nIP: %s\n",mac2guard,if_name,target_ip_string);
+//return -1;
 
 
 
@@ -59,7 +64,6 @@ return -1;
     struct ether_header header;
     header.ether_type=htons(ETH_P_ARP);
     memset(header.ether_dhost,0xff,sizeof(header.ether_dhost));
-
     // Construct ARP request (except for MAC and IP addresses).
     struct ether_arp req;
     req.arp_hrd=htons(ARPHRD_ETHER);
@@ -72,11 +76,14 @@ return -1;
     // Convert target IP address from string, copy into ARP request.
     struct in_addr target_ip_addr={0};
     if (!inet_aton(target_ip_string,&target_ip_addr)) {
-       fprintf(stderr,"%s is not a valid IP address",target_ip_string);
+//       fprintf(stderr,"%s is not a valid IP address",target_ip_string);
+       write(1,ERR_PARAM_IP,sizeof(ERR_PARAM_IP));
        exit(1);
     }
     memcpy(&req.arp_tpa,&target_ip_addr.s_addr,sizeof(req.arp_tpa));
 
+
+	//Aunque puede parecer tonto.. lo dejo porque no se como deterina QUE placa usar todabia...la MAC se la voy a poner igual luego por argumento
     // Write the interface name to an ifreq structure,
     // for obtaining the source MAC and IP addresses.
     struct ifreq ifr;
@@ -85,10 +92,10 @@ return -1;
         memcpy(ifr.ifr_name,if_name,if_name_len);
         ifr.ifr_name[if_name_len]=0;
     } else {
-        fprintf(stderr,"interface name is too long");
+	write(1,ERR_PARAM_IFLONG,sizeof(ERR_PARAM_IFLONG));
+	//        fprintf(stderr,"interface name is too long");
         exit(1);
     }
-
     // Open an IPv4-family socket for use when calling ioctl.
     int fd=socket(AF_INET,SOCK_DGRAM,0);
     if (fd==-1) {
@@ -96,6 +103,7 @@ return -1;
         exit(1);
     }
 
+	//ESTA SERIA MI IP... LO DEJO
     // Obtain the source IP address, copy into ARP request
     if (ioctl(fd,SIOCGIFADDR,&ifr)==-1) {
         perror(0);
@@ -105,18 +113,22 @@ return -1;
     struct sockaddr_in* source_ip_addr = (struct sockaddr_in*)&ifr.ifr_addr;
     memcpy(&req.arp_spa,&source_ip_addr->sin_addr.s_addr,sizeof(req.arp_spa));
 
+	//NO, LA MAC ORIGEN LA SETEO POR ARGUMENTO =) mac2guard
     // Obtain the source MAC address, copy into Ethernet header and ARP request.
     if (ioctl(fd,SIOCGIFHWADDR,&ifr)==-1) {
         perror(0);
         close(fd);
         exit(1);
     }
+
+
     if (ifr.ifr_hwaddr.sa_family!=ARPHRD_ETHER) {
         fprintf(stderr,"not an Ethernet interface");
         close(fd);
         exit(1);
     }
     const unsigned char* source_mac_addr=(unsigned char*)ifr.ifr_hwaddr.sa_data;
+
     memcpy(header.ether_shost,source_mac_addr,sizeof(header.ether_shost));
     memcpy(&req.arp_sha,source_mac_addr,sizeof(req.arp_sha));
     close(fd);
@@ -136,6 +148,9 @@ return -1;
     if (!pcap) {
         exit(1);
     }
+puts("salgo\n");
+	return -1;
+
 
     // Write the Ethernet frame to the interface.
     if (pcap_inject(pcap,frame,sizeof(frame))==-1) {

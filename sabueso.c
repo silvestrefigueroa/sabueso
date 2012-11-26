@@ -23,9 +23,9 @@ int main(int argc, char *argv[]){
 
 	//mas adelante, la idea es que devuelva int de salida, pero pasarle un puntero para que setee los parametros en una estructura.
 	printf("------------parser: \n");
-	parser(argv[1]);
+	//parser(argv[1]);
 	printf("------------arpeador: \n");
-	arper("aa:aa:aa:ff:ff:ff", "plaquita", "modilla");
+	arper("aa:aa:aa:ff:ff:ff", "wlan0","192.168.1.1");
 	//fin
 	return 0;
 }	
