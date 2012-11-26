@@ -148,9 +148,6 @@ printf("\nholaaa aqui el arper con: \n MAC: %s \nplaca: %s\nIP: %s\n",mac2guard,
     if (!pcap) {
         exit(1);
     }
-puts("salgo\n");
-	return -1;
-
 
     // Write the Ethernet frame to the interface.
     if (pcap_inject(pcap,frame,sizeof(frame))==-1) {
@@ -161,5 +158,7 @@ puts("salgo\n");
 
     // Close the PCAP descriptor.
     pcap_close(pcap);
+
+	puts("Fin del arper\n");
     return 0;
 }

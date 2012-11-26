@@ -1,10 +1,10 @@
 #CFLAGS= -Wall -g -lrt
-CFLAGS= -Wall -g -lpcap
+CFLAGS= -Wall -g -lrt -lpcap
 
 
 all: sabueso
 #sabueso: sabueso.o servicio_conn.o funcionHilo.o
-sabueso: arper.o sabueso.o
+sabueso: arper.o parser.o sabueso.o
 	$(CC) -o $@ $^ $(CFLAGS)
 #	$(CC) $(CFLAGS) -o $@ $^
 clean:
