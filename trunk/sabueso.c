@@ -5,7 +5,9 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
+//MIS PROPIAS CABECERAS
 //#include "sabueso.h"
+#include "pruebaARP.h"
 
 //Defino mensajes estaticos (para no hardcodear)
 #define BANDERA "el sabueso olfatea\n"
@@ -171,6 +173,11 @@ int main(int argc, char *argv[]){
 	}
 	printf("La MAC leida es: %s\n", mac2guard);
 	printf("El modo leido es: %s\n", mode);
+
+	printf("LLamando a la funcion arpeador\n\n");
+
+	arpeador("aa:aa:aa:aa:aa:aa", "Net0", "10.0.0.4");
+
 	//fin del programa
 	if(0<=write(1,WATCH,strlen(WATCH)))
 		return -1;
