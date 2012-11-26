@@ -20,8 +20,8 @@
 #define ERR_CONF "**Error al parsear el fichero de configuracion\n"
 #define ERR_CONF_MAC "**Error en la MAC especificada, recuerde ingresar espacios antes y despues del \"=\" \n"
 #define ERR_CONF_MODE "**Modo seleccionado incorrecto, seleccione modo cazador o modo guardian\n"
-#define ERR_CONF_PARAM "**Error en los parametros del archivo de configuracion, respete formato <parametro><sp><=><sp><valor>\n\n"
-
+#define ERR_CONF_PARAM "**Error en los parametros del archivo de configuracion. respete formato <parametro><sp><=><sp><valor>\n\n"
+#define ERR_CONF_UPARAM "**Error en el fichero de configuracion: parametro no reconocido. Consulte la documentacion.\n"
 
 //Aqui comienza la magia =)
 int main(int argc, char *argv[]){
@@ -74,8 +74,9 @@ int main(int argc, char *argv[]){
 			return -2;
 			break;
 		}
-		if(strlen(rightside) < '3'){
-			printf("algo esta muuuuuuy malllllllllllllllllll\n\n");
+		if(((int)strlen(rightside)) < 3){
+			//printf("algo esta muuuuuuy malllllllllllllllllll\n\n el size es: %d \n",(int)strlen(rightside));
+			write(1,ERR_CONF_PARAM,sizeof(ERR_CONF_PARAM));
 			return -2;
 		}
 
@@ -126,7 +127,7 @@ int main(int argc, char *argv[]){
 					}
 				}
 			break;
-			case 4 : //es mode
+			case 4 : //es mode??? compruebo
                                 //aplican las mismas ideas que en el de mac2guard
                                 printf("case 4 leftside= %s\n",leftside);
                                 printf("comparacion: modoooo: %d\n",(strcmp(leftside,"mode")));
@@ -154,13 +155,13 @@ int main(int argc, char *argv[]){
                                         }
                                 }
 				else{
-					//modo incorrecto
-					write(1,ERR_CONF_MODE,sizeof(ERR_CONF_MODE));
+					//otro parametro de 4
+					write(1,ERR_CONF_UPARAM,sizeof(ERR_CONF_UPARAM));
 					return -2;
 				}
 			break;
 			default:
-				write(1,ERR_CONF_PARAM,sizeof(ERR_CONF_PARAM));
+				write(1,ERR_CONF_UPARAM,sizeof(ERR_CONF_UPARAM));
 				printf("no reconocido\n");
 				return -2;
 			break;
