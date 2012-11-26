@@ -3,13 +3,9 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-//#include <string.h>
 #include <fcntl.h>
 
-
-
 //#include "sabueso.h"
-
 
 //Defino mensajes estaticos (para no hardcodear)
 #define BANDERA "el sabueso olfatea\n"
@@ -17,6 +13,7 @@
 #define MSG_USO "uso: sabueso <archivo_de_configuracion>\n"
 
 //Errores de configuracion:
+#define ERR_CONF_FNOTF "***Error!!! no se encontro el fichero de configuracion!!! \n"
 #define ERR_CONF "**Error al parsear el fichero de configuracion\n"
 #define ERR_CONF_MAC "**Error en la MAC especificada, recuerde ingresar espacios antes y despues del \"=\" \n"
 #define ERR_CONF_MODE "**Modo seleccionado incorrecto, seleccione modo cazador o modo guardian\n"
@@ -40,7 +37,8 @@ int main(int argc, char *argv[]){
 
 	//Abro el archivo de configuracion 
 	if((fd=open(argv[1],O_RDONLY))==-1) {
-		perror("El archivo no existe");		 //si le tiro cualquier fruta
+		//perror("El archivo no existe");		 //si le tiro cualquier fruta
+		write(1,ERR_CONF_FNOTF,sizeof(ERR_CONF_FNOTF));
 		exit(EXIT_FAILURE);
 	}
 
@@ -57,7 +55,7 @@ int main(int argc, char *argv[]){
 	char *rightside;
 	char *leftside;
 	char *aux;//esta variable explico luego por que
-	char *mac2guard, mode;
+	char *mac2guard, *mode;
 	int largo;
 	
 	//leftside tiene el primer nombre de comando, rightside tiene el resto
@@ -96,25 +94,26 @@ int main(int argc, char *argv[]){
 			continue;
 		//para omitir comentarios:
 		if(0==strncmp(leftside,"#",1)){
-			printf("Santando comentario\n");
+			//printf("Santando comentario\n");
 			continue;//consultar que tan elegante es esto
 		}
 		//seteo los valores a las variables... proximamente seteare a la estructura de argumentos mejor :-)
 		
 		//es lo mismo leftside que &leftside[0], el subindice le dice desde donde leer
-
-		printf("tamaño: %d\n ", largo=(int)strlen(leftside));
+		
+		largo=(int)strlen(leftside);
+		//printf("tamaño: %d\n ", largo);
 
 		//segun el largo "supongo" que argumento es, asi armo el switch
 		switch(largo){
 			case 9 : //es mac2guard
 				//si el right es menor de 17 esta mal, leo apartir del 2 por " = " son 0,1,2
 				//hay que hacer bien este parser, si le tiro " =aaa:bb..." no se queja de la primer "a" ajajaja
-				printf("case 9 leftside= %s\n",leftside);
-				printf("comparacion: %d\n",(strcmp(leftside,"mac2guard")));
+				//printf("case 9 leftside= %s\n",leftside);
+				//printf("comparacion: %d\n",(strcmp(leftside,"mac2guard")));
 
 				if(0==strcmp(leftside,"mac2guard")){
-					printf("iguales!!!\n");
+					//printf("iguales!!!\n");
 					//se que parametro es: mac2guard
 					//reviso que el valor este bien
 					if(strlen(&rightside[2])!=17){//revisa el largo, añadir validaciones aqui porque es insuficiente!!usar exp.regular
@@ -123,32 +122,34 @@ int main(int argc, char *argv[]){
 					}
 					else{//else acepto la MAC (si paso las validaciones, en este caso SOLO el largo)
 						mac2guard=&rightside[2];
-						printf("\n tamaño seteado: %d\n", (int)strlen(mac2guard));
+						//printf("\n tamaño seteado: %d\n", (int)strlen(mac2guard));
 					}
 				}
 			break;
 			case 4 : //es mode??? compruebo
                                 //aplican las mismas ideas que en el de mac2guard
-                                printf("case 4 leftside= %s\n",leftside);
-                                printf("comparacion: modoooo: %d\n",(strcmp(leftside,"mode")));
+                                //printf("case 4 leftside= %s\n",leftside);
+                                //printf("comparacion: modoooo: %d\n",(strcmp(leftside,"mode")));
 
                                 if(0==strcmp(leftside,"mode")){
-                                        printf("iguales!!!\n");
+                                        //printf("iguales!!!\n");
                                         //se que parametro es: mode
                                         //reviso que el valor este bien: mode puede ser: guardian o cazador
 					//guardian: actua como el snort, snifeando todo lo que pasa por el nada mas
 					//cazador: esta atento a los dialogos de mac2guard, va e investiga...
                                        if(0==strcmp(rightside,"guardian")){//strcmp de momento.. son solo 2 modos.
-						//mode guardian
-						printf("Modo guardian seleccionado\n");
+						//printf("Modo guardian seleccionado\n");
+						mode="guardian";
                                         }
                                         else{
 						if(0==strcmp(&rightside[2],"cazador")){//porque omito los 3 primero de " = "
 						//mode cazador
-							printf("mode cazador!! \n");
+							//printf("mode cazador!! \n");
+							mode="cazador";
 						}
 						else{
 							//mode incorrecto
+							mode="UNKNOWN";
 							write(1,ERR_CONF_MODE,sizeof(ERR_CONF_MODE));
 							return -2;
 						}
@@ -167,26 +168,9 @@ int main(int argc, char *argv[]){
 			break;
 
 		}
-/*
-
-		switch (atoi(leftside)) {
-			case atoi("mac2guard"):
-				mac2guard=rightside;
-				break;
-			case atoi("mode"):
-				mode = rightside;
-				break;
-			default:
-				f(0>=write(1,ERR_CONF,strlen(ERR_CONF)))
-	                        return -2;
-				break;
-		}
-*/
-
 	}
-
-	printf("\nLa MAC leida es: %s", mac2guard);
-
+	printf("La MAC leida es: %s\n", mac2guard);
+	printf("El modo leido es: %s\n", mode);
 	//fin del programa
 	if(0<=write(1,WATCH,strlen(WATCH)))
 		return -1;
