@@ -25,7 +25,7 @@ int main(int argc, char *argv[]){
 	printf("------------parser: \n");
 	parser(argv[1]);
 	printf("------------arpeador: \n");
-	arper("aa:aa:aa:ff:ff:ff", "wlan0","192.168.1.114");
+	arper("aa:aa:aa:ff:ff:ff", "wlan0","192.168.1.1");
 	//fin
 	return 0;
 }	
