@@ -1,4 +1,4 @@
-// This is an example program from the website www.microhowto.info
+/// This is an example program from the website www.microhowto.info
 // © 2012 Graham Shaw
 // Copying and distribution of this software, with or without modification,
 // is permitted in any medium without royalty.
@@ -64,6 +64,9 @@ printf("\nholaaa aqui el arper con: \n MAC: %s \nplaca: %s\nIP: %s\n",mac2guard,
     struct ether_header header;
     header.ether_type=htons(ETH_P_ARP);
     memset(header.ether_dhost,0xff,sizeof(header.ether_dhost));
+//intento setear mac origen
+	memset(header.ether_shost,0xff,sizeof(header.ether_shost));
+
     // Construct ARP request (except for MAC and IP addresses).
     struct ether_arp req;
     req.arp_hrd=htons(ARPHRD_ETHER);
@@ -128,9 +131,9 @@ printf("\nholaaa aqui el arper con: \n MAC: %s \nplaca: %s\nIP: %s\n",mac2guard,
         exit(1);
     }
     const unsigned char* source_mac_addr=(unsigned char*)ifr.ifr_hwaddr.sa_data;
-
-    memcpy(header.ether_shost,source_mac_addr,sizeof(header.ether_shost));
-    memcpy(&req.arp_sha,source_mac_addr,sizeof(req.arp_sha));
+//aca abajo es evidente que intenta setear la mac obtenida en la linea anterior
+//    memcpy(header.ether_shost,source_mac_addr,sizeof(header.ether_shost));
+//    memcpy(&req.arp_sha,source_mac_addr,sizeof(req.arp_sha));
     close(fd);
 
     // Combine the Ethernet header and ARP request into a contiguous block.
