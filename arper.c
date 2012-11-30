@@ -28,44 +28,26 @@
 
 
 
-
-//int main(int argc,const char* argv[]) {
-
-int arper(const char* mac2guard, const char* if_name, const char* target_ip_string){
-
-//Por ser funcion, no voy a necesitar esto:
-/*
-    // Get interface name and target IP address from command line.
-    if (argc<2) {
-        fprintf(stderr,"usage: send_arp <interface> <ipv4-address>\n");
-        exit(1);
-    }
-*/
+int arper(char* mac2guard, const char* if_name, const char* target_ip_string){
 
 write(1,MSG_SHOW_PARAMS,sizeof(MSG_SHOW_PARAMS));
 write(1,if_name,(int)strlen(if_name));
 write(1,"\n",(int)strlen("\n"));
-write(1,mac2guard,(int)strlen(mac2guard));
+//write(1,mac2guard,(int)strlen(mac2guard));
 write(1,"\n",(int)strlen("\n"));
 
-printf("\nholaaa aqui el arper con: \n MAC: %s \nplaca: %s\nIP: %s\n",mac2guard,if_name,target_ip_string);
-//return -1;
-
-
-
-//las siguientes variables las seteo en la cabecera junto a la mac2guard:
-/*
-    const char* if_name=argv[1];
-    const char* target_ip_string=argv[2];
-*/		
+//printf("\nholaaa aqui el arper con: \n MAC: %s \nplaca: %s\nIP: %s\n",mac2guard,if_name,target_ip_string);
 
     // Construct Ethernet header (except for source MAC address).
     // (Destination set to broadcast address, FF:FF:FF:FF:FF:FF.)
+	//estructura para cabecera ethernet
     struct ether_header header;
+	//tipo de direccion
     header.ether_type=htons(ETH_P_ARP);
+	//Setear direccion MAC de DESTINO. Podria luego ver de enviar algunos UNICAST (conociendo la MAC destino)
     memset(header.ether_dhost,0xff,sizeof(header.ether_dhost));
-//intento setear mac origen
-	memset(header.ether_shost,0xff,sizeof(header.ether_shost));
+//SETEO mac origen (0xff para broadcast).
+//	memset(header.ether_shost,0xff,sizeof(header.ether_shost));
 
     // Construct ARP request (except for MAC and IP addresses).
     struct ether_arp req;
@@ -86,7 +68,7 @@ printf("\nholaaa aqui el arper con: \n MAC: %s \nplaca: %s\nIP: %s\n",mac2guard,
     memcpy(&req.arp_tpa,&target_ip_addr.s_addr,sizeof(req.arp_tpa));
 
 
-	//Aunque puede parecer tonto.. lo dejo porque no se como deterina QUE placa usar todabia...la MAC se la voy a poner igual luego por argumento
+	//Aunque puede parecer tonto.. lo dejo porque no se como determina QUE placa usar todabia...la MAC se la voy a poner igual luego por argumento
     // Write the interface name to an ifreq structure,
     // for obtaining the source MAC and IP addresses.
     struct ifreq ifr;
@@ -106,7 +88,7 @@ printf("\nholaaa aqui el arper con: \n MAC: %s \nplaca: %s\nIP: %s\n",mac2guard,
         exit(1);
     }
 
-	//ESTA SERIA MI IP... LO DEJO
+	//ESTA SERIA MI IP... LO DEJO..OJO que me parece que se vale de la NIC que recibio por argumento!!
     // Obtain the source IP address, copy into ARP request
     if (ioctl(fd,SIOCGIFADDR,&ifr)==-1) {
         perror(0);
@@ -130,10 +112,44 @@ printf("\nholaaa aqui el arper con: \n MAC: %s \nplaca: %s\nIP: %s\n",mac2guard,
         close(fd);
         exit(1);
     }
+	//Setear MAC origen=!=!=!=????
+//	ifr.ifr_hwaddr.sa_data[0]=0x12;
+
+//convierto mac2guard al formato hex
+
+char *mac[2];
+mac[0]="aa";
+mac[1]="bc";
+
+printf("holaaaaaaaaaaaaaaaaaaaaa\n");
+int mac_byte;
+unsigned char byte;
+sscanf(mac[0],"%x",&mac_byte);
+sscanf(mac[1],"%x",&mac_byte);
+
+byte = mac_byte & 0xFF;
+
+printf("que paso: %x\n",byte);
+
+unsigned char value;
+
+value=byte;
+
+ifr.ifr_hwaddr.sa_data[0]=value;
+ifr.ifr_hwaddr.sa_data[1]="aa";
+ifr.ifr_hwaddr.sa_data[2]=value;
+ifr.ifr_hwaddr.sa_data[3]=0x78;
+ifr.ifr_hwaddr.sa_data[4]=0x9f;
+ifr.ifr_hwaddr.sa_data[5]=0x12;
+
+
     const unsigned char* source_mac_addr=(unsigned char*)ifr.ifr_hwaddr.sa_data;
-//aca abajo es evidente que intenta setear la mac obtenida en la linea anterior
-//    memcpy(header.ether_shost,source_mac_addr,sizeof(header.ether_shost));
-//    memcpy(&req.arp_sha,source_mac_addr,sizeof(req.arp_sha));
+
+//	printf("mac source: %X \n\n",*source_mac_addr);
+
+//aca abajo es evidente que intenta setear la mac obtenida en la linea anterior, pero yo ya he seteado al principio la MAC por agumento =)
+    memcpy(header.ether_shost,source_mac_addr,sizeof(header.ether_shost));
+    memcpy(&req.arp_sha,source_mac_addr,sizeof(req.arp_sha));
     close(fd);
 
     // Combine the Ethernet header and ARP request into a contiguous block.
