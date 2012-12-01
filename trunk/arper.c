@@ -117,31 +117,54 @@ write(1,"\n",(int)strlen("\n"));
 
 //convierto mac2guard al formato hex
 
-char *mac[2];
-mac[0]="aa";
-mac[1]="bc";
+//SSSSSSSSSSSSSSSSSSSSS
 
+//char cadena[] = "Este es un enunciado con 7 tokens";
+char cadena[17];
+char *mac_parts[6];
+int cont=0;
+strcpy(cadena,&mac2guard[0]);//meto el char* en un array
+
+char *ptrToken; /* crea un apuntador char */
+   
+printf( "%s\n%s\n\n%s\n",      "La cadena a dividir en tokens es:", cadena, 
+      "Los tokens son:" );
+          
+ptrToken = strtok( cadena, "-" ); /* comienza la divisiÃƒÂ³n en tokens del enunciado */
+    /* continua la divisiÃƒÂ³n en tokens hasta que ptrToken se hace NULL */
+cont=0;
+while ( ptrToken != NULL ) { 
+	printf( "%s\n", ptrToken );
+	mac_parts[cont]=ptrToken;
+	cont++;
+	ptrToken = strtok( NULL, "-" ); /* obtiene el siguiente token */
+} /* fin de while */ 
+
+//ssssssssssssssssssssss
 printf("holaaaaaaaaaaaaaaaaaaaaa\n");
 int mac_byte;
 unsigned char byte;
-sscanf(mac[0],"%x",&mac_byte);
-sscanf(mac[1],"%x",&mac_byte);
-
-byte = mac_byte & 0xFF;
-
-printf("que paso: %x\n",byte);
-
 unsigned char value;
+int i;
+//ahora un lazo for para cargar las partes de la mac en la estuctura ether
 
-value=byte;
+for(i=0;i<6;i++){
+	sscanf(mac_parts[i],"%x",&mac_byte);
+	byte = mac_byte & 0xFF;
+	printf("que paso: %x\n",byte);
+	value=byte;
+	ifr.ifr_hwaddr.sa_data[i]=value;
+}
 
-ifr.ifr_hwaddr.sa_data[0]=value;
-ifr.ifr_hwaddr.sa_data[1]="aa";
+/*
+
+
+ifr.ifr_hwaddr.sa_data[1]=0xff;
 ifr.ifr_hwaddr.sa_data[2]=value;
 ifr.ifr_hwaddr.sa_data[3]=0x78;
 ifr.ifr_hwaddr.sa_data[4]=0x9f;
 ifr.ifr_hwaddr.sa_data[5]=0x12;
-
+*/
 
     const unsigned char* source_mac_addr=(unsigned char*)ifr.ifr_hwaddr.sa_data;
 
