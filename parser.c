@@ -21,12 +21,9 @@
 #define ERR_CONF_MODE "**Modo seleccionado incorrecto, seleccione modo cazador o modo guardian\n"
 #define ERR_CONF_PARAM "**Error en los parametros del archivo de configuracion. respete formato <parametro><sp><=><sp><valor>\n\n"
 #define ERR_CONF_UPARAM "**Error en el fichero de configuracion: parametro no reconocido. Consulte la documentacion.\n"
-
+#define ERR_CONF_POWER "**Error en el parametro power: muchos frames para enviar!!!\n\n"
 //Aqui comienza la magia =)
-//int main(int argc, char *argv[]){
-
-int parser(char* file_path){
-
+int parser(char* file_path, char** parsedMac2guard, int** power){
 	if(0>=write(1,BANDERA, strlen(BANDERA)))
 		return -1;
 	//variables
@@ -46,7 +43,6 @@ int parser(char* file_path){
 	bufConf[n]=0;
 
 	//desde aqui parsear lo que he leido
-
 	char *rightside;
 	char *leftside;
 	char *aux;//esta variable explico luego por que
@@ -54,26 +50,18 @@ int parser(char* file_path){
 	int largo;
 	
 	//leftside tiene el primer nombre de comando, rightside tiene el resto
-	
 	aux = bufConf;//porque me joroba con char** en el 3° arg de strtok_r =( corregir luego esto
 
 	while((leftside = strtok_r(aux, " = ",&aux))){//Ojo: si en la linea hay solo un enter.. se lo mastica!!!
-//		leftside = strtok_r(aux, " = ",&aux); //lo puse en el arg del while asi evalua y corta a la vez :-)
-
-		//si es que puede parsear al lado derecho:
 		if(NULL==(rightside = strtok_r(aux, "\n",&aux))){//ejecuto, asigno y comparo al mismo tiempo
-			//no pudo parsear
 			write(1,ERR_CONF_PARAM,sizeof(ERR_CONF_PARAM));
 			return -2;
 			break;
 		}
 		if(((int)strlen(rightside)) < 3){
-			//printf("algo esta muuuuuuy malllllllllllllllllll\n\n el size es: %d \n",(int)strlen(rightside));
 			write(1,ERR_CONF_PARAM,sizeof(ERR_CONF_PARAM));
 			return -2;
 		}
-
-
 		write(1,"izquierda: ",strlen("izquierda: "));
 		write(1,leftside,strlen(leftside));
 		write(1,"\n",1);
@@ -156,6 +144,50 @@ int parser(char* file_path){
 					return -2;
 				}
 			break;
+
+
+			case 5 : //es POWER? si lo es, representa la cantidad de frames que se van a enviar
+                                if(0==strcmp(leftside,"power")){
+                                      //si es el power, luego validar la derecha y pasarla al programa principal
+
+//corresponde utilizar este metodo con strtol y no atoi!!!! luego repara aqui
+
+/*
+
+  static const char *input ="123abc";
+    char *garbage = NULL;
+    long value = 0;
+
+//    errno = 0;
+
+    value = strtol(&rightside[2], &garbage, 0);
+
+    printf("The value is %ld, leftover garbage in the string is %s\n, but rightside is: %s",
+           value, garbage == NULL ? "N/A" : garbage, rightside);
+
+   */
+
+
+
+					
+					printf("valorcillo: %d\n",atoi(&rightside[2]));
+					*power = (int *)atoi(&rightside[2]);//DEBERIA SCANEFEAR CON EXPRESIONES REGULARES..
+					if((1 <(int) *power < '100')){
+						//printf("parametro correct: %d\n ",(int) *power);
+					}
+					else{
+						write(1,ERR_CONF_POWER,sizeof(ERR_CONF_POWER));
+						return -2;
+					}
+				 
+                                }
+				else{
+					//otro parametro de 4
+					write(1,ERR_CONF_UPARAM,sizeof(ERR_CONF_UPARAM));
+					return -2;
+				}
+			break;
+
 			default:
 				write(1,ERR_CONF_UPARAM,sizeof(ERR_CONF_UPARAM));
 				printf("no reconocido\n");
@@ -165,6 +197,7 @@ int parser(char* file_path){
 		}
 	}
 	printf("La MAC leida es: %s\n", mac2guard);
+	*parsedMac2guard=mac2guard;
 	printf("El modo leido es: %s\n", mode);
 	//fin del programa
 	if(0<=write(1,WATCH,strlen(WATCH)))

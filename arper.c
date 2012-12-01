@@ -127,17 +127,17 @@ strcpy(cadena,&mac2guard[0]);//meto el char* en un array
 
 char *ptrToken; /* crea un apuntador char */
    
-printf( "%s\n%s\n\n%s\n",      "La cadena a dividir en tokens es:", cadena, 
-      "Los tokens son:" );
+//printf( "%s\n%s\n\n%s\n",      "La cadena a dividir en tokens es:", cadena, 
+  //    "Los tokens son:" );
           
-ptrToken = strtok( cadena, "-" ); /* comienza la divisiÃƒÂ³n en tokens del enunciado */
+ptrToken = strtok( cadena, ":" ); /* comienza la divisiÃƒÂ³n en tokens del enunciado */
     /* continua la divisiÃƒÂ³n en tokens hasta que ptrToken se hace NULL */
 cont=0;
 while ( ptrToken != NULL ) { 
-	printf( "%s\n", ptrToken );
+//	printf( "%s\n", ptrToken );
 	mac_parts[cont]=ptrToken;
 	cont++;
-	ptrToken = strtok( NULL, "-" ); /* obtiene el siguiente token */
+	ptrToken = strtok( NULL, ":" ); /* obtiene el siguiente token */
 } /* fin de while */ 
 
 //ssssssssssssssssssssss
