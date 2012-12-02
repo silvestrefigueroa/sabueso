@@ -28,7 +28,7 @@ int main(int argc, char *argv[]){
 	printf("------------parser: \n");
 	parser(argv[1], &mac2guard, &power, &target, &iface);
 	//mac2guard="aa-bb-cc-dd-ee-ff";
-	printf("maccccc: %s \n\n",mac2guard);
+	printf("Variables seteadas por el parser: MAC: %s\nTARGET: %s\n,IFACE: %s\n",mac2guard,target,iface);
 	printf("------------arpeador: \n");
 	int i=0;
 	for(i=0;i<power;i++){
