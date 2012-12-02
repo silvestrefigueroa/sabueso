@@ -23,7 +23,7 @@
 #define ERR_CONF_UPARAM "**Error en el fichero de configuracion: parametro no reconocido. Consulte la documentacion.\n"
 #define ERR_CONF_POWER "**Error en el parametro power: muchos frames para enviar!!!\n\n"
 //Aqui comienza la magia =)
-int parser(char* file_path, char** parsedMac2guard, int** power){
+int parser(char* file_path, char** parsedMac2guard, int** power,char** target,char** iface){
 	if(0>=write(1,BANDERA, strlen(BANDERA)))
 		return -1;
 	//variables
@@ -147,6 +147,12 @@ int parser(char* file_path, char** parsedMac2guard, int** power){
 
 
 			case 5 : //es POWER? si lo es, representa la cantidad de frames que se van a enviar
+				if(0==strcmp(leftside,"iface")){
+					printf("aqui va la interface de red\n");
+					*iface=&rightside[2];
+					continue;//corto aqui porque ya esta el parametro...sino seguiria evaluando el mismo!!
+				}
+
                                 if(0==strcmp(leftside,"power")){
                                       //si es el power, luego validar la derecha y pasarla al programa principal
 
