@@ -1,1 +1,1 @@
-int parser(char*, char**, int**);
+int parser(char*, char**, int**, char**, char**);

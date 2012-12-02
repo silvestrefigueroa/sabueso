@@ -32,6 +32,7 @@ int arper(char* mac2guard, const char* if_name, const char* target_ip_string){
 
 write(1,MSG_SHOW_PARAMS,sizeof(MSG_SHOW_PARAMS));
 write(1,if_name,(int)strlen(if_name));
+printf("largo de wlan0: %d",(int)strlen(if_name));
 write(1,"\n",(int)strlen("\n"));
 //write(1,mac2guard,(int)strlen(mac2guard));
 write(1,"\n",(int)strlen("\n"));
@@ -75,10 +76,11 @@ write(1,"\n",(int)strlen("\n"));
     size_t if_name_len=strlen(if_name);
     if (if_name_len<sizeof(ifr.ifr_name)) {
         memcpy(ifr.ifr_name,if_name,if_name_len);
+	printf("La setiooooo al menos!!\n");
         ifr.ifr_name[if_name_len]=0;
     } else {
 	write(1,ERR_PARAM_IFLONG,sizeof(ERR_PARAM_IFLONG));
-	//        fprintf(stderr,"interface name is too long");
+	        fprintf(stderr,"interface name is too long");
         exit(1);
     }
     // Open an IPv4-family socket for use when calling ioctl.
@@ -100,13 +102,12 @@ write(1,"\n",(int)strlen("\n"));
 
 	//NO, LA MAC ORIGEN LA SETEO POR ARGUMENTO =) mac2guard
     // Obtain the source MAC address, copy into Ethernet header and ARP request.
+
     if (ioctl(fd,SIOCGIFHWADDR,&ifr)==-1) {
         perror(0);
         close(fd);
         exit(1);
     }
-
-
     if (ifr.ifr_hwaddr.sa_family!=ARPHRD_ETHER) {
         fprintf(stderr,"not an Ethernet interface");
         close(fd);
@@ -179,14 +180,16 @@ ifr.ifr_hwaddr.sa_data[5]=0x12;
     unsigned char frame[sizeof(struct ether_header)+sizeof(struct ether_arp)];
     memcpy(frame,&header,sizeof(struct ether_header));
     memcpy(frame+sizeof(struct ether_header),&req,sizeof(struct ether_arp));
-
+printf("\nantes de abrir pcap iface: %s\n", if_name);
     // Open a PCAP packet capture descriptor for the specified interface.
     char pcap_errbuf[PCAP_ERRBUF_SIZE];
     pcap_errbuf[0]='\0';
     pcap_t* pcap=pcap_open_live(if_name,96,0,0,pcap_errbuf);
     if (pcap_errbuf[0]!='\0') {
+	printf("aqui el rrorrrrrrr\n");
         fprintf(stderr,"%s\n",pcap_errbuf);
     }
+
     if (!pcap) {
         exit(1);
     }
