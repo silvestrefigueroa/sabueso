@@ -9,7 +9,7 @@
 //
 // See: "Send an arbitrary Ethernet frame using libpcap"
 // http://www.microhowto.info/howto/send_an_arbitrary_ethernet_frame_using_libpcap.html
-
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,25 +30,24 @@
 
 int arper(char* mac2guard, char* if_name, char* target_ip_string){
 
-
+/*
 write(1,MSG_SHOW_PARAMS,sizeof(MSG_SHOW_PARAMS));
 write(1,if_name,(int)strlen(if_name));
-printf("largo de wlan0: %d",(int)strlen(if_name));
 write(1,"\n",(int)strlen("\n"));
-//write(1,mac2guard,(int)strlen(mac2guard));
 write(1,"\n",(int)strlen("\n"));
-
-//printf("\nholaaa aqui el arper con: \n MAC: %s \nplaca: %s\nIP: %s\n",mac2guard,if_name,target_ip_string);
+*/
+ 
 
     // Construct Ethernet header (except for source MAC address).
-    // (Destination set to broadcast address, FF:FF:FF:FF:FF:FF.)
-	//estructura para cabecera ethernet
+    // (Destination set to broadcast address, FF:FF:FF:FF:FF:FF.) -> en realidad luego la seteo a gusto :p
+    //estructura para cabecera ethernet
     struct ether_header header;
 	//tipo de direccion
     header.ether_type=htons(ETH_P_ARP);
 	//Setear direccion MAC de DESTINO. Podria luego ver de enviar algunos UNICAST (conociendo la MAC destino)
     memset(header.ether_dhost,0xff,sizeof(header.ether_dhost));
-//SETEO mac origen (0xff para broadcast).
+
+    //SETEO mac origen (0xff para broadcast). -> NOP, comentado porque yo quiero poner la MAC origen
 //	memset(header.ether_shost,0xff,sizeof(header.ether_shost));
 
     // Construct ARP request (except for MAC and IP addresses).
@@ -72,16 +71,15 @@ write(1,"\n",(int)strlen("\n"));
 
 	//Aunque puede parecer tonto.. lo dejo porque no se como determina QUE placa usar todabia...la MAC se la voy a poner igual luego por argumento
     // Write the interface name to an ifreq structure,
-    // for obtaining the source MAC and IP addresses.
+    // for obtaining the source MAC and IP addresses. (Justo la parte de obtener la IP del sender (mi ip) me es necesaria
     struct ifreq ifr;
     size_t if_name_len=strlen(if_name);
     if (if_name_len<sizeof(ifr.ifr_name)) {
         memcpy(ifr.ifr_name,if_name,if_name_len);
-	printf("La setiooooo al menos!!\n");
         ifr.ifr_name[if_name_len]=0;
     } else {
 	write(1,ERR_PARAM_IFLONG,sizeof(ERR_PARAM_IFLONG));
-	        fprintf(stderr,"interface name is too long");
+	        //fprintf(stderr,"interface name is too long");
         exit(1);
     }
     // Open an IPv4-family socket for use when calling ioctl.
@@ -93,18 +91,19 @@ write(1,"\n",(int)strlen("\n"));
 
 	//ESTA SERIA MI IP... LO DEJO..OJO que me parece que se vale de la NIC que recibio por argumento!!
     // Obtain the source IP address, copy into ARP request
-/*
+
     if (ioctl(fd,SIOCGIFADDR,&ifr)==-1) {
         perror(0);
         close(fd);
         exit(1);
     }
-*/
- //   struct sockaddr_in* source_ip_addr = (struct sockaddr_in*)&ifr.ifr_addr;
-  //  memcpy(&req.arp_spa,&source_ip_addr->sin_addr.s_addr,sizeof(req.arp_spa));
-printf("\npaseeeeeeeeeeeeeeeeee\n");
 
-	//NO, LA MAC ORIGEN LA SETEO POR ARGUMENTO =) mac2guard
+	//setea la IP origen con la IP de la interface seleccionada previamente
+    struct sockaddr_in* source_ip_addr = (struct sockaddr_in*)&ifr.ifr_addr;
+    memcpy(&req.arp_spa,&source_ip_addr->sin_addr.s_addr,sizeof(req.arp_spa));
+
+	//bueno aqui debajo, obtendria la MAC de mi NIC pero como la voy a poofear lo comento
+//-------------------------------------------------------------------------------------------
     // Obtain the source MAC address, copy into Ethernet header and ARP request.
 /*
     if (ioctl(fd,SIOCGIFHWADDR,&ifr)==-1) {
@@ -120,63 +119,44 @@ printf("\npaseeeeeeeeeeeeeeeeee\n");
 */
 	//Setear MAC origen=!=!=!=????
 //	ifr.ifr_hwaddr.sa_data[0]=0x12;
+//-------------------------------------------------------------------------------------------
+
+
+
 
 //convierto mac2guard al formato hex
+    char cadena[17];
+    char *mac_parts[6];
+    int cont=0;
+	//este paso de aqui abajo, es el que me tenia mal con los otros parametros
+	//por algun motivo no le gusta el char* pero si el string hardcodeado
+	//esto de aqui abajo es el equivalente a poner el argumento "pegado" como si fuese ¿¿hardcodeado??
+    strcpy(cadena,&mac2guard[0]);//meto el char* en un array
 
-//SSSSSSSSSSSSSSSSSSSSS
-
-//char cadena[] = "Este es un enunciado con 7 tokens";
-char cadena[17];
-char *mac_parts[6];
-int cont=0;
-strcpy(cadena,&mac2guard[0]);//meto el char* en un array
-
-char *ptrToken; /* crea un apuntador char */
-   
-//printf( "%s\n%s\n\n%s\n",      "La cadena a dividir en tokens es:", cadena, 
-  //    "Los tokens son:" );
-          
-ptrToken = strtok( cadena, ":" ); /* comienza la divisiÃƒÂ³n en tokens del enunciado */
+    char *ptrToken; /* crea un apuntador char */
+    ptrToken = strtok( cadena, ":" ); /* comienza la divisiÃƒÂ³n en tokens del enunciado */
     /* continua la divisiÃƒÂ³n en tokens hasta que ptrToken se hace NULL */
-cont=0;
-while ( ptrToken != NULL ) { 
-//	printf( "%s\n", ptrToken );
+    cont=0;
+    while ( ptrToken != NULL ) { 
 	mac_parts[cont]=ptrToken;
 	cont++;
 	ptrToken = strtok( NULL, ":" ); /* obtiene el siguiente token */
-} /* fin de while */ 
-
-//ssssssssssssssssssssss
-printf("holaaaaaaaaaaaaaaaaaaaaa\n");
-int mac_byte;
-unsigned char byte;
-unsigned char value;
-int i;
-//ahora un lazo for para cargar las partes de la mac en la estuctura ether
-
-for(i=0;i<6;i++){
+    } 
+    int mac_byte;
+    unsigned char byte;
+    unsigned char value;
+    int i;
+    //ahora un lazo for para cargar las partes de la mac en la estuctura ether
+    for(i=0;i<6;i++){
 	sscanf(mac_parts[i],"%x",&mac_byte);
 	byte = mac_byte & 0xFF;
-	printf("que paso: %x\n",byte);
 	value=byte;
 	ifr.ifr_hwaddr.sa_data[i]=value;
-}
+    } 
 
-/*
-
-
-ifr.ifr_hwaddr.sa_data[1]=0xff;
-ifr.ifr_hwaddr.sa_data[2]=value;
-ifr.ifr_hwaddr.sa_data[3]=0x78;
-ifr.ifr_hwaddr.sa_data[4]=0x9f;
-ifr.ifr_hwaddr.sa_data[5]=0x12;
-*/
-
+    //bueno, una vez que tengo la MAC como pcap manda, la "gravo" donde tiene que ir :D
     unsigned char* source_mac_addr=(unsigned char*)ifr.ifr_hwaddr.sa_data;
 
-//	printf("mac source: %X \n\n",*source_mac_addr);
-
-//aca abajo es evidente que intenta setear la mac obtenida en la linea anterior, pero yo ya he seteado al principio la MAC por agumento =)
     memcpy(header.ether_shost,source_mac_addr,sizeof(header.ether_shost));
     memcpy(&req.arp_sha,source_mac_addr,sizeof(req.arp_sha));
     close(fd);
@@ -189,7 +169,6 @@ ifr.ifr_hwaddr.sa_data[5]=0x12;
     char pcap_errbuf[PCAP_ERRBUF_SIZE];
     pcap_errbuf[0]='\0';
     pcap_t* pcap=pcap_open_live(if_name,96,0,0,pcap_errbuf);
-	//aca abajo no se cumple la condicion!!! por eso me falla cuando no hardcodeo
     if (pcap_errbuf[0]!='\0') {
 	fprintf(stderr,"%s\n",pcap_errbuf);
     }
@@ -206,7 +185,5 @@ ifr.ifr_hwaddr.sa_data[5]=0x12;
 
     // Close the PCAP descriptor.
     pcap_close(pcap);
-
-	puts("Fin del arper\n");
     return 0;
 }
