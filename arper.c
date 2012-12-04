@@ -28,7 +28,8 @@
 
 
 
-int arper(char* mac2guard, const char* if_name, const char* target_ip_string){
+int arper(char* mac2guard, char* if_name, char* target_ip_string){
+
 
 write(1,MSG_SHOW_PARAMS,sizeof(MSG_SHOW_PARAMS));
 write(1,if_name,(int)strlen(if_name));
@@ -92,17 +93,20 @@ write(1,"\n",(int)strlen("\n"));
 
 	//ESTA SERIA MI IP... LO DEJO..OJO que me parece que se vale de la NIC que recibio por argumento!!
     // Obtain the source IP address, copy into ARP request
+/*
     if (ioctl(fd,SIOCGIFADDR,&ifr)==-1) {
         perror(0);
         close(fd);
         exit(1);
     }
-    struct sockaddr_in* source_ip_addr = (struct sockaddr_in*)&ifr.ifr_addr;
-    memcpy(&req.arp_spa,&source_ip_addr->sin_addr.s_addr,sizeof(req.arp_spa));
+*/
+ //   struct sockaddr_in* source_ip_addr = (struct sockaddr_in*)&ifr.ifr_addr;
+  //  memcpy(&req.arp_spa,&source_ip_addr->sin_addr.s_addr,sizeof(req.arp_spa));
+printf("\npaseeeeeeeeeeeeeeeeee\n");
 
 	//NO, LA MAC ORIGEN LA SETEO POR ARGUMENTO =) mac2guard
     // Obtain the source MAC address, copy into Ethernet header and ARP request.
-
+/*
     if (ioctl(fd,SIOCGIFHWADDR,&ifr)==-1) {
         perror(0);
         close(fd);
@@ -113,6 +117,7 @@ write(1,"\n",(int)strlen("\n"));
         close(fd);
         exit(1);
     }
+*/
 	//Setear MAC origen=!=!=!=????
 //	ifr.ifr_hwaddr.sa_data[0]=0x12;
 
@@ -167,7 +172,7 @@ ifr.ifr_hwaddr.sa_data[4]=0x9f;
 ifr.ifr_hwaddr.sa_data[5]=0x12;
 */
 
-    const unsigned char* source_mac_addr=(unsigned char*)ifr.ifr_hwaddr.sa_data;
+    unsigned char* source_mac_addr=(unsigned char*)ifr.ifr_hwaddr.sa_data;
 
 //	printf("mac source: %X \n\n",*source_mac_addr);
 
@@ -180,16 +185,14 @@ ifr.ifr_hwaddr.sa_data[5]=0x12;
     unsigned char frame[sizeof(struct ether_header)+sizeof(struct ether_arp)];
     memcpy(frame,&header,sizeof(struct ether_header));
     memcpy(frame+sizeof(struct ether_header),&req,sizeof(struct ether_arp));
-printf("\nantes de abrir pcap iface: %s\n", if_name);
     // Open a PCAP packet capture descriptor for the specified interface.
     char pcap_errbuf[PCAP_ERRBUF_SIZE];
     pcap_errbuf[0]='\0';
     pcap_t* pcap=pcap_open_live(if_name,96,0,0,pcap_errbuf);
+	//aca abajo no se cumple la condicion!!! por eso me falla cuando no hardcodeo
     if (pcap_errbuf[0]!='\0') {
-	printf("aqui el rrorrrrrrr\n");
-        fprintf(stderr,"%s\n",pcap_errbuf);
+	fprintf(stderr,"%s\n",pcap_errbuf);
     }
-
     if (!pcap) {
         exit(1);
     }
