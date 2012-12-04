@@ -17,7 +17,6 @@
 int main(int argc, char *argv[]){
 	if(0>=write(1,MSG_START, strlen(MSG_START)))
 		return -1;
-
 	//variables de datos del programa principal
 	char *mac2guard;
 	int *power=0;
@@ -27,19 +26,18 @@ int main(int argc, char *argv[]){
 	char arperIface[10];//por problema que no reconoce el arper el argumento a no ser que sea hardcodeado
 	char arperTarget[15];//por lo mismo que con el anterior
 
-	//mas adelante, la idea es que devuelva int de salida, pero pasarle un puntero para que setee los parametros en una estructura.
-	printf("------------parser: \n");
 	parser(argv[1], &mac2guard, &power, &target, &iface);
-	//mac2guard="aa-bb-cc-dd-ee-ff";
-	printf("Variables seteadas por el parser: MAC: %s\nTARGET: %s\n,IFACE: %s\n",mac2guard,target,iface);
-	printf("------------arpeador: \n");
+	printf("\nVariables seteadas por el parser: \nMAC: %s\nTARGET: %s\nIFACE: %s\n",mac2guard,target,iface);
 	int i=0;
 	//aqui abajo la magia de la que hablaba en la definicion de variables...
 	strcpy(arperIface,iface);
 	strcpy(arperTarget,target);
+	//segun el parametro power, son las veces que enviare frames
+	//mas adelante, debo separar la creacion del frame del envio del mismo para no repetir tooooodo por cada iteracion
 	for(i=0;i<power;i++){
-		arper(mac2guard,arperIface,arperTarget);
+		arper(mac2guard,arperIface,arperTarget);//arper crea el frame y lo envia(separar)
 	}
 	//fin
+	write(1,"FIN OK\n",sizeof("FIN OK\n"));
 	return 0;
 }
