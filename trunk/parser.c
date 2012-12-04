@@ -23,7 +23,7 @@
 #define ERR_CONF_UPARAM "**Error en el fichero de configuracion: parametro no reconocido. Consulte la documentacion.\n"
 #define ERR_CONF_POWER "**Error en el parametro power: muchos frames para enviar!!!\n\n"
 //Aqui comienza la magia =)
-int parser(char* file_path, char** parsedMac2guard, int** power,const char** target,const char** iface){
+int parser(char* file_path, char** parsedMac2guard, int** power, char** parsedTarget, char** parsedIface){
 	if(0>=write(1,BANDERA, strlen(BANDERA)))
 		return -1;
 	//variables
@@ -46,7 +46,7 @@ int parser(char* file_path, char** parsedMac2guard, int** power,const char** tar
 	char *rightside;
 	char *leftside;
 	char *aux;//esta variable explico luego por que
-	char *mac2guard, *mode;
+	char *mac2guard, *mode, *target, *iface;
 	int largo;
 	
 	//leftside tiene el primer nombre de comando, rightside tiene el resto
@@ -147,17 +147,17 @@ int parser(char* file_path, char** parsedMac2guard, int** power,const char** tar
 			case 6:
 				if(0==strcmp(leftside,"target")){
 					//deberia comprobar aqui con expresion regular si la IP esta bien seteada
-					//de momento esa responsabilidad se ha delegado al ARPER, al igual que la MAC y la iface
 					printf("valor parseado en la IP: %s",&rightside[2]);
-					*target=&rightside[2];
+					target=&rightside[2];
 				}
 			break;
 
 			case 5 : //es POWER? si lo es, representa la cantidad de frames que se van a enviar
 				if(0==strcmp(leftside,"iface")){
 					printf("aqui va la interface de red\n");
-					*iface=&rightside[2];
-					continue;//corto aqui porque ya esta el parametro...sino seguiria evaluando el mismo!!
+					iface=&rightside[2];
+//					continue;//corto aqui porque ya esta el parametro...sino seguiria evaluando el mismo!!
+					break;
 				}
 
                                 if(0==strcmp(leftside,"power")){
@@ -210,7 +210,12 @@ int parser(char* file_path, char** parsedMac2guard, int** power,const char** tar
 		}
 	}
 	printf("La MAC leida es: %s\n", mac2guard);
+	//puede que aqui debajo este la clave de por que es que falla con los otros parametros
+	//observar que aqui trae un char* y lo mete en un char** pero char* , una copia?????
 	*parsedMac2guard=mac2guard;
+		//entonces probare aplicar el mismo "paseo" de valores a ver si le estaba escapando en el puntero??!??!
+	*parsedTarget=target;
+	*parsedIface=iface;
 	printf("El modo leido es: %s\n", mode);
 	//fin del programa
 	if(0<=write(1,WATCH,strlen(WATCH)))

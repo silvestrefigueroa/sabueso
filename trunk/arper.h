@@ -1,1 +1,1 @@
-int arper(char*, const char*, const char*);
+int arper(char*,char*,char*);

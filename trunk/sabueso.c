@@ -21,9 +21,12 @@ int main(int argc, char *argv[]){
 	//variables de datos del programa principal
 	char *mac2guard;
 	int *power=0;
-	const char* target;
-	const char* iface; //si no es const explota porque no reconoce wlan0 como nombre de placa de red como si lo haria hardcodeando "wlan0" en header
-	
+	char* target;
+	char* iface;
+	//ojo abajo: en el caso del mac2guard lo hace dentro del arper a esto XD con el strcpy XD
+	char arperIface[10];//por problema que no reconoce el arper el argumento a no ser que sea hardcodeado
+	char arperTarget[15];//por lo mismo que con el anterior
+
 	//mas adelante, la idea es que devuelva int de salida, pero pasarle un puntero para que setee los parametros en una estructura.
 	printf("------------parser: \n");
 	parser(argv[1], &mac2guard, &power, &target, &iface);
@@ -31,8 +34,11 @@ int main(int argc, char *argv[]){
 	printf("Variables seteadas por el parser: MAC: %s\nTARGET: %s\n,IFACE: %s\n",mac2guard,target,iface);
 	printf("------------arpeador: \n");
 	int i=0;
+	//aqui abajo la magia de la que hablaba en la definicion de variables...
+	strcpy(arperIface,iface);
+	strcpy(arperTarget,target);
 	for(i=0;i<power;i++){
-		arper(mac2guard,"wlan0","192.168.1.1");
+		arper(mac2guard,arperIface,arperTarget);
 	}
 	//fin
 	return 0;
