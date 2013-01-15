@@ -18,7 +18,7 @@ int main(int argc, char *argv[]){
 	if(0>=write(1,MSG_START, strlen(MSG_START)))
 		return -1;
 	//variables de datos del programa principal
-	char *mac2guard;
+	char *mac2guard, *mac2guard_copy;
 	int *power=0;
 	char* target;
 	char* iface;
@@ -34,8 +34,11 @@ int main(int argc, char *argv[]){
 	strcpy(arperTarget,target);
 	//segun el parametro power, son las veces que enviare frames
 	//mas adelante, debo separar la creacion del frame del envio del mismo para no repetir tooooodo por cada iteracion
+	
 	for(i=0;i<power;i++){
-		arper(mac2guard,arperIface,arperTarget);//arper crea el frame y lo envia(separar)
+//		arper(mac2guard,arperIface,arperTarget);//arper crea el frame y lo envia(separar)
+		arper("00:21:5c:33:09:a5",arperIface,arperTarget);//arper crea el frame y lo envia(separar)
+	sleep(1);
 	}
 	//fin
 	write(1,"FIN OK\n",sizeof("FIN OK\n"));

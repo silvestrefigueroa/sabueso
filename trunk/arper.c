@@ -177,6 +177,8 @@ write(1,"\n",(int)strlen("\n"));
     }
 
     // Write the Ethernet frame to the interface.
+    //ACA LO PONGO EN UN FOR SEGUN EL ARGUMENTO QUE RECIBA, PARA SABER CUANTAS VECES INYECTAR
+
     if (pcap_inject(pcap,frame,sizeof(frame))==-1) {
         pcap_perror(pcap,0);
         pcap_close(pcap);
