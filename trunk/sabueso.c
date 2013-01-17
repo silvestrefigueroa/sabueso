@@ -23,8 +23,11 @@
 #include <net/ethernet.h>
 #include <netinet/if_ether.h>
 #include <sys/ioctl.h>
-
-
+#include <errno.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ether.h>
+#include <netinet/ip.h>
 
 //MENSAJES ESTATICOS
 #define MSG_START "Comienza aqui el programa principal\n"
@@ -33,14 +36,23 @@
 //Funcion callback del arpCollector.c, luego sacarla como corresponde...
 void my_callback(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* packet){
 	static int count = 1;
-	fprintf(stdout," %d, ",count);
-	fflush(stdout);
-	count++;
+//	fflush(stdout);
+	
 	//si.. muy lindo el contador.. pero me gustaria que:
-		//filtre la captura
-		//Evalue lo que capturo
-		//Avise lo que capturo
-		//Lo almacene en la tabla de dialogos =)
+		//muestre datos de la captura:
+	struct ether_header* eptr;
+	eptr = (struct ether_header*) packet;//apunta a la cabecera ethernet (casteado a ethernet)
+	printf("Paquete numero: %d\n",count);
+	//printf("MAC origen en la TRAMA ETHERNET: %s\n", ether_ntoa(eptr−>ether_shost));
+	printf("EthernetSourceMAC: %s\n", ether_ntoa(eptr->ether_shost));
+	//printf("MAC destino en la TRAMA ETHERNET: %s\n", ether_ntoa(eptr−>ether_dhost));
+	printf("EthernetDestinationMAC: %s\n",ether_ntoa(eptr->ether_dhost));
+
+	//ahora examino datos del payload (en este caso es ARP)
+	
+
+	//Lo almacene en la tabla de dialogos =)
+	count++;
 }
 
 
@@ -162,6 +174,7 @@ int main(int argc, char *argv[]){
 			const u_char *packet;
 			struct pcap_pkthdr hdr;
 			struct ether_header *eptr; // Ethernet
+			struct bpf_program fp;//aca se guardara el programa compilado de filtrado
 			bpf_u_int32 maskp;// mascara de subred
 			bpf_u_int32 netp;// direccion de red
 			if (argc != 2){
@@ -179,7 +192,6 @@ int main(int argc, char *argv[]){
 			dev = "wlan0";
 			pcap_lookupnet(dev,&netp,&maskp,errbuf); //extraemos la direccion de red y la mascara
 			//comenzar captura y obtener descriptor llamado "descr" del tipo pcatp_t*
-			//descr = pcap_open_live(dev,BUFSIZ,1,−1,errbuf); //comenzamos la captura en modo promiscuo
 			descr = pcap_open_live(dev,BUFSIZ,1,-1,errbuf); //comenzar captura en modo promiscuo
 
 
@@ -187,11 +199,17 @@ int main(int argc, char *argv[]){
 				printf("pcap_open_live(): %s\n",errbuf);
 				exit(1);
 			}
-//			pcap_loop(descr,−1,my_callback,NULL); //entramos en el bucle (infinito)
+			//ahora compilo el programa de filtrado para hacer un filtro para ARP
+			if(pcap_compile(descr,&fp,"arp",0,netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
+				fprintf(stderr,"Error compilando el filtro\n");
+				exit(1);
+			}
+			//Para APLICAR el filtro compilado:
+			if(pcap_setfilter(descr,&fp)==-1){
+				fprintf(stderr,"Error aplicando el filtro\n");
+				exit(1);
+			}
 			pcap_loop(descr,-1,my_callback,NULL);//entra en el bucle infinito
-
-
-
 
 			_exit(EXIT_SUCCESS);
 
