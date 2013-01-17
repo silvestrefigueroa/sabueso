@@ -1,3 +1,4 @@
+//includes del sabueso.c
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
@@ -10,8 +11,38 @@
 #include "arper.h"
 #include "parser.h"
 
+
+//Icludes del arpCollector.c
+//#include <unistd.h>
+//#include <stdio.h>
+//#include <stdlib.h>
+#include <string.h>
+#include <pcap.h>
+#include <arpa/inet.h>
+#include <net/if.h>
+#include <net/ethernet.h>
+#include <netinet/if_ether.h>
+#include <sys/ioctl.h>
+
+
+
 //MENSAJES ESTATICOS
 #define MSG_START "Comienza aqui el programa principal\n"
+
+
+//Funcion callback del arpCollector.c, luego sacarla como corresponde...
+void my_callback(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* packet){
+	static int count = 1;
+	fprintf(stdout," %d, ",count);
+	fflush(stdout);
+	count++;
+	//si.. muy lindo el contador.. pero me gustaria que:
+		//filtre la captura
+		//Evalue lo que capturo
+		//Avise lo que capturo
+		//Lo almacene en la tabla de dialogos =)
+}
+
 
 //Aqui comienza la magia =)
 int main(int argc, char *argv[]){
@@ -71,6 +102,8 @@ int main(int argc, char *argv[]){
 //------------INICIA FORK PARA MONITOR DE ARP EN EL BROADCAST-----------------------------
 
 	/*
+				arpCollector.c
+
 		En este punto tenemos la zona de memoria y los elementos de ipc y control
 		Procedo al forkeo para iniciar un proceso encargado de monitorear la existencia
 		De "preguntas" ARP al broadcast, luego la funcion de callback se encargara de tratar al paquete:
@@ -99,8 +132,71 @@ int main(int argc, char *argv[]){
 				retornar al bucle
 			continuar bucle
 
+		*/
 
-	*/
+	switch(fork()){
+		case -1:
+			perror("fork()");
+			_exit(EXIT_FAILURE);
+		case 0:
+			//Proceso arpCollector.c
+			puts("\n-------------------------");
+			puts("soy el recolector de mensajes ARP iniciando...\n");
+			//obtener descriptor pcap
+			 // Open a PCAP packet capture descriptor for the specified interface.
+/*
+			char pcap_errbuf[PCAP_ERRBUF_SIZE];
+			pcap_errbuf[0]='\0';
+			pcap_t* pcap=pcap_open_live("wlan0",96,1,0,pcap_errbuf);
+			if (pcap_errbuf[0]!='\0') {
+				fprintf(stderr,"%s\n",pcap_errbuf);
+			}
+			if (!pcap) {
+				exit(1);
+			}
+*/
+			//COmienza a preparar la captura...
+			char* dev;
+			char errbuf[PCAP_ERRBUF_SIZE];
+			pcap_t* descr;//descriptor de la captura
+			const u_char *packet;
+			struct pcap_pkthdr hdr;
+			struct ether_header *eptr; // Ethernet
+			bpf_u_int32 maskp;// mascara de subred
+			bpf_u_int32 netp;// direccion de red
+			if (argc != 2){
+				fprintf(stdout,"Modo de Uso %s \"programa de filtrado\"\n",argv[0]);
+				return 0;
+			}
+			dev = pcap_lookupdev(errbuf); //Buscamos un dispositivo del que comenzar la captura
+			printf("\nEcontro como dispositivo %s\n",dev);
+			if (dev == NULL){
+				fprintf(stderr," %s\n",errbuf); exit(1);
+			}
+			else{
+				printf("Abriendo %s en modo promiscuo\n",dev);
+			}
+			dev = "wlan0";
+			pcap_lookupnet(dev,&netp,&maskp,errbuf); //extraemos la direccion de red y la mascara
+			//comenzar captura y obtener descriptor llamado "descr" del tipo pcatp_t*
+			//descr = pcap_open_live(dev,BUFSIZ,1,−1,errbuf); //comenzamos la captura en modo promiscuo
+			descr = pcap_open_live(dev,BUFSIZ,1,-1,errbuf); //comenzar captura en modo promiscuo
+
+
+			if (descr == NULL){
+				printf("pcap_open_live(): %s\n",errbuf);
+				exit(1);
+			}
+//			pcap_loop(descr,−1,my_callback,NULL); //entramos en el bucle (infinito)
+			pcap_loop(descr,-1,my_callback,NULL);//entra en el bucle infinito
+
+
+
+
+			_exit(EXIT_SUCCESS);
+
+	}//FIN DEL FORK PARA ARPCOLLECTOR
+
 
 //---------------FIN FORK PARA MONITOR DE ARP EN EL BROADCAST-----------------------------
 
