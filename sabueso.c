@@ -5,11 +5,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <semaphore.h>
+#include <pthread.h>
+#include <sys/types.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+
 
 //MIS PROPIAS CABECERAS
 //#include "sabueso.h"
 #include "arper.h"
 #include "parser.h"
+#include "arpDialogStruct.h"
+#include "arpCollector_callback.h"
+#include "callbackArgs.h"
+
+
+
+//MENSAJES ESTATICOS
+#define MSG_START "Comienza aqui el programa principal\n"
+
 
 
 //Icludes del arpCollector.c
@@ -29,54 +46,12 @@
 #include <netinet/ether.h>
 #include <netinet/ip.h>
 
-//MENSAJES ESTATICOS
-#define MSG_START "Comienza aqui el programa principal\n"
-
-
-//Funcion callback del arpCollector.c, luego sacarla como corresponde...
-void my_callback(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* packet){
-	static int count = 1;
-//	fflush(stdout);
-	
-	//si.. muy lindo el contador.. pero me gustaria que:
-		//muestre datos de la captura:
-	struct ether_header* eptr;
-	eptr = (struct ether_header*) packet;//apunta a la cabecera ethernet (casteado a ethernet)
-	printf("-------------------------------------------------------------------------------------------------------------------\n");
-	printf("Paquete numero: %d\n",count);
-	//printf("MAC origen en la TRAMA ETHERNET: %s\n", ether_ntoa(eptr−>ether_shost));
-	printf("EthernetSourceMAC:             %s\n", ether_ntoa(eptr->ether_shost));
-	//printf("MAC destino en la TRAMA ETHERNET: %s\n", ether_ntoa(eptr−>ether_dhost));
-	printf("EthernetDestinationMAC:        %s\n",ether_ntoa(eptr->ether_dhost));
-
-	//ahora examino datos del payload (en este caso es ARP por el filtro)
-	//compruebo que sea ARP
-	if(ntohs(eptr->ether_type)!=ETHERTYPE_ARP){
-		printf("No viaja ARP sobre esta trama (aunque ya esta filtrada...)\n");
-		return -1;
-	}
-	//else...
-	puts("vamos con el ARP\n");	
-	struct ether_arp *arpPtr;
-	//ahora posiciono el puntero en el primer byte(es decir con un offset de size of ether header)
-	arpPtr =(struct ether_arp*)(packet+sizeof(struct ether_header));//o lo que es lo mismo packet+14;
-	//ahorita, muestro la info que tiene la estructura esta para ARP:
-	fprintf(stdout,"ARP: IP Origen: %d.%d.%d.%d\n",arpPtr->arp_spa[0],arpPtr->arp_spa[1],arpPtr->arp_spa[2],arpPtr->arp_spa[3]);
-	fprintf(stdout,"ARP: IP Destino: %d.%d.%d.%d\n",arpPtr->arp_tpa[0],arpPtr->arp_tpa[1],arpPtr->arp_tpa[2],arpPtr->arp_tpa[3]);
-	printf("ARP: MAC Origen:               %s\n",ether_ntoa(arpPtr->arp_sha));
-	printf("ARP: MAC Destino:              %s\n",ether_ntoa(arpPtr->arp_tha));
-
-	//Lo almacene en la tabla de dialogos =)
-	count++;
-}
-
-
 //Aqui comienza la magia =)
 int main(int argc, char *argv[]){
 	if(0>=write(1,MSG_START, strlen(MSG_START)))
 		return -1;
 	//variables de datos del programa principal
-	char *mac2guard, *mac2guard_copy;//argumento que evolucionara a array y que representa todos los hosts protegidos
+	char *mac2guard;//argumento que evolucionara a array y que representa todos los hosts protegidos
 	//char *mac2guardIP //serian las ips que acompaña a las macs que van en mac2guard, para futuras versiones
 	int *power=0;//este comando va a evolucionar, representa uno de los parametros de FUERZA (repeticion) del port stealer o arper.
 	char* target;//propenso a desaparecer, dado que el target sera cualquier IP que pregunte por un mac2guard
@@ -98,8 +73,75 @@ int main(int argc, char *argv[]){
 
 //------------INICIA ZONA DE DEFINICION DE ESTRUCTURAS DE DATOS DEL SABUESO--------------
 
+/*
+struct arpDialog{
+        int index;
+        char* etherSenderMac;
+        char* etherDestinationMac;
+        char* arpSenderMac;
+        char* arpDestinationMac;
+        char* arpSenderIp;
+        char* arpDestinationIp;
+        int hit;
+	sem_t semaforo;
+};
+*/
+
+//Crear zona de memoria compartida para alojar la estructura (o.. array de estructuras)
+
+	//puntero a la memoria compartida
+//	unsigned* shmPtr;
+	struct arpDialog* shmPtr;
+	//descriptor de la memoria compartida
+	int fdshm;
+	//sharedMem
+	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla
+	struct arpDialog arpDialoguesTable[100];//hardcodeado, luego deberia parametrizarlo y variabilizarlo
+	for(subindexCounterId=0;subindexCounterId<100;subindexCounterId++){//ese 100 es el hardcodeado anterior
+		arpDialoguesTable[subindexCounterId].index=subindexCounterId;
+		//arpDialoguesTable[subindexCounterId].etherSenderMac=NULL;
+		//todos los elementos....
+		//int sem_init(sem_t *sem, int pshared, unsigned int value);
+		sem_init(&(arpDialoguesTable[subindexCounterId].semaforo),1,1);//inicializa semaforos de cada entrada de la tabla
+	}//inicializadas las entradas de la tabla, paso a confeccionar la Memoria Compartida
+
 
 	//SHAREDMEM
+
+	//int shmTotalBloks=100;//hardcodeado de antes..
+	//int field=0,block=0,fieldValue=0;
+	//int blockSize=(sizeof(int)+6*sizeof(char*)+sizeof(int)+sizeof(sem_t));
+//	printf("EL TAMAÑO DE LA ESTRUCTURA: %d, y de la suma: %d\n", sizeof(arpDialoguesTable[0]), blockSize);
+
+	if(((fdshm=shm_open("/sharedMemPartida", O_RDWR|O_CREAT, 0666))<0)){
+		perror("shm_open()");
+		exit(EXIT_FAILURE);
+	}
+	//lo escribo en blanco
+	if(!(write(fdshm,&arpDialoguesTable,sizeof(arpDialoguesTable)))){
+	perror("write()");
+	exit(EXIT_FAILURE);
+
+	}
+	//ojo con ese 100 de abajo.. es el hardcodeado, representa la cantidad de estructuras struct arpDilog que hay en el array arpDialoguesTable
+	if(!(shmPtr=mmap(NULL, sizeof(struct arpDialog)*100, PROT_READ|PROT_WRITE, MAP_SHARED, fdshm, 0))){
+		perror("mmap()");
+		exit(EXIT_FAILURE);
+	}
+	close(fdshm);
+
+	//una vez que tengo el puntero a la zona de memoria... lo probamos
+
+	printf("sin puntero, solo estructura: indice del 43°= %d\n",arpDialoguesTable[43].index);
+	printf("ahora utilizando el puntero:  indice del 43°= %d\n",(int) shmPtr[43].index);//perfecto
+
+/*
+	int u;
+	for(u=0;u<100;u++){
+		printf("valor del indice para el elemento %d: %d\n",u, shmPtr[u].index);
+	}
+*/
+
 	//VARS
 	//TABLES
 	//ETC...
@@ -169,26 +211,13 @@ int main(int argc, char *argv[]){
 			//Proceso arpCollector.c
 			puts("\n-------------------------");
 			puts("soy el recolector de mensajes ARP iniciando...\n");
-			//obtener descriptor pcap
-			 // Open a PCAP packet capture descriptor for the specified interface.
-/*
-			char pcap_errbuf[PCAP_ERRBUF_SIZE];
-			pcap_errbuf[0]='\0';
-			pcap_t* pcap=pcap_open_live("wlan0",96,1,0,pcap_errbuf);
-			if (pcap_errbuf[0]!='\0') {
-				fprintf(stderr,"%s\n",pcap_errbuf);
-			}
-			if (!pcap) {
-				exit(1);
-			}
-*/
 			//COmienza a preparar la captura...
 			char* dev;
 			char errbuf[PCAP_ERRBUF_SIZE];
 			pcap_t* descr;//descriptor de la captura
-			const u_char *packet;
-			struct pcap_pkthdr hdr;
-			struct ether_header *eptr; // Ethernet
+			//const u_char *packet;
+			//struct pcap_pkthdr hdr;
+			//struct ether_header *eptr; // Ethernet
 			struct bpf_program fp;//aca se guardara el programa compilado de filtrado
 			bpf_u_int32 maskp;// mascara de subred
 			bpf_u_int32 netp;// direccion de red
@@ -196,7 +225,7 @@ int main(int argc, char *argv[]){
 				fprintf(stdout,"Modo de Uso %s \"programa de filtrado\"\n",argv[0]);
 				return 0;
 			}
-			dev = pcap_lookupdev(errbuf); //Buscamos un dispositivo del que comenzar la captura
+			dev = pcap_lookupdev(errbuf); //Buscamos un dispositivo del que comenzar la captura (lee por arg, desaparecera esto...)
 			printf("\nEcontro como dispositivo %s\n",dev);
 			if (dev == NULL){
 				fprintf(stderr," %s\n",errbuf); exit(1);
@@ -204,8 +233,12 @@ int main(int argc, char *argv[]){
 			else{
 				printf("Abriendo %s en modo promiscuo\n",dev);
 			}
-			dev = "wlan0";
-			pcap_lookupnet(dev,&netp,&maskp,errbuf); //extraemos la direccion de red y la mascara
+			
+			dev = "wlan0";//LA TRAE POR ARGUMENTO, PERO SE LA HARDCODEO POR AHORA, sino usaria la que detecto justo antes (gralmente eth0)
+
+			//obtener la direccion de red y la netmask
+			pcap_lookupnet(dev,&netp,&maskp,errbuf);
+
 			//comenzar captura y obtener descriptor llamado "descr" del tipo pcatp_t*
 			descr = pcap_open_live(dev,BUFSIZ,1,-1,errbuf); //comenzar captura en modo promiscuo
 
@@ -224,8 +257,10 @@ int main(int argc, char *argv[]){
 				fprintf(stderr,"Error aplicando el filtro\n");
 				exit(1);
 			}
-			//a continuacion capturamos, en este caso en bucle infinito
-			pcap_loop(descr,-1,my_callback,NULL);//OJO, asegurar esta linea con algun if como los anteriores
+			//ahora tengo que ver como pasarle argumentos a la funcion callback
+			
+
+			pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,NULL);//OJO, asegurar esta linea con algun if como los anteriores
 	
 			_exit(EXIT_SUCCESS);
 
