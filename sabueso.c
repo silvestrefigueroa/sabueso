@@ -46,8 +46,45 @@
 #include <netinet/ether.h>
 #include <netinet/ip.h>
 
+
+
+
+//HANDLERS:
+void sigchld_handler(int s){
+
+	sem_t* sem;
+	if((sem=sem_open("/semaforo_child", O_RDWR))==SEM_FAILED)
+	{
+		perror("sem_open()");
+		exit(EXIT_FAILURE);
+	}
+	wait(NULL);
+	sem_post(sem);
+}
+
+void sigint_handler(int s){
+	
+	sem_unlink("/semaforo_child");
+	
+	//ahora hago unlink para la SharedMem
+
+	//if((shm_unlink("/sharedMemPartida"))<0){
+	int retorno = shm_unlink("/sharedMemPartida");
+	printf("retorno %d\n",retorno);
+	if (retorno < 0 ) {
+		perror("shm_unlink()");
+		exit(EXIT_FAILURE);
+
+	}
+	kill(getpid(),SIGTERM);
+}
+
 //Aqui comienza la magia =)
 int main(int argc, char *argv[]){
+
+	//manejador SIGTERM
+	signal(SIGINT , sigint_handler);
+
 	if(0>=write(1,MSG_START, strlen(MSG_START)))
 		return -1;
 	//variables de datos del programa principal
@@ -99,19 +136,12 @@ struct arpDialog{
 	struct arpDialog arpDialoguesTable[100];//hardcodeado, luego deberia parametrizarlo y variabilizarlo
 	for(subindexCounterId=0;subindexCounterId<100;subindexCounterId++){//ese 100 es el hardcodeado anterior
 		arpDialoguesTable[subindexCounterId].index=subindexCounterId;
-		//arpDialoguesTable[subindexCounterId].etherSenderMac=NULL;
-		//todos los elementos....
 		//int sem_init(sem_t *sem, int pshared, unsigned int value);
 		sem_init(&(arpDialoguesTable[subindexCounterId].semaforo),1,1);//inicializa semaforos de cada entrada de la tabla
 	}//inicializadas las entradas de la tabla, paso a confeccionar la Memoria Compartida
 
 
 	//SHAREDMEM
-
-	//int shmTotalBloks=100;//hardcodeado de antes..
-	//int field=0,block=0,fieldValue=0;
-	//int blockSize=(sizeof(int)+6*sizeof(char*)+sizeof(int)+sizeof(sem_t));
-//	printf("EL TAMAÑO DE LA ESTRUCTURA: %d, y de la suma: %d\n", sizeof(arpDialoguesTable[0]), blockSize);
 
 	if(((fdshm=shm_open("/sharedMemPartida", O_RDWR|O_CREAT, 0666))<0)){
 		perror("shm_open()");
@@ -128,12 +158,20 @@ struct arpDialog{
 		perror("mmap()");
 		exit(EXIT_FAILURE);
 	}
+	//la truncada de suerte!!:
+	ftruncate(fdshm, sizeof(struct arpDialog)*100);
 	close(fdshm);
 
 	//una vez que tengo el puntero a la zona de memoria... lo probamos
 
 	printf("sin puntero, solo estructura: indice del 43°= %d\n",arpDialoguesTable[43].index);
 	printf("ahora utilizando el puntero:  indice del 43°= %d\n",(int) shmPtr[43].index);//perfecto
+
+
+	sem_wait( (sem_t*)&(shmPtr[43].semaforo));
+	printf("obtuve el semaforo\n");
+	sem_post( (sem_t*)&(shmPtr[43].semaforo));
+	printf("he soltado el semaforo\n");
 
 /*
 	int u;
@@ -143,6 +181,7 @@ struct arpDialog{
 */
 
 	//VARS
+	int o;//para los for de los wait y post (pruebas de semaforos)
 	//TABLES
 	//ETC...
 
@@ -210,9 +249,19 @@ struct arpDialog{
 		case 0:
 			//Proceso arpCollector.c
 			puts("\n-------------------------");
-			puts("soy el recolector de mensajes ARP iniciando...\n");
+
+			puts("soy el HIJO recolector de mensajes ARP iniciando...\n");
+
+			for(o=0;o<50;o++){
+				sem_wait( (sem_t*)&(shmPtr[43].semaforo));
+				printf("ahora EL HIJO en el 43°= %d\n",(int) shmPtr[43].index++);//perfecto
+				sem_post( (sem_t*)&(shmPtr[43].semaforo));
+				sleep(1);
+			}
+
+
 			//COmienza a preparar la captura...
-			char* dev;
+			char* dev=NULL;
 			char errbuf[PCAP_ERRBUF_SIZE];
 			pcap_t* descr;//descriptor de la captura
 			//const u_char *packet;
@@ -225,18 +274,19 @@ struct arpDialog{
 				fprintf(stdout,"Modo de Uso %s \"programa de filtrado\"\n",argv[0]);
 				return 0;
 			}
-			dev = pcap_lookupdev(errbuf); //Buscamos un dispositivo del que comenzar la captura (lee por arg, desaparecera esto...)
-			printf("\nEcontro como dispositivo %s\n",dev);
-			if (dev == NULL){
-				fprintf(stderr," %s\n",errbuf); exit(1);
-			}
-			else{
-				printf("Abriendo %s en modo promiscuo\n",dev);
-			}
-			
-			dev = "wlan0";//LA TRAE POR ARGUMENTO, PERO SE LA HARDCODEO POR AHORA, sino usaria la que detecto justo antes (gralmente eth0)
+
+			dev = pcap_lookupdev(errbuf); //Buscamos un dispositivo del que comenzar la captura
+                        printf("\nEcontro como dispositivo %s\n",dev);
+                        if (dev == NULL){
+                                fprintf(stderr," %s\n",errbuf); exit(1);
+                        }
+                        else{
+                                printf("Abriendo %s en modo promiscuo\n",dev);
+                        }
+                        dev = "wlan0";
 
 			//obtener la direccion de red y la netmask
+
 			pcap_lookupnet(dev,&netp,&maskp,errbuf);
 
 			//comenzar captura y obtener descriptor llamado "descr" del tipo pcatp_t*
@@ -247,6 +297,8 @@ struct arpDialog{
 				printf("pcap_open_live(): %s\n",errbuf);
 				exit(1);
 			}
+
+
 			//ahora compilo el programa de filtrado para hacer un filtro para ARP
 			if(pcap_compile(descr,&fp,"arp",0,netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
 				fprintf(stderr,"Error compilando el filtro\n");
@@ -329,10 +381,17 @@ struct arpDialog{
 	sleep(1);
 	}
 //--------------------fin port stealing-----------------------
-
-
+	for(o=0;o<50;o++){
+		sem_wait( (sem_t*)&(shmPtr[43].semaforo));
+		printf("ahora EL PADRE en el 43°= %d\n",(int) shmPtr[43].index++);//perfecto
+		sem_post( (sem_t*)&(shmPtr[43].semaforo));
+		sleep(5);
+	}
 
 	//fin del programa principal
 	write(1,"FIN DEL PROGRAMA PRINCIPAL\n",sizeof("FIN DEL PROGRAMA PRINCIPAL\n"));
-	return 0;
+	sem_unlink("/semaforo_child");
+	perror("accept()");
+	//shm_unlink("./sharedMemPartidas");
+	return EXIT_FAILURE;
 }
