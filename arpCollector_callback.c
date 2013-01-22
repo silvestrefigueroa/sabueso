@@ -15,11 +15,21 @@
 #include <netinet/ether.h>
 #include <netinet/ip.h>
 
+//include de los semaforos:
+#include <semaphore.h>
+
 
 //Funcion callback del arpCollector.c, luego sacarla como corresponde...
-void arpCollector_callback(u_char *useless,const struct pcap_pkthdr* pkthdr,const u_char* packet){
+void arpCollector_callback(u_char* shmPtr,const struct pcap_pkthdr* pkthdr,const u_char* packet){
 	static int count = 1;
 //	fflush(stdout);
+	
+	printf("por entrar al semaforo desde callback\n");
+	//sem_wait((sem_t*)&(shmPtr[43].semaforo));
+	  sem_wait((sem_t*)&(shmPtr[43].semaforo));
+	printf("hola, soy el callback molestando a los demas 10 segundos\n");
+	sem_post((sem_t*)&(shmPtr[43].semaforo));
+
 	
 	//pruebo la estructura de argumentos:
 	//int acc=(int)(((struct Argumentos2 *) argumentos)->accion);//funciona esta referencia

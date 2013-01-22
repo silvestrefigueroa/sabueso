@@ -252,7 +252,7 @@ struct arpDialog{
 
 			puts("soy el HIJO recolector de mensajes ARP iniciando...\n");
 
-			for(o=0;o<50;o++){
+			for(o=0;o<10;o++){
 				sem_wait( (sem_t*)&(shmPtr[43].semaforo));
 				printf("ahora EL HIJO en el 43°= %d\n",(int) shmPtr[43].index++);//perfecto
 				sem_post( (sem_t*)&(shmPtr[43].semaforo));
@@ -312,7 +312,7 @@ struct arpDialog{
 			//ahora tengo que ver como pasarle argumentos a la funcion callback
 			
 
-			pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,NULL);//OJO, asegurar esta linea con algun if como los anteriores
+			pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,&shmPtr);//OJO, asegurar esta linea con algun if como los anteriores
 	
 			_exit(EXIT_SUCCESS);
 
@@ -381,7 +381,7 @@ struct arpDialog{
 	sleep(1);
 	}
 //--------------------fin port stealing-----------------------
-	for(o=0;o<50;o++){
+	for(o=0;o<10;o++){
 		sem_wait( (sem_t*)&(shmPtr[43].semaforo));
 		printf("ahora EL PADRE en el 43°= %d\n",(int) shmPtr[43].index++);//perfecto
 		sem_post( (sem_t*)&(shmPtr[43].semaforo));
