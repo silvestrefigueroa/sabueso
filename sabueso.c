@@ -46,7 +46,19 @@
 #include <netinet/ether.h>
 #include <netinet/ip.h>
 
+typedef struct {
+	int id;
+	char title[255];
+	struct arpDialog* shmPtr;
+}arpCCArgs;//arpCollectorCallbackArguments
 
+void got_packet( arpCCArgs args[], const struct pcap_pkthdr *header, const u_char *packet){
+	//bloqueo semaforo
+	sem_wait((sem_t*) & (args[0].shmPtr[43].semaforo));
+	printf("test: id%d title: %s\n", args[0].id,args[0].title);
+	sleep(10);
+	sem_post((sem_t*) & (args[0].shmPtr[43].semaforo));
+}
 
 
 //HANDLERS:
@@ -173,13 +185,6 @@ struct arpDialog{
 	sem_post( (sem_t*)&(shmPtr[43].semaforo));
 	printf("he soltado el semaforo\n");
 
-/*
-	int u;
-	for(u=0;u<100;u++){
-		printf("valor del indice para el elemento %d: %d\n",u, shmPtr[u].index);
-	}
-*/
-
 	//VARS
 	int o;//para los for de los wait y post (pruebas de semaforos)
 	//TABLES
@@ -264,9 +269,6 @@ struct arpDialog{
 			char* dev=NULL;
 			char errbuf[PCAP_ERRBUF_SIZE];
 			pcap_t* descr;//descriptor de la captura
-			//const u_char *packet;
-			//struct pcap_pkthdr hdr;
-			//struct ether_header *eptr; // Ethernet
 			struct bpf_program fp;//aca se guardara el programa compilado de filtrado
 			bpf_u_int32 maskp;// mascara de subred
 			bpf_u_int32 netp;// direccion de red
@@ -274,7 +276,6 @@ struct arpDialog{
 				fprintf(stdout,"Modo de Uso %s \"programa de filtrado\"\n",argv[0]);
 				return 0;
 			}
-
 			dev = pcap_lookupdev(errbuf); //Buscamos un dispositivo del que comenzar la captura
                         printf("\nEcontro como dispositivo %s\n",dev);
                         if (dev == NULL){
@@ -283,22 +284,15 @@ struct arpDialog{
                         else{
                                 printf("Abriendo %s en modo promiscuo\n",dev);
                         }
-                        dev = "wlan0";
-
+                        dev = "wlan0";//hardcodeo la wifi en desarrollo
 			//obtener la direccion de red y la netmask
-
 			pcap_lookupnet(dev,&netp,&maskp,errbuf);
-
 			//comenzar captura y obtener descriptor llamado "descr" del tipo pcatp_t*
 			descr = pcap_open_live(dev,BUFSIZ,1,-1,errbuf); //comenzar captura en modo promiscuo
-
-
 			if (descr == NULL){
 				printf("pcap_open_live(): %s\n",errbuf);
 				exit(1);
 			}
-
-
 			//ahora compilo el programa de filtrado para hacer un filtro para ARP
 			if(pcap_compile(descr,&fp,"arp",0,netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
 				fprintf(stderr,"Error compilando el filtro\n");
@@ -310,12 +304,13 @@ struct arpDialog{
 				exit(1);
 			}
 			//ahora tengo que ver como pasarle argumentos a la funcion callback
-			
-
-			pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,&shmPtr);//OJO, asegurar esta linea con algun if como los anteriores
-	
+//	pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,&shmPtr);//OJO, asegurar esta linea con algun if como los anteriores
+			arpCCArgs conf[2] = {
+				{0, "foo",shmPtr},
+				{1, "bar",shmPtr}
+			};
+			pcap_loop(descr,-1,(pcap_handler)got_packet,(u_char*) conf);
 			_exit(EXIT_SUCCESS);
-
 	}//FIN DEL FORK PARA ARPCOLLECTOR
 
 
@@ -381,17 +376,15 @@ struct arpDialog{
 	sleep(1);
 	}
 //--------------------fin port stealing-----------------------
-	for(o=0;o<10;o++){
+	for(o=0;o<100;o++){
 		sem_wait( (sem_t*)&(shmPtr[43].semaforo));
 		printf("ahora EL PADRE en el 43°= %d\n",(int) shmPtr[43].index++);//perfecto
 		sem_post( (sem_t*)&(shmPtr[43].semaforo));
-		sleep(5);
+		sleep(2);
 	}
 
 	//fin del programa principal
 	write(1,"FIN DEL PROGRAMA PRINCIPAL\n",sizeof("FIN DEL PROGRAMA PRINCIPAL\n"));
-	sem_unlink("/semaforo_child");
-	perror("accept()");
 	//shm_unlink("./sharedMemPartidas");
 	return EXIT_FAILURE;
 }
