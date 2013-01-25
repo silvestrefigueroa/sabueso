@@ -14,26 +14,28 @@
 #include <netinet/in.h>
 #include <netinet/ether.h>
 #include <netinet/ip.h>
+#include <pthread.h>
 
 //include de los semaforos:
 #include <semaphore.h>
 
+//include de la estructura de argumentos
+#include "arpCollector_callbackArguments.h"
 
-//Funcion callback del arpCollector.c, luego sacarla como corresponde...
-void arpCollector_callback(u_char** shmPtr,const struct pcap_pkthdr* pkthdr,const u_char* packet){
+//Include de la estructura arpDialog
+#include "arpDialogStruct.h"
+
+//Callback starts here!!
+void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,const u_char* packet){
 	static int count = 1;
+
+	//bloqueo semaforo
+        sem_wait((sem_t*) & (args[0].shmPtr[43].semaforo));
+        printf("test: id%d title: %s\n", args[0].id,args[0].title);
+        sleep(10);
+        sem_post((sem_t*) & (args[0].shmPtr[43].semaforo));
+
 //	fflush(stdout);
-	
-	printf("por entrar al semaforo desde callback\n");
-	//sem_wait((sem_t*)&(shmPtr[43].semaforo));
-//	  sem_wait((sem_t*)&(shmPtr[43].semaforo));
-	printf("hola, soy el callback molestando a los demas 10 segundos\n");
-//	sem_post((sem_t*)&(shmPtr[43].semaforo));
-
-	
-	//pruebo la estructura de argumentos:
-	//int acc=(int)(((struct Argumentos2 *) argumentos)->accion);//funciona esta referencia
-
 	
 	//si.. muy lindo el contador.. pero me gustaria que:
 		//muestre datos de la captura:
@@ -64,16 +66,18 @@ void arpCollector_callback(u_char** shmPtr,const struct pcap_pkthdr* pkthdr,cons
 
 
 		//Lo almaceno en la tabla de dialogos =)
-		
-		
-
-		
 
 
+		//Evaluo ientegridad de la trama completa:
+		//primero me fijo si la MAC origen de la trama es igual a la MAC origen del ARP
+		if((ether_ntoa((const struct ether_addr*) eptr->ether_shost))!=(ether_ntoa((const struct ether_addr*) arpPtr->arp_sha))){
+			printf("PROBLEMAS.. NO COINCIDEN LAS SOURCE MAC!!!\n");
+			//generar alerta
+		}
+		//lanzar un hilo que se encargue de buscar en toda la tabla entradas que validen la relacion de macIP presentadas en esta trama
+		//luego si no hay alerta de ningun tipo, generar los hashes y cargarla en la tabla.
 
-
-
-
+		//CAMBIO EL DISEÑO, AHORA LO HARA OTRO HIJO A ESTO, ASI QUE SOLO TENGO QUE ESCRIBIR EN UN PIPE LOS DATOS Y TERMINA EL CALLBACK
 
 		//aumenta el contador de frames
 		count++;
