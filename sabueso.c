@@ -46,27 +46,11 @@
 #include <netinet/ether.h>
 #include <netinet/ip.h>
 
-typedef struct {
-	int id;
-	char title[255];
-	struct arpDialog* shmPtr;
-}arpCCArgs;//arpCollectorCallbackArguments
-
-void got_packet( arpCCArgs args[], const struct pcap_pkthdr *header, const u_char *packet){
-	//bloqueo semaforo
-	sem_wait((sem_t*) & (args[0].shmPtr[43].semaforo));
-	printf("test: id%d title: %s\n", args[0].id,args[0].title);
-	sleep(10);
-	sem_post((sem_t*) & (args[0].shmPtr[43].semaforo));
-}
-
-
 //HANDLERS:
 void sigchld_handler(int s){
 
 	sem_t* sem;
-	if((sem=sem_open("/semaforo_child", O_RDWR))==SEM_FAILED)
-	{
+	if((sem=sem_open("/semaforo_child", O_RDWR))==SEM_FAILED){
 		perror("sem_open()");
 		exit(EXIT_FAILURE);
 	}
@@ -303,13 +287,13 @@ struct arpDialog{
 				fprintf(stderr,"Error aplicando el filtro\n");
 				exit(1);
 			}
-			//ahora tengo que ver como pasarle argumentos a la funcion callback
-//	pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,&shmPtr);//OJO, asegurar esta linea con algun if como los anteriores
+			//Argumentos para la funcion callback
 			arpCCArgs conf[2] = {
-				{0, "foo",shmPtr},
-				{1, "bar",shmPtr}
+			//	{0, "foo",shmPtr},
+				{1, "Argumentos",shmPtr}
 			};
-			pcap_loop(descr,-1,(pcap_handler)got_packet,(u_char*) conf);
+			pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,(u_char*) conf);
+
 			_exit(EXIT_SUCCESS);
 	}//FIN DEL FORK PARA ARPCOLLECTOR
 
