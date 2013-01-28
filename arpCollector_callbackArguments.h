@@ -5,4 +5,5 @@ typedef struct {
         int id;
         char title[255];
         struct arpDialog* shmPtr;//puntero al array de arpDialog = seria la arpDialoguesTable
+	int fdPipe[2];
 }arpCCArgs;//arpCollectorCallbackArguments
