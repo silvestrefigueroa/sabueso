@@ -188,15 +188,68 @@ struct arpDialog{
 	/*
 		En este punto definire los PIPES, semaforos, etc...
 	*/
+	//defino el PIPE que voy a utilizar con el HIJO multihilado que chekea la informacion ANTES de guardarla
+	int fdPipe[2];
+        if(pipe(fdPipe)==-1){
+                perror("Problema con el pipe");
+                exit(EXIT_FAILURE);
+        }
 //------------FIN DEFINICION DE ELEMENTOS DE IPC, CONCURRENCIA Y EXCLUSION----------------
 
 
 
+//---------------INICIA FORK DE CONFIGURACION Y CHEQUEO DE TABLA DE DIALOGOS ARP-----------------------------
+
+        switch(fork()){
+                case -1:
+                        perror("fork()");
+                        _exit(EXIT_FAILURE);
+                case 0:
+                        //Proceso arpCollector.c
+                        puts("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+
+                        puts("soy el HIJO manejador y centinela de tabla arpDialoguesTable...\n");
+                        //preparo para leer el PIPE, y luego lanzo los hilos para cada paquete leido
+
+                        //cierro escritura, solo voy a leer.
+                        close(fdPipe[1]);
+                        //variable para el paquete leido
+                        char buf[4096];
+                        //hebras del admin de partidas
+                        pthread_t hilo;
+                        pthread_attr_t attr;
+                        pthread_attr_init (&attr);
+                        pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
+
+                        //n como contador de lo que se leyo
+                        int n;
+                        while((n=read(fdPipe[0], buf, sizeof buf))){
+                                buf[n]=0;
+
+                                if(strlen(buf)!=0){
+                                        puts("\n parece que el HIJO manejador de tabla arpDialogues LEYO LO SIGUIENTE:");
+
+                                        if(!(write(0, buf, strlen(buf)))){
+                                                perror("write()");
+                                                exit(EXIT_FAILURE);
+                                        }
+                                        puts("\n");
+                                }
+                        }
+                        _exit(EXIT_SUCCESS);
+                }//switch fork
 
 
 
 
-//------------INICIA FORK PARA MONITOR DE ARP EN EL BROADCAST-----------------------------
+//---------------FINALIZA FORK DE CONFIGURACION Y CHEQUEO DE TABLA DE DIALOGOS ARP-----------------------------
+
+
+
+
+
+
+//---------------INICIA FORK PARA RECOLECCION DE ARP EN EL BROADCAST O MODULO ARPCOLLECTOR-----------------------------
 
 	/*
 				arpCollector.c
@@ -292,13 +345,20 @@ struct arpDialog{
 			//	{0, "foo",shmPtr},
 				{1, "Argumentos",shmPtr}
 			};
+			//le paso los descriptores del PIPE
+			conf[0].fdPipe[0]=fdPipe[0];
+			conf[0].fdPipe[1]=fdPipe[1];
+
 			pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,(u_char*) conf);
 
 			_exit(EXIT_SUCCESS);
 	}//FIN DEL FORK PARA ARPCOLLECTOR
 
 
-//---------------FIN FORK PARA MONITOR DE ARP EN EL BROADCAST-----------------------------
+//---------------FIN FORK PARA RECOLECCION DE ARP EN EL BROADCAST O MODULO ARPCOLLECTOR-----------------------------
+
+//CONTINUA EL HILO DE EJECUCION...
+
 
 
 //preparar creacion de hijo multihilado responsable del port stealing y alerta
