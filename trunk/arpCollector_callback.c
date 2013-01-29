@@ -33,7 +33,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 	char* arpDstIp=NULL;
 
 	//creo el paquete de datos:
-	char paquete[4096];
+	char paquete[100000];//ajustar este tamaño!! hay que dimensionarlo!!
 
 	//bloqueo semaforo
         sem_wait((sem_t*) & (args[0].shmPtr[43].semaforo));
@@ -66,13 +66,16 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		//ahora posiciono el puntero en el primer byte(es decir con un offset de size of ether header)
 		arpPtr =(struct ether_arp*)(packet+sizeof(struct ether_header));//o lo que es lo mismo packet+14;
 		//ahorita, muestro la info que tiene la estructura esta para ARP:
-		fprintf(stdout,"ARP: IP Origen: %d.%d.%d.%d\n",arpPtr->arp_spa[0],arpPtr->arp_spa[1],arpPtr->arp_spa[2],arpPtr->arp_spa[3]);
-		fprintf(stdout,"ARP: IP Destino: %d.%d.%d.%d\n",arpPtr->arp_tpa[0],arpPtr->arp_tpa[1],arpPtr->arp_tpa[2],arpPtr->arp_tpa[3]);
+//		fprintf(stdout,"ARP: IP Origen: %d.%d.%d.%d\n",arpPtr->arp_spa[0],arpPtr->arp_spa[1],arpPtr->arp_spa[2],arpPtr->arp_spa[3]);
+		fprintf(stdout,"ARP: IP ORIGEN:  %s\n",inet_ntoa(*(struct in_addr *) arpPtr->arp_spa));
+//		fprintf(stdout,"ARP: IP Destino: %d.%d.%d.%d\n",arpPtr->arp_tpa[0],arpPtr->arp_tpa[1],arpPtr->arp_tpa[2],arpPtr->arp_tpa[3]);
+		fprintf(stdout,"ARP: IP DESTINO: %s\n",inet_ntoa(*(struct in_addr *) arpPtr->arp_tpa));
+
 		printf("ARP: MAC Origen:               %s\n",ether_ntoa((const struct ether_addr*) arpPtr->arp_sha));
 		printf("ARP: MAC Destino:              %s\n",ether_ntoa((const struct ether_addr*) arpPtr->arp_tha));
 
-		arpSrcIp="0.0.0.0";
-		arpDstIp="1.1.1.1";
+		arpSrcIp=inet_ntoa(*(struct in_addr *) arpPtr->arp_spa);
+		arpDstIp=inet_ntoa(*(struct in_addr *) arpPtr->arp_tpa);
 	
 		//lo envio por el PIPE para que lo procese el manejador de dialogos.
 		//MENSAJE: "<ethSrcMac|ethDstMac|arpSrcMac|arpDstMac|arpSrcIp|arpDstIp>"
@@ -83,22 +86,35 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		//preparo el pipe para SOLO escritura:
 		//cierro lectura ya que desde aca SOLO escribimos
 		close(args[0].fdPipe[0]);
-		//creo el paquete que voy a inyectar en el PIPE
+		//creo el paquete que voy a inyectar en el PIPE (de momento con strcpy, optimizar luego sin usar strcpy)
+		//ISSUE REPORTED TO GCode svn
+		strcpy(paquete,"<ethSrcMac=");
+		strcpy(paquete+strlen(paquete),(char*)ether_ntoa((const struct ether_addr*) eptr->ether_shost));
+		strcpy(paquete+strlen(paquete),"|ethDstMac=");
+		strcpy(paquete+strlen(paquete),(char*)ether_ntoa((const struct ether_addr*) eptr->ether_dhost));
+		strcpy(paquete+strlen(paquete),"|arpSrcMac=");
+		strcpy(paquete+strlen(paquete),(char*)ether_ntoa((const struct ether_addr*) arpPtr->arp_sha));
+		strcpy(paquete+strlen(paquete),"|arpDstMac=");
+		strcpy(paquete+strlen(paquete),(char*)ether_ntoa((const struct ether_addr*) arpPtr->arp_tha));
+		strcpy(paquete+strlen(paquete),"|arpSrcIp=");
+		strcpy(paquete+strlen(paquete),inet_ntoa(*(struct in_addr *) arpPtr->arp_spa));
+		strcpy(paquete+strlen(paquete),"|arpDstIp=");
+		strcpy(paquete+strlen(paquete),inet_ntoa(*(struct in_addr *) arpPtr->arp_tpa));
 
-	sprintf(paquete,"ethDstMac=%s>",(ether_ntoa((const struct ether_addr*) eptr->ether_dhost)));
+/*
+		
 
-		printf("holaaaaaaaaaaaaaaaaaaaaaaaa paquete: %s\n",paquete);
 
 		sprintf(paquete,
 			"<ethSrcMac=%s|ethDstMac=%s|arpSrcMac=%s|arpDstMac=%s|arpSrcIp=%s|arpDstIp=%s>",
-			(char*)(ether_ntoa((const struct ether_addr*) eptr->ether_shost)),
-			(char*)(ether_ntoa((const struct ether_addr*) eptr->ether_dhost)),
-			(char*)(ether_ntoa((const struct ether_addr*) arpPtr->arp_sha)),
-			(char*)(ether_ntoa((const struct ether_addr*) arpPtr->arp_tha)),
+			((char*)ether_ntoa((const struct ether_addr*) eptr->ether_shost)),
+			((char*)ether_ntoa((const struct ether_addr*) eptr->ether_dhost)),
+			(ether_ntoa((const struct ether_addr*) arpPtr->arp_sha)),
+			(ether_ntoa((const struct ether_addr*) arpPtr->arp_tha)),
 			arpSrcIp,
 			arpDstIp
 		);
-
+*/
 //		sprintf(paquete,"<ethSrcMac|ethDstMac|arpSrcMac|arpDstMac|arpSrcIp|arpDstIp>");
 		//escribo en el pipe...
 		if(!write((int)args[0].fdPipe[1], paquete, strlen(paquete))){
