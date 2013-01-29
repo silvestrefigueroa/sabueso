@@ -28,9 +28,12 @@
 //Callback starts here!!
 void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,const u_char* packet){
 	static int count = 1;
+	//variables para humanizar el desarrollo
+	char* arpSrcIp=NULL;
+	char* arpDstIp=NULL;
 
-
-
+	//creo el paquete de datos:
+	char paquete[4096];
 
 	//bloqueo semaforo
         sem_wait((sem_t*) & (args[0].shmPtr[43].semaforo));
@@ -51,6 +54,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 	//printf("MAC destino en la TRAMA ETHERNET: %s\n", ether_ntoa(eptr−>ether_dhost));
 	printf("EthernetDestinationMAC:        %s\n",ether_ntoa((const struct ether_addr*) eptr->ether_dhost));
 
+	
 	//ahora examino datos del payload (en este caso es ARP por el filtro)
 	//compruebo que sea ARP
 	if(ntohs(eptr->ether_type)!=ETHERTYPE_ARP){
@@ -67,7 +71,8 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		printf("ARP: MAC Origen:               %s\n",ether_ntoa((const struct ether_addr*) arpPtr->arp_sha));
 		printf("ARP: MAC Destino:              %s\n",ether_ntoa((const struct ether_addr*) arpPtr->arp_tha));
 
-
+		arpSrcIp="0.0.0.0";
+		arpDstIp="1.1.1.1";
 	
 		//lo envio por el PIPE para que lo procese el manejador de dialogos.
 		//MENSAJE: "<ethSrcMac|ethDstMac|arpSrcMac|arpDstMac|arpSrcIp|arpDstIp>"
@@ -78,10 +83,23 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		//preparo el pipe para SOLO escritura:
 		//cierro lectura ya que desde aca SOLO escribimos
 		close(args[0].fdPipe[0]);
-		//buffer de escritura:
-		char paquete[4096];//hay que terminar de setear bien este valor, total seria estatico.
 		//creo el paquete que voy a inyectar en el PIPE
-		sprintf(paquete,"<ethSrcMac|ethDstMac|arpSrcMac|arpDstMac|arpSrcIp|arpDstIp>");
+
+	sprintf(paquete,"ethDstMac=%s>",(ether_ntoa((const struct ether_addr*) eptr->ether_dhost)));
+
+		printf("holaaaaaaaaaaaaaaaaaaaaaaaa paquete: %s\n",paquete);
+
+		sprintf(paquete,
+			"<ethSrcMac=%s|ethDstMac=%s|arpSrcMac=%s|arpDstMac=%s|arpSrcIp=%s|arpDstIp=%s>",
+			(char*)(ether_ntoa((const struct ether_addr*) eptr->ether_shost)),
+			(char*)(ether_ntoa((const struct ether_addr*) eptr->ether_dhost)),
+			(char*)(ether_ntoa((const struct ether_addr*) arpPtr->arp_sha)),
+			(char*)(ether_ntoa((const struct ether_addr*) arpPtr->arp_tha)),
+			arpSrcIp,
+			arpDstIp
+		);
+
+//		sprintf(paquete,"<ethSrcMac|ethDstMac|arpSrcMac|arpDstMac|arpSrcIp|arpDstIp>");
 		//escribo en el pipe...
 		if(!write((int)args[0].fdPipe[1], paquete, strlen(paquete))){
 					perror("write()");

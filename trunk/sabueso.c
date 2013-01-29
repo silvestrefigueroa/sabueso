@@ -216,11 +216,12 @@ struct arpDialog{
                         //variable para el paquete leido
                         char buf[4096];
                         //hebras del admin de partidas
+			/*
                         pthread_t hilo;
                         pthread_attr_t attr;
                         pthread_attr_init (&attr);
                         pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
-
+			*/
                         //n como contador de lo que se leyo
                         int n;
                         while((n=read(fdPipe[0], buf, sizeof buf))){
@@ -245,7 +246,7 @@ struct arpDialog{
 //---------------FINALIZA FORK DE CONFIGURACION Y CHEQUEO DE TABLA DE DIALOGOS ARP-----------------------------
 
 
-
+//Continua el hilo principal de ejecucion....
 
 
 
@@ -298,7 +299,7 @@ struct arpDialog{
 				sem_wait( (sem_t*)&(shmPtr[43].semaforo));
 				printf("ahora EL HIJO en el 43°= %d\n",(int) shmPtr[43].index++);//perfecto
 				sem_post( (sem_t*)&(shmPtr[43].semaforo));
-				sleep(1);
+				//sleep(1);
 			}
 
 
@@ -424,7 +425,7 @@ struct arpDialog{
 		sem_wait( (sem_t*)&(shmPtr[43].semaforo));
 		printf("ahora EL PADRE en el 43°= %d\n",(int) shmPtr[43].index++);//perfecto
 		sem_post( (sem_t*)&(shmPtr[43].semaforo));
-		sleep(2);
+		//sleep(2);
 	}
 
 	//fin del programa principal
