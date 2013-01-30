@@ -82,7 +82,9 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		close(args[0].fdPipe[0]);
 		//creo el paquete que voy a inyectar en el PIPE (de momento con strcpy, optimizar luego sin usar strcpy)
 		//ISSUE REPORTED TO GCode svn
-//		strcpy(paquete,"<ethSrcMac=");
+		//si bien el formato que sigue es distinto a lo que usba para debug, me ahorra dolores de cabeza con
+		//el strtok, asi que lo dejare de cualquier modo asi!!
+		strcpy(paquete,"|");//<ethSrcMac=");
 		strcpy(paquete+strlen(paquete),(char*)ether_ntoa((const struct ether_addr*) eptr->ether_shost));
 		strcpy(paquete+strlen(paquete),"|");//ethDstMac=");
 		strcpy(paquete+strlen(paquete),(char*)ether_ntoa((const struct ether_addr*) eptr->ether_dhost));
