@@ -1,6 +1,6 @@
-CFLAGS= -Wall -g -lrt -lpcap -lpthread
+CFLAGS= -Wall -g -lrt -lpthread -lpcap
 all: sabueso
-sabueso: arper.o parser.o sabueso.o arpCollector_callback.o
+sabueso: arper.o parser.o sabueso.o arpCollector_callback.o arpDialoguesTableManager.o
 	$(CC) -o $@ $^ $(CFLAGS)
 clean:
 	rm -fv *.o
