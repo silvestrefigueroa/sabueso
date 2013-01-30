@@ -22,7 +22,9 @@
 #include "arpCollector_callback.h"
 #include "callbackArgs.h"
 
-
+#include "arpDialoguesTableManager.h"
+#include "arpDialoguesTableManagerArguments.h"
+//#include "arpDTMWorker_arguments_struct.h"
 
 //MENSAJES ESTATICOS
 #define MSG_START "Comienza aqui el programa principal\n"
@@ -137,7 +139,7 @@ struct arpDialog{
 	}//inicializadas las entradas de la tabla, paso a confeccionar la Memoria Compartida
 
 
-	//SHAREDMEM
+	//SHAREDMEMrpDialoguesTableManagerArguments.h
 
 	if(((fdshm=shm_open("/sharedMemPartida", O_RDWR|O_CREAT, 0666))<0)){
 		perror("shm_open()");
@@ -196,8 +198,14 @@ struct arpDialog{
         }
 //------------FIN DEFINICION DE ELEMENTOS DE IPC, CONCURRENCIA Y EXCLUSION----------------
 
-
-
+/*
+//luego esto ira a un include:
+	typedef struct{
+		int *fdshm;
+		int *shmPtr;//sharedMem pointer
+		char *packet;
+	}arpDTMWorker_arguments;
+*/
 //---------------INICIA FORK DE CONFIGURACION Y CHEQUEO DE TABLA DE DIALOGOS ARP-----------------------------
 
         switch(fork()){
@@ -216,12 +224,12 @@ struct arpDialog{
                         //variable para el paquete leido
                         char buf[4096];
                         //hebras del admin de partidas
-			/*
+			
                         pthread_t hilo;
                         pthread_attr_t attr;
                         pthread_attr_init (&attr);
                         pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
-			*/
+			
                         //n como contador de lo que se leyo
                         int n;
                         while((n=read(fdPipe[0], buf, sizeof buf))){
@@ -235,6 +243,26 @@ struct arpDialog{
                                                 exit(EXIT_FAILURE);
                                         }
                                         puts("\n");
+
+					//continue worker thread here!!
+					//determino argumentos
+					/*struct Argumentos{
+						int *fdshm;
+						int *shmPtr;//sharedMem pointer
+					};
+					*/
+					arpDTMWorker_arguments arguments;
+					arguments.packet=buf;//deberia limpiar luego paquete??
+					if(pthread_create(&hilo, &attr, arpDialoguesTableManager, &arguments)){
+						perror("pthread_create()");
+						exit(EXIT_FAILURE);
+					}
+					
+
+					//lanzar el holo con la funcion y los parametros de la shm
+					
+					
+
                                 }
                         }
                         _exit(EXIT_SUCCESS);
