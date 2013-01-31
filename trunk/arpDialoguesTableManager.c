@@ -22,6 +22,7 @@ void* arpDialoguesTableManager(void *arguments){
 	char* aux=NULL;//esta variable explico luego por que
 	//para guardar los datos parseados:
 	int pasada=0;
+	int srcMacEquals=1;//coinciden por default
 	//reducir la perogruyada de asignacion que hago abajo..no me salio en una sola linea..
 	char* ethSrcMac=NULL;
 	char* ethDstMac=NULL;
@@ -29,8 +30,8 @@ void* arpDialoguesTableManager(void *arguments){
 	char* arpDstMac=NULL;
 	char* arpSrcIp=NULL;
 	char* arpDstIp=NULL;
-	char* macBroadcast="ff:ff:ff:ff:ff:ff";
-	char* macZero="0:0:0:0:0:0";
+	char* broadcastMac="ff:ff:ff:ff:ff:ff";
+	char* zeroMac="0:0:0:0:0:0";
 	aux = (((arpDTMWorker_arguments *) arguments)->packet);//porque me joroba con char** en el 3° arg de strtok_r =( corregir luego esto
 	while((leftside = strtok_r(aux, "|",&aux))){//Ojo: si en la linea hay solo un enter.. se lo mastica!!!
 		if(NULL==(rightside = strtok_r(aux, "|",&aux))){//ejecuto, asigno y comparo al mismo tiempo
@@ -38,12 +39,12 @@ void* arpDialoguesTableManager(void *arguments){
 			puts("aqui hay nulo encerrado!!!\n");
 			break;
 		}
-		printf("Valor del left: %s\n Valor del Right: %s\n",leftside,rightside);
+	//	printf("Valor del left: %s\n Valor del Right: %s\n",leftside,rightside);
 
 		switch(pasada){
 			case 0:
 				//obtengo las mac del frame ethernet
-				puts("pasada 0\n");
+				//puts("pasada 0\n");
 				ethSrcMac=leftside;
 				ethDstMac=rightside;
 				//a[0]=leftside;
@@ -51,7 +52,7 @@ void* arpDialoguesTableManager(void *arguments){
 			break;
 			case 1:
 				//obtengo las mac del ARP message
-				puts("pasada 1\n");
+				//puts("pasada 1\n");
 				arpSrcMac=leftside;
 				arpDstMac=rightside;
 				//a[2]=leftside;
@@ -59,7 +60,7 @@ void* arpDialoguesTableManager(void *arguments){
 			break;	
 			case 2:
 				//obtengo las IP del ARP message
-				puts("pasada 2\n");
+				//puts("pasada 2\n");
 				arpSrcIp=leftside;
 				arpDstIp=rightside;	
 			break;
@@ -78,7 +79,7 @@ void* arpDialoguesTableManager(void *arguments){
 		printf("se ha detectado inconsistencia entre la MAC origen de la trama y la MAC origen del mensaje ARP\n");//podria ser proxyARP???
 		printf("Son realmente distintos %s y %s  ??\n",ethSrcMac,arpSrcMac);
 		//desde ya establezco que la trama es inconsistente en la direccion MAC de origen
-		//smaci=true;
+		srcMacEquals=0;//ya que por default coinciden...
 	}
 	else{//nada... esta ok punto.
 		printf("ethSrcMac=arpSrcMac     OK\n");
@@ -88,10 +89,10 @@ void* arpDialoguesTableManager(void *arguments){
 		printf("entonces %s es distinto de %s\n",ethDstMac,arpDstMac);
 		puts("siguio...\n");
 		printf("aaaaaaaaaaa tengo: %s y %s \n\n",ethDstMac,"ff:ff:ff:ff:ff:ff");
-		if(*ethDstMac==*macBroadcast){
+		if(*ethDstMac==*broadcastMac){
 			puts("ethDsrMac es broadcast!!!\n");
 			//mmm iba al broadcast, sera una pregunta realmente? o sera para engañar?
-			if(*arpDstMac==*macZero){//si es una pregunta ARP, lo marco para consultar su credibilidad? o consulto yo?
+			if(*arpDstMac==*zeroMac){//si es una pregunta ARP, lo marco para consultar su credibilidad? o consulto yo?
 				//OK, es ARP request (al menos por la formacion)
 				//es al menos una trama aceptable, podria verificarse luego pero al menos la acepto asi!
 				//verifico si la IP de destino coincide con la del host que tiene la MAC ethDstMac
@@ -107,12 +108,15 @@ void* arpDialoguesTableManager(void *arguments){
 
 			//destino ethernet bien definido, pero MAC destino en ARP DISTINA!!MALFORMACION!!
 			//Este curioso caso se da por ejemplo con el DDwrt. el destino en ARP debera ser 0:0:0:0:0:0
-			if(*arpDstMac==*macZero){
+			printf("antes de comparar con zero, tengo %s y %s\n",arpDstMac,zeroMac);
+			if(*arpDstMac==*zeroMac){
 				//es altamente probable que sea una preguntita del AP que se hace el que no sabe quien es el cliente
 				//para confirmar, valido ethSrcMac con arpSrcMac y luego arpSrcMac con arpSrcIp =)
-				printf("Tiene toda la pinta de ser pregunta del AP, si paso las pruebas anteriormente comentadas => es el ddwrt, sino tratar el Error!!\n");
+				printf("Posible mensaje del AP, compruebe que ethSrcMac matchea con arpSrcIp para descartar ataque DoS\n");
 				//tratar el error o escapar si OK
+				//WARNING, marcar para comprobar y almacenar.
 			}
+			//el else de abajo OJO, porque queda el resto en el que las 4 mac son iguales!!
 			else{//se trata de MACs destinos AMBIGUOS, es una trama anomala!! a no ser que sea del proxyARP
 				printf("Trama con destino definido, revisando en profundidad....Posible ProxyARP\n\n");
 				//tratar mas este caso o indicar error!!
@@ -120,28 +124,30 @@ void* arpDialoguesTableManager(void *arguments){
 		}
 	}
 	else{//macs destino coinciden, o sea bien dirigido..puede ser una trampa, si el origen tiene spoofeada la IP es la trama del atacante
-		//o bien son tramas ARP que calleron en el filtro (y vienen del portstealing) pero spoofeadas tambien por que no?
+		//o bien son tramas ARP que cayeron en el filtro (y vienen del portstealing) pero spoofeadas tambien por que no?
 		//primero que nada chekeo si las MAC origen son iguales (primer verificacion, leo el resultado directamente)
 			//si son iguales, veo el match MAC-IP del origen para ver si es ataque (consulto info real)
-				//si no matchea, entonces ALERTO EL ATAQUE!!!
-				//SI MATCHEA, tenemos origen OK, destino OK.... nada raro.. me robe un ARP..
-			//no son iguales:
-				//es el mismo paquete anomalo!!!del principio
+			switch(srcMacEquals){
+				case 1:
+					//trama OK, debera verificar capa de red IP
+						//si no matchea, entonces ALERTO EL ATAQUE!!!
+						//SI MATCHEA, tenemos origen OK, destino OK.... nada raro.. me robe un ARP..
+						printf("trama aparentemente normal, marcada para chekear IP\n");
+						//marcar para portstelear y GUARDAR el dialogo en la tabla
+				break;
+				case 0:
+						//no son iguales las MAC origen
+						//Puede ser proxyARP????(ojo que esta filtrado) o bien el origen (sender) esta haciendo algo raro
+						//WARNING-> inconsistencia en las MAC origen
+						printf("macs origen no coinciden, posible proxyARP o trama anomala\n");
+				break;
+				default:
+					printf("caso anomalo no tratado, no pudo determinarse igualdad de mac origen\n");
+				break;
+			}
 	}
-	
-		
-		
-			
-		
-	
-	
-
 	return 0;
-
 }
-
-
-
 /*
 
 

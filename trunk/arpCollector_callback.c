@@ -34,7 +34,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 
 	//bloqueo semaforo
         sem_wait((sem_t*) & (args[0].shmPtr[43].semaforo));
-        printf("test: id%d title: %s\n", args[0].id,args[0].title);
+        //printf("test: id%d title: %s\n", args[0].id,args[0].title);
         sleep(5);
         sem_post((sem_t*) & (args[0].shmPtr[43].semaforo));
 
@@ -101,7 +101,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 					perror("write()");
 					_exit(EXIT_FAILURE);
 		}
-		printf("\nLa funcion CALLBACK ha escrito en el PIPE: %s\n",paquete);
+		//printf("\nLa funcion CALLBACK ha escrito en el PIPE: %s\n",paquete);
 		//puedo continuar con el proximo =) finaliza la tarea de la Callback
 		//aumenta el contador de frames
 		count++;

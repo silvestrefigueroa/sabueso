@@ -216,7 +216,7 @@ struct arpDialog{
                         //Proceso arpCollector.c
                         puts("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 
-                        puts("soy el HIJO manejador y centinela de tabla arpDialoguesTable...\n");
+                        //puts("soy el HIJO manejador y centinela de tabla arpDialoguesTable...\n");
                         //preparo para leer el PIPE, y luego lanzo los hilos para cada paquete leido
 
                         //cierro escritura, solo voy a leer.
@@ -236,7 +236,7 @@ struct arpDialog{
                                 buf[n]=0;
 
                                 if(strlen(buf)!=0){
-                                        puts("\n parece que el HIJO manejador de tabla arpDialogues LEYO LO SIGUIENTE:");
+                                        //puts("\n parece que el HIJO manejador de tabla arpDialogues LEYO LO SIGUIENTE:");
 
                                         if(!(write(0, buf, strlen(buf)))){
                                                 perror("write()");
