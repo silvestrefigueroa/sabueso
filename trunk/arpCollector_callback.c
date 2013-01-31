@@ -35,7 +35,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 	//bloqueo semaforo
         sem_wait((sem_t*) & (args[0].shmPtr[43].semaforo));
         //printf("test: id%d title: %s\n", args[0].id,args[0].title);
-        sleep(5);
+        //sleep(5);
         sem_post((sem_t*) & (args[0].shmPtr[43].semaforo));
 
 //	fflush(stdout);
@@ -97,6 +97,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		strcpy(paquete+strlen(paquete),"|");//arpDstIp=");
 		strcpy(paquete+strlen(paquete),inet_ntoa(*(struct in_addr *) arpPtr->arp_tpa));
 		//escribo en el pipe...
+		sem_wait((sem_t*) & (args[0].shmPtr[0].semaforo));
 		if(!write((int)args[0].fdPipe[1], paquete, strlen(paquete))){
 					perror("write()");
 					_exit(EXIT_FAILURE);

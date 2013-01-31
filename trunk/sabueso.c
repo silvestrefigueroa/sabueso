@@ -98,7 +98,7 @@ int main(int argc, char *argv[]){
 	parser(argv[1], &mac2guard, &power, &target, &iface);
 
 	printf("\nVariables seteadas por el parser: \nMAC: %s\nTARGET: %s\nIFACE: %s\n",mac2guard,target,iface);
-	int i=0;
+	//int i=0;
 	//aqui abajo la magia de la que hablaba en la definicion de variables...
 	strcpy(arperIface,iface);
 	strcpy(arperTarget,target);
@@ -216,13 +216,13 @@ struct arpDialog{
                         //Proceso arpCollector.c
                         puts("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 
-                        //puts("soy el HIJO manejador y centinela de tabla arpDialoguesTable...\n");
+                        puts("soy el HIJO manejador y centinela de tabla arpDialoguesTable...\n");
                         //preparo para leer el PIPE, y luego lanzo los hilos para cada paquete leido
 
                         //cierro escritura, solo voy a leer.
                         close(fdPipe[1]);
                         //variable para el paquete leido
-                        char buf[4096];
+                        char buf[104];
                         //hebras del admin de partidas
 			
                         pthread_t hilo;
@@ -232,7 +232,9 @@ struct arpDialog{
 			
                         //n como contador de lo que se leyo
                         int n;
+			printf("hola\n");
                         while((n=read(fdPipe[0], buf, sizeof buf))){
+				printf("entreee\n");
                                 buf[n]=0;
 
                                 if(strlen(buf)!=0){
@@ -253,15 +255,13 @@ struct arpDialog{
 					*/
 					arpDTMWorker_arguments arguments;
 					arguments.packet=buf;//deberia limpiar luego paquete??
+					arguments.shmPtr=&shmPtr;//le paso puntero a la sharedMem
 					if(pthread_create(&hilo, &attr, arpDialoguesTableManager, &arguments)){
 						perror("pthread_create()");
 						exit(EXIT_FAILURE);
 					}
-					
-
-					//lanzar el holo con la funcion y los parametros de la shm
-					
-					
+					//lanzado el hilo con la funcion y los parametros
+				
 
                                 }
                         }
@@ -443,20 +443,24 @@ struct arpDialog{
 
 //---------------------seccion de port stealing----------------
 // esto tiende a mudarse a otra parte del codigo, seria lo que hacen los hilos para monitorear un dialogo	
+/*
 	for(i=0;i<power;i++){
 //		arper(mac2guard,arperIface,arperTarget);//arper crea el frame y lo envia(separar)
 		arper("00:21:5c:33:09:a5",arperIface,arperTarget);//arper crea el frame y lo envia(separar)
 	sleep(1);
 	}
+*/
 //--------------------fin port stealing-----------------------
+/*
 	for(o=0;o<100;o++){
 		sem_wait( (sem_t*)&(shmPtr[43].semaforo));
 		printf("ahora EL PADRE en el 43°= %d\n",(int) shmPtr[43].index++);//perfecto
 		sem_post( (sem_t*)&(shmPtr[43].semaforo));
 		//sleep(2);
 	}
-
+*/
 	//fin del programa principal
+	sleep(10000);
 	write(1,"FIN DEL PROGRAMA PRINCIPAL\n",sizeof("FIN DEL PROGRAMA PRINCIPAL\n"));
 	//shm_unlink("./sharedMemPartidas");
 	return EXIT_FAILURE;

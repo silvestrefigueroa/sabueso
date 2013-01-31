@@ -7,12 +7,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <semaphore.h>
 
 
 void* arpDialoguesTableManager(void *arguments){
 //	acc=(int)(((struct Argumentos2 *) argumentos)->accion);//funciona esta referencia
 
 	printf("HILO: muestro packet: \n%s\n",(((arpDTMWorker_arguments *) arguments)->packet));
+	char* paquete=(((arpDTMWorker_arguments *) arguments)->packet);
+//	sem_post((sem_t*) & (shmPtr[0].semaforo));//libero el semaforo del pipe
+	sem_post(& (((arpDTMWorker_arguments *) arguments)->shmPtr));
+	printf("HILADOR: me quedo: %s\n",paquete);
 
 	//OK, i have the message from arpCollector, then i must to explode and parse it to make more human-readable (maybe usable?) code
 	puts("¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬\n");
@@ -39,7 +44,7 @@ void* arpDialoguesTableManager(void *arguments){
 			puts("aqui hay nulo encerrado!!!\n");
 			break;
 		}
-	//	printf("Valor del left: %s\n Valor del Right: %s\n",leftside,rightside);
+		printf("Valor del left: %s\n Valor del Right: %s\n",leftside,rightside);
 
 		switch(pasada){
 			case 0:
