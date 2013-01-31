@@ -246,16 +246,20 @@ struct arpDialog{
                                         }
                                         puts("\n");
 
-					//continue worker thread here!!
-					//determino argumentos
-					/*struct Argumentos{
-						int *fdshm;
-						int *shmPtr;//sharedMem pointer
-					};
+					/*			
+					//Argumentos para la funcion callback
+		                        arpCCArgs conf[2] = {
+                		        //      {0, "foo",shmPtr},
+                                		{1, "Argumentos",shmPtr}
+		                        };
+                		        //le paso los descriptores del PIPE
+		                        conf[0].fdPipe[0]=fdPipe[0];
+                		        conf[0].fdPipe[1]=fdPipe[1];
+		                        pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,(u_char*) conf);
 					*/
-					arpDTMWorker_arguments arguments;
-					arguments.packet=buf;//deberia limpiar luego paquete??
-					arguments.shmPtr=&shmPtr;//le paso puntero a la sharedMem
+					arpDTMWorker_arguments arguments[2];
+					arguments[0].packet=buf;//deberia limpiar luego paquete??
+					arguments[0].shmPtr=shmPtr;
 					if(pthread_create(&hilo, &attr, arpDialoguesTableManager, &arguments)){
 						perror("pthread_create()");
 						exit(EXIT_FAILURE);

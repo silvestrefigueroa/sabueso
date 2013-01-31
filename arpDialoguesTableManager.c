@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include "arpDialogStruct.h"
 
 
 void* arpDialoguesTableManager(void *arguments){
@@ -15,8 +16,11 @@ void* arpDialoguesTableManager(void *arguments){
 
 	printf("HILO: muestro packet: \n%s\n",(((arpDTMWorker_arguments *) arguments)->packet));
 	char* paquete=(((arpDTMWorker_arguments *) arguments)->packet);
-//	sem_post((sem_t*) & (shmPtr[0].semaforo));//libero el semaforo del pipe
-	sem_post(& (((arpDTMWorker_arguments *) arguments)->shmPtr));
+	
+	struct arpDialog* shmPtr = (((arpDTMWorker_arguments *) arguments)->shmPtr);
+
+	printf("imprimite estaaaaaaaa %d\n",(int) shmPtr[43].index);
+
 	printf("HILADOR: me quedo: %s\n",paquete);
 
 	//OK, i have the message from arpCollector, then i must to explode and parse it to make more human-readable (maybe usable?) code
@@ -151,6 +155,8 @@ void* arpDialoguesTableManager(void *arguments){
 				break;
 			}
 	}
+	sem_post((sem_t *) & (shmPtr[0].semaforo)); 
+
 	return 0;
 }
 /*
