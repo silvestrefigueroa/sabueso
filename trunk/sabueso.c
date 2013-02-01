@@ -231,10 +231,57 @@ struct arpDialog{
                         pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
 			
                         //n como contador de lo que se leyo
-                        int n;
+                        int n=0,k=0;
 			printf("hola\n");
+			arpDTMWorker_arguments arguments[2];
+			arguments[0].shmPtr=shmPtr;
+			char *packet=NULL;
+			char *a[6];			
+			while((n=read(fdPipe[0], buf, sizeof buf))){
+				puts("lei del pipe\n");
+				buf[n]=0;
+
+				if(strlen(buf)!=0){
+					puts("parece que el primer HIJO leyo lo siguiente: ");
+
+					if(!(write(0, buf, strlen(buf)))){
+						perror("write()");
+						exit(EXIT_FAILURE);
+					}
+					puts("\n\n");
+					k=0;
+	//-----------------------comienzan las opciones de lo que leo del pipe---------------------------//
+	//antes que nada exploto por : y me fijo el comando, o sea.. el exploto(:)[0]
+				 	a[k]=strtok(buf, "|");
+					while(a[k] && k<5) a[++k]=strtok(NULL, "|");
+
+					/*
+					if(!strcmp(a[0], "encerarHilo")){//prueba para memoria compartida
+						argumentos.accion=1;//accion de test share se usa en la fc de hilos
+						puts("Admin.HILO dice: PROBANDO SHAREDMEM CON SEMAFORO\n");
+						argumentos.unPID = atoi(a[1]);
+						argumentos.ptrShm=(int *)&ptrShm;
+						if(pthread_create(&hilo, &attr, funcionHilo, &argumentos)){
+							perror("pthread_create()");
+							exit(EXIT_FAILURE);
+						}
+					}
+					*/
+					printf("ahora mostrare valores de a:\n a0=%s\na1=%s\na2=%s\na3=%s\na4=%s\na5=%s\n",a[0],a[1],a[2],a[3],a[4],a[5]);
+					printf("luego de mostrar.. continuaria para lanzar el hilo....\n");
+					//Lo meto en la estructura de argumentos del hilo:
+//					arguments[0].ethSrcMac=a[0];
+/*
+					*ethDstMac=a[1];
+					*arpSrcMac=a[2];
+					*arpDstMac=a[3];
+					*arpSrcIp=a[4];
+					*arpDstIp=a[5];
+*/
+				//	printf("a modo de ejemplo muestro ethDstMac en a0= %s\n",arguments[0].ethSrcMac);
+/*
                         while((n=read(fdPipe[0], buf, sizeof buf))){
-				printf("entreee\n");
+				printf("Lei del pipe\n");
                                 buf[n]=0;
 
                                 if(strlen(buf)!=0){
@@ -245,7 +292,7 @@ struct arpDialog{
                                                 exit(EXIT_FAILURE);
                                         }
                                         puts("\n");
-
+*/
 					/*			
 					//Argumentos para la funcion callback
 		                        arpCCArgs conf[2] = {
@@ -257,6 +304,7 @@ struct arpDialog{
                 		        conf[0].fdPipe[1]=fdPipe[1];
 		                        pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,(u_char*) conf);
 					*/
+/*
 					arpDTMWorker_arguments arguments[2];
 					arguments[0].packet=buf;//deberia limpiar luego paquete??
 					arguments[0].shmPtr=shmPtr;
@@ -264,7 +312,7 @@ struct arpDialog{
 						perror("pthread_create()");
 						exit(EXIT_FAILURE);
 					}
-					//lanzado el hilo con la funcion y los parametros
+*/					//lanzado el hilo con la funcion y los parametros
 				
 
                                 }

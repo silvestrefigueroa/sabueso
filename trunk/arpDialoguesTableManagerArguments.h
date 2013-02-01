@@ -4,4 +4,10 @@ typedef struct{
 	struct arpDialog* shmPtr;
 	int *fdshm;
 	char *packet;
+	char *ethSrcMac;
+	char *ethDstMac;
+	char *arpSrcMac;
+	char *arpDstMac;
+	char *arpSrcIp;
+	char *arpDstIp;
 }arpDTMWorker_arguments;

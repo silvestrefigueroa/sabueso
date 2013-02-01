@@ -155,7 +155,7 @@ void* arpDialoguesTableManager(void *arguments){
 				break;
 			}
 	}
-	sem_post((sem_t *) & (shmPtr[0].semaforo)); 
+//	sem_post((sem_t *) & (shmPtr[0].semaforo)); //moverlo arriba para tener lo menos posible este bloqueo
 
 	return 0;
 }
