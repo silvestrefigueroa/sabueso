@@ -17,7 +17,7 @@
 //MIS PROPIAS CABECERAS
 //#include "sabueso.h"
 #include "arper.h"
-#include "parser.h"
+//#include "parser.h"
 #include "arpDialogStruct.h"
 #include "arpCollector_callback.h"
 #include "callbackArgs.h"
@@ -86,22 +86,22 @@ int main(int argc, char *argv[]){
 	if(0>=write(1,MSG_START, strlen(MSG_START)))
 		return -1;
 	//variables de datos del programa principal
-	char *mac2guard;//argumento que evolucionara a array y que representa todos los hosts protegidos
+//	char *mac2guard;//argumento que evolucionara a array y que representa todos los hosts protegidos
 	//char *mac2guardIP //serian las ips que acompaña a las macs que van en mac2guard, para futuras versiones
-	int *power=0;//este comando va a evolucionar, representa uno de los parametros de FUERZA (repeticion) del port stealer o arper.
-	char* target;//propenso a desaparecer, dado que el target sera cualquier IP que pregunte por un mac2guard
-	char* iface;//voy a conservarlo, es el nombre de la interfaz de red que quiero utilizar
+//	int *power=0;//este comando va a evolucionar, representa uno de los parametros de FUERZA (repeticion) del port stealer o arper.
+//	char* target;//propenso a desaparecer, dado que el target sera cualquier IP que pregunte por un mac2guard
+//	char* iface;//voy a conservarlo, es el nombre de la interfaz de red que quiero utilizar
 	//ojo abajo: en el caso del mac2guard lo hace dentro del arper a esto XD con el strcpy XD
-	char arperIface[10];//por problema que no reconoce el arper el argumento a no ser que sea hardcodeado
-	char arperTarget[15];//por lo mismo que con el anterior
+//	char arperIface[10];//por problema que no reconoce el arper el argumento a no ser que sea hardcodeado
+//	char arperTarget[15];//por lo mismo que con el anterior
 
-	parser(argv[1], &mac2guard, &power, &target, &iface);
+	//parser(argv[1], &mac2guard, &power, &target, &iface);
 
-	printf("\nVariables seteadas por el parser: \nMAC: %s\nTARGET: %s\nIFACE: %s\n",mac2guard,target,iface);
+	//printf("\nVariables seteadas por el parser: \nMAC: %s\nTARGET: %s\nIFACE: %s\n",mac2guard,target,iface);
 	//int i=0;
 	//aqui abajo la magia de la que hablaba en la definicion de variables...
-	strcpy(arperIface,iface);
-	strcpy(arperTarget,target);
+//	strcpy(arperIface,iface);
+//	strcpy(arperTarget,target);
 	//segun el parametro power, son las veces que enviare frames
 	//mas adelante, debo separar la creacion del frame del envio del mismo para no repetir tooooodo por cada iteracion
 
@@ -161,10 +161,10 @@ struct arpDialog{
 	close(fdshm);
 
 	//una vez que tengo el puntero a la zona de memoria... lo probamos
-
+/*
 	printf("sin puntero, solo estructura: indice del 43°= %d\n",arpDialoguesTable[43].index);
 	printf("ahora utilizando el puntero:  indice del 43°= %d\n",(int) shmPtr[43].index);//perfecto
-
+*/
 
 	sem_wait( (sem_t*)&(shmPtr[43].semaforo));
 	printf("obtuve el semaforo\n");
@@ -198,14 +198,6 @@ struct arpDialog{
         }
 //------------FIN DEFINICION DE ELEMENTOS DE IPC, CONCURRENCIA Y EXCLUSION----------------
 
-/*
-//luego esto ira a un include:
-	typedef struct{
-		int *fdshm;
-		int *shmPtr;//sharedMem pointer
-		char *packet;
-	}arpDTMWorker_arguments;
-*/
 //---------------INICIA FORK DE CONFIGURACION Y CHEQUEO DE TABLA DE DIALOGOS ARP-----------------------------
 
         switch(fork()){
@@ -222,7 +214,7 @@ struct arpDialog{
                         //cierro escritura, solo voy a leer.
                         close(fdPipe[1]);
                         //variable para el paquete leido
-                        char buf[104];
+                        char bufl[4096];
                         //hebras del admin de partidas
 			
                         pthread_t hilo;
@@ -233,28 +225,28 @@ struct arpDialog{
                         //n como contador de lo que se leyo
                         int n=0,k=0;
 			printf("hola\n");
+/*
 			arpDTMWorker_arguments arguments[2];
 			arguments[0].shmPtr=shmPtr;
-			char *packet=NULL;
+*/
+			//char *packet=NULL;
 			char *a[6];			
-			while((n=read(fdPipe[0], buf, sizeof buf))){
+			while((n=read(fdPipe[0], bufl, sizeof bufl))){
 				puts("lei del pipe\n");
-				buf[n]=0;
+				bufl[n]=0;
 
-				if(strlen(buf)!=0){
+				if(strlen(bufl)!=0){
 					puts("parece que el primer HIJO leyo lo siguiente: ");
 
-					if(!(write(0, buf, strlen(buf)))){
+					if(!(write(0, bufl, strlen(bufl)))){
 						perror("write()");
 						exit(EXIT_FAILURE);
 					}
 					puts("\n\n");
 					k=0;
-	//-----------------------comienzan las opciones de lo que leo del pipe---------------------------//
-	//antes que nada exploto por : y me fijo el comando, o sea.. el exploto(:)[0]
-				 	a[k]=strtok(buf, "|");
+				 	a[k]=strtok(bufl, "|");
 					while(a[k] && k<5) a[++k]=strtok(NULL, "|");
-
+					//Si quisiera ver si me envio un mensaje el otro HIJO descomento y uso el siguiente codigo:
 					/*
 					if(!strcmp(a[0], "encerarHilo")){//prueba para memoria compartida
 						argumentos.accion=1;//accion de test share se usa en la fc de hilos
@@ -267,18 +259,30 @@ struct arpDialog{
 						}
 					}
 					*/
+
 					printf("ahora mostrare valores de a:\n a0=%s\na1=%s\na2=%s\na3=%s\na4=%s\na5=%s\n",a[0],a[1],a[2],a[3],a[4],a[5]);
 					printf("luego de mostrar.. continuaria para lanzar el hilo....\n");
 					//Lo meto en la estructura de argumentos del hilo:
-//					arguments[0].ethSrcMac=a[0];
-/*
-					*ethDstMac=a[1];
-					*arpSrcMac=a[2];
-					*arpDstMac=a[3];
-					*arpSrcIp=a[4];
-					*arpDstIp=a[5];
-*/
-				//	printf("a modo de ejemplo muestro ethDstMac en a0= %s\n",arguments[0].ethSrcMac);
+					//sem_wait((sem_t*)&(shmPtr[0].semaforo));//bloquea perfecto
+
+					arpDTMWorker_arguments arguments[2];
+					arguments[0].shmPtr=shmPtr;
+
+					arguments[0].ethSrcMac=a[0];
+					arguments[0].ethDstMac=a[1];
+					arguments[0].arpSrcMac=a[2];
+					arguments[0].arpDstMac=a[3];
+					arguments[0].arpSrcIp=a[4];
+					arguments[0].arpDstIp=a[5];
+					arguments[0].packet="|hola|como|estas|pedazo|de|gil|";
+
+					printf("a modo de ejemplo muestro ethDstMac en a0= %s\n",arguments[0].ethSrcMac);
+					if(pthread_create(&hilo, &attr, arpDialoguesTableManager, &arguments)){
+                                                perror("pthread_create()");
+                                                exit(EXIT_FAILURE);
+                                        }
+					//lanzado el hilo..comienza de nuevo
+
 /*
                         while((n=read(fdPipe[0], buf, sizeof buf))){
 				printf("Lei del pipe\n");
@@ -292,19 +296,6 @@ struct arpDialog{
                                                 exit(EXIT_FAILURE);
                                         }
                                         puts("\n");
-*/
-					/*			
-					//Argumentos para la funcion callback
-		                        arpCCArgs conf[2] = {
-                		        //      {0, "foo",shmPtr},
-                                		{1, "Argumentos",shmPtr}
-		                        };
-                		        //le paso los descriptores del PIPE
-		                        conf[0].fdPipe[0]=fdPipe[0];
-                		        conf[0].fdPipe[1]=fdPipe[1];
-		                        pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,(u_char*) conf);
-					*/
-/*
 					arpDTMWorker_arguments arguments[2];
 					arguments[0].packet=buf;//deberia limpiar luego paquete??
 					arguments[0].shmPtr=shmPtr;
