@@ -13,9 +13,17 @@
 
 void* arpDialoguesTableManager(void *arguments){
 
+
+	//printf("HILITO: muestro datos recibidos:\n#######ethSrcMac=%s\n	#######ethDstMac=%s\n#######arpSrcMac=%s\n#######arpDstMac=%s\n#######arpSrcIp=%s\n#######arpDstIp=%s\n",(((arpDTMWorker_arguments *) arguments)->ethSrcMac),(((arpDTMWorker_arguments *) arguments)->ethDstMac),(((arpDTMWorker_arguments *) arguments)->arpSrcMac),(((arpDTMWorker_arguments *) arguments)->arpDstMac),(((arpDTMWorker_arguments *) arguments)->arpSrcIp),(((arpDTMWorker_arguments *) arguments)->arpDstIp));
+
+
+
+
+
+
+
 //	printf("HILO: muestro packet: \n%s\n",(((arpDTMWorker_arguments *) arguments)->packet));
 //	char* paquete=(((arpDTMWorker_arguments *) arguments)->packet);
-	
 	//struct arpDialog* shmPtr = (((arpDTMWorker_arguments *) arguments)->shmPtr);
 
 //	printf("imprimite estaaaaaaaa %d\n",(int) shmPtr[43].index);
@@ -23,7 +31,11 @@ void* arpDialoguesTableManager(void *arguments){
 //	printf("HILADOR: me quedo: %s\n",paquete);
 
 	//OK, i have the message from arpCollector, then i must to explode and parse it to make more human-readable (maybe usable?) code
-	puts("¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬\n");
+
+
+
+
+	printf("¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬\n");
 	//desde aqui parsear lo que he leido
 
 	puts("soy una hebra\n");
@@ -56,7 +68,7 @@ void* arpDialoguesTableManager(void *arguments){
 //	sem_post((sem_t *) & (shmPtr[0].semaforo)); //moverlo arriba para tener lo menos posible este bloqueo
 
 
-	printf("que se trae el arguments: %s	%s	%s	%s	%s	%s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
+	printf("que se trae el arguments en el HILILLO: %s	%s	%s	%s	%s	%s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
 	return 0;
 }
 
