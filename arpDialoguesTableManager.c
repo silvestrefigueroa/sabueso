@@ -26,7 +26,8 @@ void* arpDialoguesTableManager(void *arguments){
 	puts("¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬\n");
 	//desde aqui parsear lo que he leido
 
-
+	puts("soy una hebra\n");
+	sleep(10);
 
 
 //	char* rightside=NULL;
