@@ -47,7 +47,7 @@ void* arpDialoguesTableManager(void *arguments){
 //	char* aux=NULL;//esta variable explico luego por que
 	//para guardar los datos parseados:
 //	int pasada=0;
-//	int srcMacEquals=1;//coinciden por default
+	int srcMacEquals=1;//coinciden por default
 	//reducir la perogruyada de asignacion que hago abajo..no me salio en una sola linea..
 	char* ethSrcMac=NULL;
 	char* ethDstMac=NULL;
@@ -55,8 +55,8 @@ void* arpDialoguesTableManager(void *arguments){
 	char* arpDstMac=NULL;
 	char* arpSrcIp=NULL;
 	char* arpDstIp=NULL;
-//	char* broadcastMac="ff:ff:ff:ff:ff:ff";
-//	char* zeroMac="0:0:0:0:0:0";
+	char* broadcastMac="ff:ff:ff:ff:ff:ff";
+	char* zeroMac="0:0:0:0:0:0";
 
 	ethSrcMac=(((arpDTMWorker_arguments *) arguments)->ethSrcMac);
 	ethDstMac=(((arpDTMWorker_arguments *) arguments)->ethDstMac);
@@ -69,8 +69,6 @@ void* arpDialoguesTableManager(void *arguments){
 
 
 	printf("que se trae el arguments en el HILILLO: %s	%s	%s	%s	%s	%s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
-	return 0;
-}
 
 
 /*
@@ -117,36 +115,36 @@ void* arpDialoguesTableManager(void *arguments){
 
 */
 
-/*	
+	
 
 	
 	//Ahora como minimo reviso consistencia tipo 0 en la trama y el mensaje ARP
 	if(*ethSrcMac!=*arpSrcMac){
-		printf("se ha detectado inconsistencia entre la MAC origen de la trama y la MAC origen del mensaje ARP\n");//podria ser proxyARP???
-		printf("Son realmente distintos %s y %s  ??\n",ethSrcMac,arpSrcMac);
+		printf("LOG:se ha detectado inconsistencia entre la MAC origen de la trama y la MAC origen del mensaje ARP\n");//podria ser proxyARP???
+		printf("LOG:Son realmente distintos %s y %s  ??\n",ethSrcMac,arpSrcMac);
 		//desde ya establezco que la trama es inconsistente en la direccion MAC de origen
 		srcMacEquals=0;//ya que por default coinciden...
 	}
 	else{//nada... esta ok punto.
-		printf("ethSrcMac=arpSrcMac     OK\n");
+		printf("LOG:ethSrcMac=arpSrcMac     OK\n");
 	}
 	if(*ethDstMac!=*arpDstMac){
 		//si difieren en la MAC destino pero es el caso particular del broadcast, entonces me aseguro!!
-		printf("entonces %s es distinto de %s\n",ethDstMac,arpDstMac);
-		puts("siguio...\n");
-		printf("aaaaaaaaaaa tengo: %s y %s \n\n",ethDstMac,"ff:ff:ff:ff:ff:ff");
+		printf("LOG:entonces %s es distinto de %s\n",ethDstMac,arpDstMac);
+		//puts("siguio...\n");
+		printf("LOG:aaaaaaaaaaa tengo: %s y %s \n\n",ethDstMac,"ff:ff:ff:ff:ff:ff");
 		if(*ethDstMac==*broadcastMac){
-			puts("ethDsrMac es broadcast!!!\n");
+			puts("LOG:ethDsrMac es broadcast!!!\n");
 			//mmm iba al broadcast, sera una pregunta realmente? o sera para engañar?
 			if(*arpDstMac==*zeroMac){//si es una pregunta ARP, lo marco para consultar su credibilidad? o consulto yo?
 				//OK, es ARP request (al menos por la formacion)
 				//es al menos una trama aceptable, podria verificarse luego pero al menos la acepto asi!
 				//verifico si la IP de destino coincide con la del host que tiene la MAC ethDstMac
 				//si quiero realmente probar esto, deberia chequear los pares MACIP de cada host participante
-				printf("puede que sea una pregunta ARP legitima..\n");//faltaria verificar match de ip-mac origen.
+				printf("LOG:puede que sea una pregunta ARP legitima..\n");//faltaria verificar match de ip-mac origen.
 			}
 			else{//Si entra aqui, es porque fue al broadcast, pero el ARP tiene un destino FIJO, es muy extraño!!
-				printf("caso extraño, ethDstMac broadcast y arpDstMac Unicast...anomalo!!\n\n");
+				printf("LOG:caso extraño, ethDstMac broadcast y arpDstMac Unicast...anomalo!!\n\n");
 				//podria verificar el match IP-MAC origen, es un caso para WARN no para evaluarlo porque no viene al caso por ahora.
 			}
 		}
@@ -154,17 +152,17 @@ void* arpDialoguesTableManager(void *arguments){
 
 			//destino ethernet bien definido, pero MAC destino en ARP DISTINA!!MALFORMACION!!
 			//Este curioso caso se da por ejemplo con el DDwrt. el destino en ARP debera ser 0:0:0:0:0:0
-			printf("antes de comparar con zero, tengo %s y %s\n",arpDstMac,zeroMac);
+			printf("LOG:antes de comparar con zero, tengo %s y %s\n",arpDstMac,zeroMac);
 			if(*arpDstMac==*zeroMac){
 				//es altamente probable que sea una preguntita del AP que se hace el que no sabe quien es el cliente
 				//para confirmar, valido ethSrcMac con arpSrcMac y luego arpSrcMac con arpSrcIp =)
-				printf("Posible mensaje del AP, compruebe que ethSrcMac matchea con arpSrcIp para descartar ataque DoS\n");
+				printf("LOG:Posible mensaje del AP, compruebe que ethSrcMac matchea con arpSrcIp para descartar ataque DoS\n");
 				//tratar el error o escapar si OK
 				//WARNING, marcar para comprobar y almacenar.
 			}
 			//el else de abajo OJO, porque queda el resto en el que las 4 mac son iguales!!
 			else{//se trata de MACs destinos AMBIGUOS, es una trama anomala!! a no ser que sea del proxyARP
-				printf("Trama con destino definido, revisando en profundidad....Posible ProxyARP\n\n");
+				printf("LOG:Trama con destino definido, revisando en profundidad....Posible ProxyARP\n\n");
 				//tratar mas este caso o indicar error!!
 			}
 		}
@@ -178,17 +176,17 @@ void* arpDialoguesTableManager(void *arguments){
 					//trama OK, debera verificar capa de red IP
 						//si no matchea, entonces ALERTO EL ATAQUE!!!
 						//SI MATCHEA, tenemos origen OK, destino OK.... nada raro.. me robe un ARP..
-						printf("trama aparentemente normal, marcada para chekear IP\n");
+						printf("LOG:trama aparentemente normal, marcada para chekear IP\n");
 						//marcar para portstelear y GUARDAR el dialogo en la tabla
 				break;
 				case 0:
 						//no son iguales las MAC origen
 						//Puede ser proxyARP????(ojo que esta filtrado) o bien el origen (sender) esta haciendo algo raro
 						//WARNING-> inconsistencia en las MAC origen
-						printf("macs origen no coinciden, posible proxyARP o trama anomala\n");
+						printf("LOG:macs origen no coinciden, posible proxyARP o trama anomala\n");
 				break;
 				default:
-					printf("caso anomalo no tratado, no pudo determinarse igualdad de mac origen\n");
+					printf("LOG:caso anomalo no tratado, no pudo determinarse igualdad de mac origen\n");
 				break;
 			}
 	}
@@ -197,7 +195,7 @@ void* arpDialoguesTableManager(void *arguments){
 	return 0;
 }
 
-*/
+
 
 
 
