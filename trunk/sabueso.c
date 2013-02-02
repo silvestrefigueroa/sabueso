@@ -18,6 +18,7 @@
 //#include "sabueso.h"
 #include "arper.h"
 //#include "parser.h"
+#include "splitter.h"
 #include "arpDialogStruct.h"
 #include "arpCollector_callback.h"
 #include "callbackArgs.h"
@@ -216,12 +217,12 @@ struct arpDialog{
                         //variable para el paquete leido
                         char bufl[4096];
                         //hebras del admin de partidas
-			
+			/*
                         pthread_t hilo;
                         pthread_attr_t attr;
                         pthread_attr_init (&attr);
                         pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
-			
+			*/
                         //n como contador de lo que se leyo
                         int n=0,k=0;
 			printf("hola\n");
@@ -244,13 +245,30 @@ struct arpDialog{
 					}
 					puts("\n\n");
 					k=0;
+					//llamo a la funcion splitter:
+					char **listSplit;
+					//short i;
+					//if (argc==2){
+						//printf ("Parse '%s'\n",argv[1]);
+						listSplit = splitter(bufl,'|');
+						//i=0;//uso k
+						while (listSplit[k]!=NULL){
+							printf("salio:%s\n" , listSplit[k++]);
+						}
+					//}
+
 
 					printf("leiiiiiiii %s\n",bufl);
 					continue;
 
+
+
+
+
+/*
 				 	a[k]=strtok(bufl, "|");
 					while(a[k] && k<5) a[++k]=strtok(NULL, "|");
-					
+*/					
 
 
 					//Si quisiera ver si me envio un mensaje el otro HIJO descomento y uso el siguiente codigo:
