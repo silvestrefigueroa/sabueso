@@ -226,12 +226,11 @@ struct arpDialog{
                         //n como contador de lo que se leyo
                         int n=0,k=0;
 			printf("hola\n");
-/*
 			arpDTMWorker_arguments arguments[2];
-			arguments[0].shmPtr=shmPtr;
-*/
+//			arguments[0].shmPtr=shmPtr;
+
 			//char *packet=NULL;
-			char *a[6];			
+//			char *a[6];			
 			while((n=read(fdPipe[0], bufl, sizeof bufl))){
 				puts("lei del pipe\n");
 				bufl[n]=0;
@@ -247,61 +246,70 @@ struct arpDialog{
 					k=0;
 					//llamo a la funcion splitter:
 					char **listSplit;
-					//short i;
-					//if (argc==2){
-						//printf ("Parse '%s'\n",argv[1]);
-						listSplit = splitter(bufl,'|');
-						//i=0;//uso k
-						while (listSplit[k]!=NULL){
-							printf("salio:%s\n" , listSplit[k++]);
+					listSplit = splitter(bufl,'|');
+					while (listSplit[k]!=NULL){
+						switch(k){
+							case 0:
+								printf("k=0, luego valor=%s\n",listSplit[k]);
+								arguments[0].ethSrcMac=listSplit[k];
+								printf("para ethSrcMac tengo el valor=%s\n",arguments[0].ethSrcMac);
+
+							break;
+							case 1:
+								printf("k=1, luego valor=%s\n",listSplit[k]);
+								arguments[0].ethDstMac=listSplit[k];
+								printf("para ethDstMac tengo el valor=%s\n",arguments[0].ethDstMac);
+
+
+							break;
+							case 2:
+								printf("k=2, luego valor=%s\n",listSplit[k]);
+								arguments[0].arpSrcMac=listSplit[k];
+								printf("para arpSrcMac tengo el valor=%s\n",arguments[0].arpSrcMac);
+
+
+							break;
+							case 3:
+								printf("k=3, luego valor=%s\n",listSplit[k]);
+								arguments[0].arpDstMac=listSplit[k];
+								printf("para arpDstMac tengo el valor=%s\n",arguments[0].arpDstMac);
+
+
+							break;
+							case 4:
+								printf("k=4, luego valor=%s\n",listSplit[k]);
+								arguments[0].arpSrcIp=listSplit[k];
+								printf("para ethSrcIp tengo el valor=%s\n",arguments[0].arpSrcIp);
+							break;
+							case 5:
+								printf("k=5, luego valor=%s\n",listSplit[k]);
+								arguments[0].arpDstIp=listSplit[k];
+								printf("para arpDstIp tengo el valor=%s\n",arguments[0].arpDstIp);
+							break;
+
+							default:
+							break;
 						}
-					//}
-
-
+						printf("salio:%s\n" , listSplit[k++]);
+						//a[k]=listSplit[k];
+						//k++;
+					}
 					printf("leiiiiiiii %s\n",bufl);
 					continue;
 
-
-
-
-
 /*
-				 	a[k]=strtok(bufl, "|");
-					while(a[k] && k<5) a[++k]=strtok(NULL, "|");
-*/					
-
-
-					//Si quisiera ver si me envio un mensaje el otro HIJO descomento y uso el siguiente codigo:
-					/*
-					if(!strcmp(a[0], "encerarHilo")){//prueba para memoria compartida
-						argumentos.accion=1;//accion de test share se usa en la fc de hilos
-						puts("Admin.HILO dice: PROBANDO SHAREDMEM CON SEMAFORO\n");
-						argumentos.unPID = atoi(a[1]);
-						argumentos.ptrShm=(int *)&ptrShm;
-						if(pthread_create(&hilo, &attr, funcionHilo, &argumentos)){
-							perror("pthread_create()");
-							exit(EXIT_FAILURE);
-						}
-					}
-					*/
-
 					printf("ahora mostrare valores de a:\n a0=%s\na1=%s\na2=%s\na3=%s\na4=%s\na5=%s\n",a[0],a[1],a[2],a[3],a[4],a[5]);
 					printf("luego de mostrar.. continuaria para lanzar el hilo....\n");
-					//Lo meto en la estructura de argumentos del hilo:
 					//sem_wait((sem_t*)&(shmPtr[0].semaforo));//bloquea perfecto
-
-					arpDTMWorker_arguments arguments[2];
-					arguments[0].shmPtr=shmPtr;
-
 					arguments[0].ethSrcMac=a[0];
 					arguments[0].ethDstMac=a[1];
 					arguments[0].arpSrcMac=a[2];
 					arguments[0].arpDstMac=a[3];
 					arguments[0].arpSrcIp=a[4];
 					arguments[0].arpDstIp=a[5];
-					arguments[0].packet="|hola|como|estas|pedazo|de|gil|";
-
-					printf("a modo de ejemplo muestro ethDstMac en a0= %s\n",arguments[0].ethSrcMac);
+//					arguments[0].packet="|hola|como|estas|pedazo|de|gil|";
+*/
+//					printf("a modo de ejemplo muestro ethDstMac en a1= %s\n",arguments[0].ethDstMac);
 					/*
 					if(pthread_create(&hilo, &attr, arpDialoguesTableManager, &arguments)){
                                                 perror("pthread_create()");

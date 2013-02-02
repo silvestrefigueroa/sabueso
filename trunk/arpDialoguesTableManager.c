@@ -16,7 +16,7 @@ void* arpDialoguesTableManager(void *arguments){
 //	printf("HILO: muestro packet: \n%s\n",(((arpDTMWorker_arguments *) arguments)->packet));
 //	char* paquete=(((arpDTMWorker_arguments *) arguments)->packet);
 	
-	struct arpDialog* shmPtr = (((arpDTMWorker_arguments *) arguments)->shmPtr);
+	//struct arpDialog* shmPtr = (((arpDTMWorker_arguments *) arguments)->shmPtr);
 
 //	printf("imprimite estaaaaaaaa %d\n",(int) shmPtr[43].index);
 
