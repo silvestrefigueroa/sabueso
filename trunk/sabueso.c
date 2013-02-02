@@ -208,29 +208,22 @@ struct arpDialog{
                 case 0:
                         //Proceso arpCollector.c
                         puts("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-
                         puts("soy el HIJO manejador y centinela de tabla arpDialoguesTable...\n");
                         //preparo para leer el PIPE, y luego lanzo los hilos para cada paquete leido
-
                         //cierro escritura, solo voy a leer.
                         close(fdPipe[1]);
                         //variable para el paquete leido
                         char bufl[4096];
                         //hebras del admin de partidas
-			/*
                         pthread_t hilo;
                         pthread_attr_t attr;
                         pthread_attr_init (&attr);
                         pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
-			*/
                         //n como contador de lo que se leyo
                         int n=0,k=0;
 			printf("hola\n");
 			arpDTMWorker_arguments arguments[2];
 //			arguments[0].shmPtr=shmPtr;
-
-			//char *packet=NULL;
-//			char *a[6];			
 			while((n=read(fdPipe[0], bufl, sizeof bufl))){
 				puts("lei del pipe\n");
 				bufl[n]=0;
@@ -295,60 +288,19 @@ struct arpDialog{
 						//k++;
 					}
 					printf("leiiiiiiii %s\n",bufl);
-					continue;
-
-/*
-					printf("ahora mostrare valores de a:\n a0=%s\na1=%s\na2=%s\na3=%s\na4=%s\na5=%s\n",a[0],a[1],a[2],a[3],a[4],a[5]);
-					printf("luego de mostrar.. continuaria para lanzar el hilo....\n");
-					//sem_wait((sem_t*)&(shmPtr[0].semaforo));//bloquea perfecto
-					arguments[0].ethSrcMac=a[0];
-					arguments[0].ethDstMac=a[1];
-					arguments[0].arpSrcMac=a[2];
-					arguments[0].arpDstMac=a[3];
-					arguments[0].arpSrcIp=a[4];
-					arguments[0].arpDstIp=a[5];
-//					arguments[0].packet="|hola|como|estas|pedazo|de|gil|";
-*/
-//					printf("a modo de ejemplo muestro ethDstMac en a1= %s\n",arguments[0].ethDstMac);
-					/*
+					arguments[0].packet="|hola|como|estas|pedazo|de|gil|";
+					printf("a modo de ejemplo muestro ethDstMac en a1= %s\n",arguments[0].ethDstMac);
+					//deberia controlar la creacion de HILOS.. algun limite..sino dice que no puede allocar mas memoria
 					if(pthread_create(&hilo, &attr, arpDialoguesTableManager, &arguments)){
                                                 perror("pthread_create()");
                                                 exit(EXIT_FAILURE);
+						//continue;
                                         }
-					*/
 					//lanzado el hilo..comienza de nuevo
-
-/*
-                        while((n=read(fdPipe[0], buf, sizeof buf))){
-				printf("Lei del pipe\n");
-                                buf[n]=0;
-
-                                if(strlen(buf)!=0){
-                                        //puts("\n parece que el HIJO manejador de tabla arpDialogues LEYO LO SIGUIENTE:");
-
-                                        if(!(write(0, buf, strlen(buf)))){
-                                                perror("write()");
-                                                exit(EXIT_FAILURE);
-                                        }
-                                        puts("\n");
-					arpDTMWorker_arguments arguments[2];
-					arguments[0].packet=buf;//deberia limpiar luego paquete??
-					arguments[0].shmPtr=shmPtr;
-					if(pthread_create(&hilo, &attr, arpDialoguesTableManager, &arguments)){
-						perror("pthread_create()");
-						exit(EXIT_FAILURE);
-					}
-*/					//lanzado el hilo con la funcion y los parametros
-				
-
                                 }
                         }
                         _exit(EXIT_SUCCESS);
                 }//switch fork
-
-
-
-
 //---------------FINALIZA FORK DE CONFIGURACION Y CHEQUEO DE TABLA DE DIALOGOS ARP-----------------------------
 
 
