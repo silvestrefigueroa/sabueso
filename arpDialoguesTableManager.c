@@ -12,26 +12,29 @@
 
 
 void* arpDialoguesTableManager(void *arguments){
-//	acc=(int)(((struct Argumentos2 *) argumentos)->accion);//funciona esta referencia
 
-	printf("HILO: muestro packet: \n%s\n",(((arpDTMWorker_arguments *) arguments)->packet));
-	char* paquete=(((arpDTMWorker_arguments *) arguments)->packet);
+//	printf("HILO: muestro packet: \n%s\n",(((arpDTMWorker_arguments *) arguments)->packet));
+//	char* paquete=(((arpDTMWorker_arguments *) arguments)->packet);
 	
 	struct arpDialog* shmPtr = (((arpDTMWorker_arguments *) arguments)->shmPtr);
 
 	printf("imprimite estaaaaaaaa %d\n",(int) shmPtr[43].index);
 
-	printf("HILADOR: me quedo: %s\n",paquete);
+//	printf("HILADOR: me quedo: %s\n",paquete);
 
 	//OK, i have the message from arpCollector, then i must to explode and parse it to make more human-readable (maybe usable?) code
 	puts("¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬\n");
 	//desde aqui parsear lo que he leido
-	char* rightside=NULL;
-	char* leftside=NULL;
-	char* aux=NULL;//esta variable explico luego por que
+
+
+
+
+//	char* rightside=NULL;
+//	char* leftside=NULL;
+//	char* aux=NULL;//esta variable explico luego por que
 	//para guardar los datos parseados:
-	int pasada=0;
-	int srcMacEquals=1;//coinciden por default
+//	int pasada=0;
+//	int srcMacEquals=1;//coinciden por default
 	//reducir la perogruyada de asignacion que hago abajo..no me salio en una sola linea..
 	char* ethSrcMac=NULL;
 	char* ethDstMac=NULL;
@@ -39,8 +42,25 @@ void* arpDialoguesTableManager(void *arguments){
 	char* arpDstMac=NULL;
 	char* arpSrcIp=NULL;
 	char* arpDstIp=NULL;
-	char* broadcastMac="ff:ff:ff:ff:ff:ff";
-	char* zeroMac="0:0:0:0:0:0";
+//	char* broadcastMac="ff:ff:ff:ff:ff:ff";
+//	char* zeroMac="0:0:0:0:0:0";
+
+	ethSrcMac=(((arpDTMWorker_arguments *) arguments)->ethSrcMac);
+	ethDstMac=(((arpDTMWorker_arguments *) arguments)->ethDstMac);
+	arpSrcMac=(((arpDTMWorker_arguments *) arguments)->arpSrcMac);
+	arpDstMac=(((arpDTMWorker_arguments *) arguments)->arpDstMac);
+	arpSrcIp=(((arpDTMWorker_arguments *) arguments)->arpSrcIp);
+	arpDstIp=(((arpDTMWorker_arguments *) arguments)->arpDstIp);
+
+//	sem_post((sem_t *) & (shmPtr[0].semaforo)); //moverlo arriba para tener lo menos posible este bloqueo
+
+
+	printf("que se trae el arguments: %s	%s	%s	%s	%s	%s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
+	return 0;
+}
+
+
+/*
 	aux = (((arpDTMWorker_arguments *) arguments)->packet);//porque me joroba con char** en el 3° arg de strtok_r =( corregir luego esto
 	while((leftside = strtok_r(aux, "|",&aux))){//Ojo: si en la linea hay solo un enter.. se lo mastica!!!
 		if(NULL==(rightside = strtok_r(aux, "|",&aux))){//ejecuto, asigno y comparo al mismo tiempo
@@ -81,6 +101,10 @@ void* arpDialoguesTableManager(void *arguments){
 		pasada++;
 
 	}//fin parseo de paquete
+
+*/
+
+/*	
 
 	
 	//Ahora como minimo reviso consistencia tipo 0 en la trama y el mensaje ARP
@@ -159,6 +183,26 @@ void* arpDialoguesTableManager(void *arguments){
 
 	return 0;
 }
+
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /*
 
 

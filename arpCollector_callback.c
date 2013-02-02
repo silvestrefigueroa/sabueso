@@ -30,7 +30,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 	static int count = 1;
 
 	//creo el paquete de datos:
-	char paquete[100000];//ajustar este tamaño!! hay que dimensionarlo!!
+	char paquete[4096];//ajustar este tamaño!! hay que dimensionarlo!!
 
 	//bloqueo semaforo
         sem_wait((sem_t*) & (args[0].shmPtr[43].semaforo));
@@ -97,7 +97,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		strcpy(paquete+strlen(paquete),"|");//arpDstIp=");
 		strcpy(paquete+strlen(paquete),inet_ntoa(*(struct in_addr *) arpPtr->arp_tpa));
 		//escribo en el pipe...
-		//sem_wait((sem_t*) & (args[0].shmPtr[0].semaforo));//bloquea perfecto
+	//	sem_wait((sem_t*) & (args[0].shmPtr[0].semaforo));//bloquea perfecto
 		if(!write((int)args[0].fdPipe[1], paquete, strlen(paquete))){
 					perror("write()");
 					_exit(EXIT_FAILURE);
