@@ -234,7 +234,7 @@ struct arpDialog{
 			while((n=read(fdPipe[0], bufl, sizeof bufl))){
 				puts("lei del pipe\n");
 				bufl[n]=0;
-
+				
 				if(strlen(bufl)!=0){
 					puts("parece que el primer HIJO leyo lo siguiente: ");
 
@@ -244,8 +244,15 @@ struct arpDialog{
 					}
 					puts("\n\n");
 					k=0;
+
+					printf("leiiiiiiii %s\n",bufl);
+					continue;
+
 				 	a[k]=strtok(bufl, "|");
 					while(a[k] && k<5) a[++k]=strtok(NULL, "|");
+					
+
+
 					//Si quisiera ver si me envio un mensaje el otro HIJO descomento y uso el siguiente codigo:
 					/*
 					if(!strcmp(a[0], "encerarHilo")){//prueba para memoria compartida
@@ -277,10 +284,12 @@ struct arpDialog{
 					arguments[0].packet="|hola|como|estas|pedazo|de|gil|";
 
 					printf("a modo de ejemplo muestro ethDstMac en a0= %s\n",arguments[0].ethSrcMac);
+					/*
 					if(pthread_create(&hilo, &attr, arpDialoguesTableManager, &arguments)){
                                                 perror("pthread_create()");
                                                 exit(EXIT_FAILURE);
                                         }
+					*/
 					//lanzado el hilo..comienza de nuevo
 
 /*

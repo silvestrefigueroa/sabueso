@@ -18,7 +18,7 @@ void* arpDialoguesTableManager(void *arguments){
 	
 	struct arpDialog* shmPtr = (((arpDTMWorker_arguments *) arguments)->shmPtr);
 
-	printf("imprimite estaaaaaaaa %d\n",(int) shmPtr[43].index);
+//	printf("imprimite estaaaaaaaa %d\n",(int) shmPtr[43].index);
 
 //	printf("HILADOR: me quedo: %s\n",paquete);
 
