@@ -206,7 +206,6 @@ struct arpDialog{
                         perror("fork()");
                         _exit(EXIT_FAILURE);
                 case 0:
-                        //Proceso arpCollector.c
                         puts("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
                         puts("soy el HIJO manejador y centinela de tabla arpDialoguesTable...\n");
                         //preparo para leer el PIPE, y luego lanzo los hilos para cada paquete leido
@@ -284,8 +283,6 @@ struct arpDialog{
 							break;
 						}
 						printf("salio:%s\n" , listSplit[k++]);
-						//a[k]=listSplit[k];
-						//k++;
 					}
 					printf("leiiiiiiii %s\n",bufl);
 					arguments[0].packet="|hola|como|estas|pedazo|de|gil|";
