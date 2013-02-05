@@ -167,13 +167,16 @@ struct arpDialog{
 	printf("ahora utilizando el puntero:  indice del 43°= %d\n",(int) shmPtr[43].index);//perfecto
 */
 
+
+	//Test de semaforo desde el main
+/*
 	sem_wait( (sem_t*)&(shmPtr[43].semaforo));
 	printf("obtuve el semaforo\n");
 	sem_post( (sem_t*)&(shmPtr[43].semaforo));
 	printf("he soltado el semaforo\n");
-
+*/
 	//VARS
-	int o;//para los for de los wait y post (pruebas de semaforos)
+	//int o;//para los for de los wait y post (pruebas de semaforos)
 	//TABLES
 	//ETC...
 
@@ -219,11 +222,12 @@ struct arpDialog{
                         pthread_attr_init (&attr);
                         pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
                         //n como contador de lo que se leyo
-                        int n=0,k=0;
-			printf("hola\n");
+                        int n=0,k=0,paquete=0;
+			//printf("hola\n");
 			arpDTMWorker_arguments arguments[2];
 //			arguments[0].shmPtr=shmPtr;
 			while((n=read(fdPipe[0], bufl, sizeof bufl))){
+				paquete++;
 				puts("lei del pipe\n");
 				bufl[n]=0;
 				
@@ -234,11 +238,15 @@ struct arpDialog{
 						perror("write()");
 						exit(EXIT_FAILURE);
 					}
+				printf("HILO paquetes: %d\n",paquete);
+				}
 					puts("\n\n");
 					k=0;
 					//llamo a la funcion splitter:
 					char **listSplit;
 					listSplit = splitter(bufl,'|');
+					free(**listSplit);
+					/*
 					while (listSplit[k]!=NULL){
 						switch(k){
 							case 0:
@@ -258,7 +266,6 @@ struct arpDialog{
 								printf("k=2, luego valor=%s\n",listSplit[k]);
 								arguments[0].arpSrcMac=listSplit[k];
 								printf("para arpSrcMac tengo el valor=%s\n",arguments[0].arpSrcMac);
-
 
 							break;
 							case 3:
@@ -282,11 +289,14 @@ struct arpDialog{
 							default:
 							break;
 						}
+						//listSplit[k++];//si comento esta linea, se joroba TODO!! ¿¡por queeee?!
 						printf("salio:%s\n" , listSplit[k++]);
 					}
-					printf("leiiiiiiii %s\n",bufl);
+					//Mostrar el bufl crudo, como lo leyo del pipe..medio tarde pero deberia estar intacto
+					//printf("leiiiiiiii %s\n",bufl);
+
 					arguments[0].packet="|hola|como|estas|pedazo|de|gil|";
-					printf("a modo de ejemplo muestro ethDstMac en a1= %s\n",arguments[0].ethDstMac);
+					//printf("a modo de ejemplo muestro ethDstMac en a1= %s\n",arguments[0].ethDstMac);
 					//deberia controlar la creacion de HILOS.. algun limite..sino dice que no puede allocar mas memoria
 					if(pthread_create(&hilo, &attr, arpDialoguesTableManager, &arguments)){
                                                 perror("pthread_create()");
@@ -294,7 +304,9 @@ struct arpDialog{
 						//continue;
                                         }
 					//lanzado el hilo..comienza de nuevo
-                                }
+					printf("PAQUETE AL HILO : %d\n",paquete);
+					
+                                }*/
                         }
                         _exit(EXIT_SUCCESS);
                 }//switch fork
@@ -349,13 +361,15 @@ struct arpDialog{
 			puts("\n-------------------------");
 
 			puts("soy el HIJO recolector de mensajes ARP iniciando...\n");
-
+			//test delay con semaforo:
+			/*
 			for(o=0;o<10;o++){
 				sem_wait( (sem_t*)&(shmPtr[43].semaforo));
 				printf("ahora EL HIJO en el 43°= %d\n",(int) shmPtr[43].index++);//perfecto
 				sem_post( (sem_t*)&(shmPtr[43].semaforo));
 				//sleep(1);
 			}
+			*/
 
 
 			//COmienza a preparar la captura...
@@ -365,6 +379,7 @@ struct arpDialog{
 			struct bpf_program fp;//aca se guardara el programa compilado de filtrado
 			bpf_u_int32 maskp;// mascara de subred
 			bpf_u_int32 netp;// direccion de red
+			//el IF de abajo no tiene nada que hacer aqui!!! que modo de uso ni que changos!!
 			if (argc != 2){
 				fprintf(stdout,"Modo de Uso %s \"programa de filtrado\"\n",argv[0]);
 				return 0;

@@ -32,11 +32,15 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 	//creo el paquete de datos:
 	char paquete[4096];//ajustar este tamaño!! hay que dimensionarlo!!
 
+
+	//test de semaforos desde la callback
+	/*
 	//bloqueo semaforo
         sem_wait((sem_t*) & (args[0].shmPtr[43].semaforo));
         //printf("test: id%d title: %s\n", args[0].id,args[0].title);
         //sleep(5);
         sem_post((sem_t*) & (args[0].shmPtr[43].semaforo));
+	*/
 
 //	fflush(stdout);
 	
@@ -58,7 +62,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		printf("No viaja ARP sobre esta trama (aunque ya esta filtrada...)\n");
 	}
 	else{
-		puts("vamos con el ARP\n");	
+		//puts("vamos con el ARP\n");	
 		struct ether_arp *arpPtr;
 		//ahora posiciono el puntero en el primer byte(es decir con un offset de size of ether header)
 		arpPtr =(struct ether_arp*)(packet+sizeof(struct ether_header));//o lo que es lo mismo packet+14;
