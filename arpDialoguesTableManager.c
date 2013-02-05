@@ -35,11 +35,12 @@ void* arpDialoguesTableManager(void *arguments){
 
 
 
-	printf("¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬\n");
+	//printf("¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬\n");
+	printf("-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-");
 	//desde aqui parsear lo que he leido
 
-	puts("soy una hebra\n");
-	sleep(10);
+	//puts("soy una hebra\n");
+	//sleep(10);
 
 
 //	char* rightside=NULL;
@@ -65,10 +66,11 @@ void* arpDialoguesTableManager(void *arguments){
 	arpSrcIp=(((arpDTMWorker_arguments *) arguments)->arpSrcIp);
 	arpDstIp=(((arpDTMWorker_arguments *) arguments)->arpDstIp);
 
+	//test semaforo
 //	sem_post((sem_t *) & (shmPtr[0].semaforo)); //moverlo arriba para tener lo menos posible este bloqueo
 
-
-	printf("que se trae el arguments en el HILILLO: %s	%s	%s	%s	%s	%s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
+	//test leido de la estructura apuntada :P
+//	printf("que se trae el arguments en el HILILLO: %s	%s	%s	%s	%s	%s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
 
 
 /*
@@ -129,10 +131,11 @@ void* arpDialoguesTableManager(void *arguments){
 		printf("LOG:ethSrcMac=arpSrcMac     OK\n");
 	}
 	if(*ethDstMac!=*arpDstMac){
+		printf("LOG: POR ENTRAR AQUI SE QUE SON MAC DESTINO DISTINTAS\n");
 		//si difieren en la MAC destino pero es el caso particular del broadcast, entonces me aseguro!!
 		printf("LOG:entonces %s es distinto de %s\n",ethDstMac,arpDstMac);
 		//puts("siguio...\n");
-		printf("LOG:aaaaaaaaaaa tengo: %s y %s \n\n",ethDstMac,"ff:ff:ff:ff:ff:ff");
+		//printf("LOG:aaaaaaaaaaa tengo: %s y %s \n\n",ethDstMac,"ff:ff:ff:ff:ff:ff");
 		if(*ethDstMac==*broadcastMac){
 			puts("LOG:ethDsrMac es broadcast!!!\n");
 			//mmm iba al broadcast, sera una pregunta realmente? o sera para engañar?
@@ -171,13 +174,16 @@ void* arpDialoguesTableManager(void *arguments){
 		//o bien son tramas ARP que cayeron en el filtro (y vienen del portstealing) pero spoofeadas tambien por que no?
 		//primero que nada chekeo si las MAC origen son iguales (primer verificacion, leo el resultado directamente)
 			//si son iguales, veo el match MAC-IP del origen para ver si es ataque (consulto info real)
-			switch(srcMacEquals){
+			switch(srcMacEquals){//lo puse en switch porque podria ser casos especiales de MAC Reservadas, de momento funciona igual q con IF-else
 				case 1:
 					//trama OK, debera verificar capa de red IP
 						//si no matchea, entonces ALERTO EL ATAQUE!!!
 						//SI MATCHEA, tenemos origen OK, destino OK.... nada raro.. me robe un ARP..
-						printf("LOG:trama aparentemente normal, marcada para chekear IP\n");
+						//printf("LOG:trama aparentemente normal,[Taxonomia de respuesta o ATAQUE], marcada para chekear IP\n");
+						printf("LOG:[Taxonomia de respuesta o ATAQUE], par[%s]-[%s]\n",ethDstMac,arpDstMac);
 						//marcar para portstelear y GUARDAR el dialogo en la tabla
+						//Normalmente a no ser que sea una respuesta dirigida al sabueso, no veria estas tramas...
+						//es por ello que lo mas seguro es que esta trama sean robadas del porstealing
 				break;
 				case 0:
 						//no son iguales las MAC origen
@@ -187,6 +193,8 @@ void* arpDialoguesTableManager(void *arguments){
 				break;
 				default:
 					printf("LOG:caso anomalo no tratado, no pudo determinarse igualdad de mac origen\n");
+					//en estos casos, podria meter en la primer evaluacion respecto a las srcMac, numero superiores
+					//para casos especiales, de momento no se trata este tipo de "mac reservada"
 				break;
 			}
 	}
@@ -194,25 +202,6 @@ void* arpDialoguesTableManager(void *arguments){
 
 	return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /*
 
@@ -227,9 +216,6 @@ void* arpDialoguesTableManager(void *arguments){
 					//Procedimiento y almacenamiento y break
 				//Si no existe, chequear consistencia y continuar
 			//Continuar...
-
-
-
 
 				//EJEMPLO: Evaluo ientegridad de la trama completa:
 
