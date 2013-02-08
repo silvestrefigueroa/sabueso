@@ -13,41 +13,12 @@
 
 void* arpDialoguesTableManager(void *arguments){
 
-
-	//printf("HILITO: muestro datos recibidos:\n#######ethSrcMac=%s\n	#######ethDstMac=%s\n#######arpSrcMac=%s\n#######arpDstMac=%s\n#######arpSrcIp=%s\n#######arpDstIp=%s\n",(((arpDTMWorker_arguments *) arguments)->ethSrcMac),(((arpDTMWorker_arguments *) arguments)->ethDstMac),(((arpDTMWorker_arguments *) arguments)->arpSrcMac),(((arpDTMWorker_arguments *) arguments)->arpDstMac),(((arpDTMWorker_arguments *) arguments)->arpSrcIp),(((arpDTMWorker_arguments *) arguments)->arpDstIp));
-
-
-
-
-
-
-
-//	printf("HILO: muestro packet: \n%s\n",(((arpDTMWorker_arguments *) arguments)->packet));
 //	char* paquete=(((arpDTMWorker_arguments *) arguments)->packet);
-	//struct arpDialog* shmPtr = (((arpDTMWorker_arguments *) arguments)->shmPtr);
+//	struct arpDialog** shmPtr = NULL;
+//	*shmPtr= (((arpDTMWorker_arguments *) arguments)->shmPtr);
 
-//	printf("imprimite estaaaaaaaa %d\n",(int) shmPtr[43].index);
+	printf("-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-\n");
 
-//	printf("HILADOR: me quedo: %s\n",paquete);
-
-	//OK, i have the message from arpCollector, then i must to explode and parse it to make more human-readable (maybe usable?) code
-
-
-
-
-	//printf("¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬¬\n");
-	printf("-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-");
-	//desde aqui parsear lo que he leido
-
-	//puts("soy una hebra\n");
-	//sleep(10);
-
-
-//	char* rightside=NULL;
-//	char* leftside=NULL;
-//	char* aux=NULL;//esta variable explico luego por que
-	//para guardar los datos parseados:
-//	int pasada=0;
 	int srcMacEquals=1;//coinciden por default
 	//reducir la perogruyada de asignacion que hago abajo..no me salio en una sola linea..
 	char* ethSrcMac=NULL;
@@ -56,8 +27,14 @@ void* arpDialoguesTableManager(void *arguments){
 	char* arpDstMac=NULL;
 	char* arpSrcIp=NULL;
 	char* arpDstIp=NULL;
-	char* broadcastMac="ff:ff:ff:ff:ff:ff";
-	char* zeroMac="0:0:0:0:0:0";
+	char* broadcastMac="ff:ff:ff:ff:ff:ff";//Estara mal esto? no deberia inicializar a null y luego cargarle esta cadena?no deberia reservar?
+	char* zeroMac="0:0:0:0:0:0";//lo mismo que el anterior
+	int doCheckIpI=0;
+	int doCheckSpoofer=0;
+	int nextState=0;//por default, almacenarla y ya
+	char* type=NULL;//consultar posibles valores en tabla_de_dialogos.txt [Arquitectura]
+	int i=0;
+
 
 	ethSrcMac=(((arpDTMWorker_arguments *) arguments)->ethSrcMac);
 	ethDstMac=(((arpDTMWorker_arguments *) arguments)->ethDstMac);
@@ -72,55 +49,7 @@ void* arpDialoguesTableManager(void *arguments){
 	//test leido de la estructura apuntada :P
 //	printf("que se trae el arguments en el HILILLO: %s	%s	%s	%s	%s	%s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
 
-
-/*
-	aux = (((arpDTMWorker_arguments *) arguments)->packet);//porque me joroba con char** en el 3° arg de strtok_r =( corregir luego esto
-	while((leftside = strtok_r(aux, "|",&aux))){//Ojo: si en la linea hay solo un enter.. se lo mastica!!!
-		if(NULL==(rightside = strtok_r(aux, "|",&aux))){//ejecuto, asigno y comparo al mismo tiempo
-			//write(1,ERR_CONF_PARAM,sizeof(ERR_CONF_PARAM));
-			puts("aqui hay nulo encerrado!!!\n");
-			break;
-		}
-		printf("Valor del left: %s\n Valor del Right: %s\n",leftside,rightside);
-
-		switch(pasada){
-			case 0:
-				//obtengo las mac del frame ethernet
-				//puts("pasada 0\n");
-				ethSrcMac=leftside;
-				ethDstMac=rightside;
-				//a[0]=leftside;
-				//a[1]=rightside;
-			break;
-			case 1:
-				//obtengo las mac del ARP message
-				//puts("pasada 1\n");
-				arpSrcMac=leftside;
-				arpDstMac=rightside;
-				//a[2]=leftside;
-				//a[3]=rightside;
-			break;	
-			case 2:
-				//obtengo las IP del ARP message
-				//puts("pasada 2\n");
-				arpSrcIp=leftside;
-				arpDstIp=rightside;	
-			break;
-			default:
-				//error!!
-			break;
-				
-		}
-		pasada++;
-
-	}//fin parseo de paquete
-
-*/
-
-	
-
-	
-	//Ahora como minimo reviso consistencia tipo 0 en la trama y el mensaje ARP
+	//Ahora como minimo reviso consistencias menores en la trama y el mensaje ARP
 	if(*ethSrcMac!=*arpSrcMac){
 		printf("LOG:se ha detectado inconsistencia entre la MAC origen de la trama y la MAC origen del mensaje ARP\n");//podria ser proxyARP???
 		printf("LOG:Son realmente distintos %s y %s  ??\n",ethSrcMac,arpSrcMac);
@@ -145,10 +74,19 @@ void* arpDialoguesTableManager(void *arguments){
 				//verifico si la IP de destino coincide con la del host que tiene la MAC ethDstMac
 				//si quiero realmente probar esto, deberia chequear los pares MACIP de cada host participante
 				printf("LOG:puede que sea una pregunta ARP legitima..\n");//faltaria verificar match de ip-mac origen.
+				//bien, esta trama esta marcada para verificarse integridad IP, luego steal en busqueda de spoofers
+				doCheckIpI=1;
+				doCheckSpoofer=1;
+				nextState=1;
+				type="PASS";
+				printf("Finalizada la evaluacion, continua con la carga de datos...\n");
 			}
 			else{//Si entra aqui, es porque fue al broadcast, pero el ARP tiene un destino FIJO, es muy extraño!!
 				printf("LOG:caso extraño, ethDstMac broadcast y arpDstMac Unicast...anomalo!!\n\n");
 				//podria verificar el match IP-MAC origen, es un caso para WARN no para evaluarlo porque no viene al caso por ahora.
+				//WARNING: deberia comprobarla completamente antes de informar..pero excede los limites del trabajo final
+					//He decidido activar el flag type en WARN y no tratar el problema pero si mostrarlo!!
+				
 			}
 		}
 		else{//para los casos que no son broadcast en ethernet
@@ -162,11 +100,17 @@ void* arpDialoguesTableManager(void *arguments){
 				printf("LOG:Posible mensaje del AP, compruebe que ethSrcMac matchea con arpSrcIp para descartar ataque DoS\n");
 				//tratar el error o escapar si OK
 				//WARNING, marcar para comprobar y almacenar.
+				//Escapa del formato de arpspoofing estudiado, me limito a mostrar el WARN, se descarta la trama
+				type="WARN";
+				nextState=0;
 			}
 			//el else de abajo OJO, porque queda el resto en el que las 4 mac son iguales!!
 			else{//se trata de MACs destinos AMBIGUOS, es una trama anomala!! a no ser que sea del proxyARP
 				printf("LOG:Trama con destino definido, revisando en profundidad....Posible ProxyARP\n\n");
-				//tratar mas este caso o indicar error!!
+				//No es el caso analizado, se descarta la trama pero se indica el WARN
+				type="WARN";
+				nextState=0;
+				srcMacEquals=2;//por ser un caso anomalo de diferencia..
 			}
 		}
 	}
@@ -182,6 +126,10 @@ void* arpDialoguesTableManager(void *arguments){
 						//printf("LOG:trama aparentemente normal,[Taxonomia de respuesta o ATAQUE], marcada para chekear IP\n");
 						printf("LOG:[Taxonomia de respuesta o ATAQUE], par[%s]-[%s]\n",ethDstMac,arpDstMac);
 						//marcar para portstelear y GUARDAR el dialogo en la tabla
+						doCheckIpI=1;//siempre primero, es la trivial.. si conozco la info real, no noecesito el stealer.
+						doCheckSpoofer=1;
+						type="PASS";
+						nextState=1;
 						//Normalmente a no ser que sea una respuesta dirigida al sabueso, no veria estas tramas...
 						//es por ello que lo mas seguro es que esta trama sean robadas del porstealing
 				break;
@@ -200,31 +148,34 @@ void* arpDialoguesTableManager(void *arguments){
 	}
 //	sem_post((sem_t *) & (shmPtr[0].semaforo)); //moverlo arriba para tener lo menos posible este bloqueo
 
+
+	//Bueno, en general me voy a interesar en los casos LEGITIMOS y en los casos con Taxonomia de ATAQUE, luego vere que hago con los otros
+	
+	//tomar una entrada de la tabla para guardar los datos:
+
+	printf("Antes del lazo for....\n");
+
+	for(i=1;i<10;i++){//ese tamaño de la tabla de memoria deberia ser un sizeof o de alguna manera conocerlo ahora hardcodeado
+		printf("dentro antes del for...\n");
+		printf("imprimo el index: %d\n", (int) ((( (arpDTMWorker_arguments *) arguments)->shmPtr)[i].index));
+		//printf("valor del hit = %d, para i= %d\n",(int)(shmPtr[i].hit), i);
+		/*
+		if(((int)(shmPtr[i].hit))==4){
+			printf("entrada en la tabla n° %d disponible para uso\n",i);
+			//Obtener acceso exclusivo en la entrada de la tabla
+			//sem_wait((sem_t *) & (shmPtr[i].semaforo));
+			//usar la entrada de la tabla
+			//Liberar la entrada de la tabla:
+			//sem_post((sem_t *) & (shmPtr[0].semaforo));
+			break;
+		}
+		*/
+		printf("Salto el for para i=%d\n",i);
+	}
+	//una vez almacenada... termino la vida de este Worker =)
+
+	printf("sale del for\n");
+
+
 	return 0;
 }
-
-/*
-
-
-		//Lo almaceno en la tabla de dialogos =)
-
-		//Evaluo la existencia previa en arpDialoguesTable
-			//Para ello implementar mecanismos de hash para la indizacion y comparacion (agil)
-				//Si la entrada existe y es consistente -> no la almaceno en la tabla
-					//Procedimiento y break
-				//SI existe pero no es consistente -> evaluo tipo de inconsistencia
-					//Procedimiento y almacenamiento y break
-				//Si no existe, chequear consistencia y continuar
-			//Continuar...
-
-				//EJEMPLO: Evaluo ientegridad de la trama completa:
-
-				//primero me fijo si la MAC origen de la trama es igual a la MAC origen del ARP
-				if((ether_ntoa((const struct ether_addr*) eptr->ether_shost))!=(ether_ntoa((const struct ether_addr*) arpPtr->arp_sha))){
-					printf("PROBLEMAS.. NO COINCIDEN LAS SOURCE MAC!!!\n");
-					//generar alerta
-				}
-		//lanzar un hilo que se encargue de buscar en toda la tabla entradas que validen la relacion de macIP presentadas en esta trama
-		//luego si no hay alerta de ningun tipo, generar los hashes y cargarla en la tabla.
-
-*/
