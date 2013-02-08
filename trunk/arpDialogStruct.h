@@ -3,14 +3,18 @@
 //sabueso
 
 struct arpDialog{
-	sem_t semaforo;
 	int index;
-	char* etherSenderMac;
-	char* etherDestinationMac;
-	char* arpSenderMac;
-	char* arpDestinationMac;
-	char* arpSenderIp;
-	char* arpDestinationIp;
+	sem_t semaforo;
+	char* ethSrcMac;
+	char* ethDstMac;
+	char* arpSrcMac;
+	char* arpDstMac;
+	char* arpSrcIp;
+	char* arpDstIp;
+	char* type;
+	int doCheckIpI;
+	int doCheckSpoofer;
+	int doCheckHosts;
+	int nextState;
 	int hit;
-//	sem_t semaforo;//semaforo, NO puntero (va a semaforear cada ENTRADA de la tabla)
 };

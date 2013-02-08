@@ -127,7 +127,7 @@ struct arpDialog{
 
 	//puntero a la memoria compartida
 //	unsigned* shmPtr;
-	struct arpDialog* shmPtr;
+	struct arpDialog* shmPtr=NULL;
 	//descriptor de la memoria compartida
 	int fdshm;
 	//sharedMem
@@ -135,13 +135,23 @@ struct arpDialog{
 	struct arpDialog arpDialoguesTable[100];//hardcodeado, luego deberia parametrizarlo y variabilizarlo
 	for(subindexCounterId=0;subindexCounterId<100;subindexCounterId++){//ese 100 es el hardcodeado anterior
 		arpDialoguesTable[subindexCounterId].index=subindexCounterId;
+		arpDialoguesTable[subindexCounterId].ethSrcMac=NULL;
+		arpDialoguesTable[subindexCounterId].ethDstMac=NULL;
+		arpDialoguesTable[subindexCounterId].arpSrcMac=NULL;
+		arpDialoguesTable[subindexCounterId].arpDstMac=NULL;
+		arpDialoguesTable[subindexCounterId].arpSrcIp=NULL;
+		arpDialoguesTable[subindexCounterId].arpDstIp=NULL;
+		arpDialoguesTable[subindexCounterId].type=NULL;
+		arpDialoguesTable[subindexCounterId].doCheckIpI=0;
+		arpDialoguesTable[subindexCounterId].doCheckSpoofer=0;
+		arpDialoguesTable[subindexCounterId].doCheckHosts=0;
+		arpDialoguesTable[subindexCounterId].nextState=0;
+		arpDialoguesTable[subindexCounterId].hit=0;
 		//int sem_init(sem_t *sem, int pshared, unsigned int value);
 		sem_init(&(arpDialoguesTable[subindexCounterId].semaforo),1,1);//inicializa semaforos de cada entrada de la tabla
 	}//inicializadas las entradas de la tabla, paso a confeccionar la Memoria Compartida
-
-
+	
 	//SHAREDMEMrpDialoguesTableManagerArguments.h
-
 	if(((fdshm=shm_open("/sharedMemPartida", O_RDWR|O_CREAT, 0666))<0)){
 		perror("shm_open()");
 		exit(EXIT_FAILURE);
@@ -150,7 +160,6 @@ struct arpDialog{
 	if(!(write(fdshm,&arpDialoguesTable,sizeof(arpDialoguesTable)))){
 	perror("write()");
 	exit(EXIT_FAILURE);
-
 	}
 	//ojo con ese 100 de abajo.. es el hardcodeado, representa la cantidad de estructuras struct arpDilog que hay en el array arpDialoguesTable
 	if(!(shmPtr=mmap(NULL, sizeof(struct arpDialog)*100, PROT_READ|PROT_WRITE, MAP_SHARED, fdshm, 0))){
@@ -225,7 +234,7 @@ struct arpDialog{
                         int n=0,k=0,paquete=0;
 			//printf("hola\n");
 			arpDTMWorker_arguments arguments[2];
-//			arguments[0].shmPtr=shmPtr;
+			arguments[0].shmPtr=(struct arpDialog *)&shmPtr;
 			while((n=read(fdPipe[0], bufl, sizeof bufl))){
 				paquete++;
 				puts("lei del pipe\n");
@@ -238,52 +247,49 @@ struct arpDialog{
 						perror("write()");
 						exit(EXIT_FAILURE);
 					}
-				printf("HILO paquetes: %d\n",paquete);
-				}
+					printf("HILO paquetes: %d\n",paquete);
 					puts("\n\n");
 					k=0;
 					//llamo a la funcion splitter:
-					char **listSplit;
+					char **listSplit=NULL;
 					listSplit = splitter(bufl,'|');
-					free(**listSplit);
-					/*
 					while (listSplit[k]!=NULL){
 						switch(k){
 							case 0:
-								printf("k=0, luego valor=%s\n",listSplit[k]);
+								//printf("k=0, luego valor=%s\n",listSplit[k]);
 								arguments[0].ethSrcMac=listSplit[k];
-								printf("para ethSrcMac tengo el valor=%s\n",arguments[0].ethSrcMac);
+								//printf("para ethSrcMac tengo el valor=%s\n",arguments[0].ethSrcMac);
 
 							break;
 							case 1:
-								printf("k=1, luego valor=%s\n",listSplit[k]);
+								//printf("k=1, luego valor=%s\n",listSplit[k]);
 								arguments[0].ethDstMac=listSplit[k];
-								printf("para ethDstMac tengo el valor=%s\n",arguments[0].ethDstMac);
+								//printf("para ethDstMac tengo el valor=%s\n",arguments[0].ethDstMac);
 
 
 							break;
 							case 2:
-								printf("k=2, luego valor=%s\n",listSplit[k]);
+								//printf("k=2, luego valor=%s\n",listSplit[k]);
 								arguments[0].arpSrcMac=listSplit[k];
-								printf("para arpSrcMac tengo el valor=%s\n",arguments[0].arpSrcMac);
+								//printf("para arpSrcMac tengo el valor=%s\n",arguments[0].arpSrcMac);
 
 							break;
 							case 3:
-								printf("k=3, luego valor=%s\n",listSplit[k]);
+								//printf("k=3, luego valor=%s\n",listSplit[k]);
 								arguments[0].arpDstMac=listSplit[k];
-								printf("para arpDstMac tengo el valor=%s\n",arguments[0].arpDstMac);
+								//printf("para arpDstMac tengo el valor=%s\n",arguments[0].arpDstMac);
 
 
 							break;
 							case 4:
-								printf("k=4, luego valor=%s\n",listSplit[k]);
+								//printf("k=4, luego valor=%s\n",listSplit[k]);
 								arguments[0].arpSrcIp=listSplit[k];
-								printf("para ethSrcIp tengo el valor=%s\n",arguments[0].arpSrcIp);
+								//printf("para ethSrcIp tengo el valor=%s\n",arguments[0].arpSrcIp);
 							break;
 							case 5:
-								printf("k=5, luego valor=%s\n",listSplit[k]);
+								//printf("k=5, luego valor=%s\n",listSplit[k]);
 								arguments[0].arpDstIp=listSplit[k];
-								printf("para arpDstIp tengo el valor=%s\n",arguments[0].arpDstIp);
+								//printf("para arpDstIp tengo el valor=%s\n",arguments[0].arpDstIp);
 							break;
 
 							default:
@@ -295,7 +301,7 @@ struct arpDialog{
 					//Mostrar el bufl crudo, como lo leyo del pipe..medio tarde pero deberia estar intacto
 					//printf("leiiiiiiii %s\n",bufl);
 
-					arguments[0].packet="|hola|como|estas|pedazo|de|gil|";
+					arguments[0].packet="|hola|como|estas|";
 					//printf("a modo de ejemplo muestro ethDstMac en a1= %s\n",arguments[0].ethDstMac);
 					//deberia controlar la creacion de HILOS.. algun limite..sino dice que no puede allocar mas memoria
 					if(pthread_create(&hilo, &attr, arpDialoguesTableManager, &arguments)){
@@ -306,7 +312,7 @@ struct arpDialog{
 					//lanzado el hilo..comienza de nuevo
 					printf("PAQUETE AL HILO : %d\n",paquete);
 					
-                                }*/
+                                }
                         }
                         _exit(EXIT_SUCCESS);
                 }//switch fork
