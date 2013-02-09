@@ -16,6 +16,11 @@ void* arpDialoguesTableManager(void *arguments){
 //	char* paquete=(((arpDTMWorker_arguments *) arguments)->packet);
 //	struct arpDialog** shmPtr = NULL;
 //	*shmPtr= (((arpDTMWorker_arguments *) arguments)->shmPtr);
+//	printf("imprimiendo...... %d\n",  (((arpDTMWorker_arguments *) arguments)->shmPtr)->index );
+
+
+
+
 
 	printf("-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-\n");
 
@@ -157,7 +162,9 @@ void* arpDialoguesTableManager(void *arguments){
 
 	for(i=1;i<10;i++){//ese tamaño de la tabla de memoria deberia ser un sizeof o de alguna manera conocerlo ahora hardcodeado
 		printf("dentro antes del for...\n");
-		printf("imprimo el index: %d\n", (int) ((( (arpDTMWorker_arguments *) arguments)->shmPtr)[i].index));
+//						       ((( (arpDTMWorker_arguments *) arguments)->ethSrcMac);
+		printf("imprimo el index: %d\n", (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).index  );
+//						 (((arpDTMWorker_arguments *) arguments)->shmPtr[0]).index );
 		//printf("valor del hit = %d, para i= %d\n",(int)(shmPtr[i].hit), i);
 		/*
 		if(((int)(shmPtr[i].hit))==4){
