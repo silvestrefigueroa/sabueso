@@ -134,7 +134,7 @@ struct arpDialog{
 	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla
 	struct arpDialog arpDialoguesTable[100];//hardcodeado, luego deberia parametrizarlo y variabilizarlo
 	for(subindexCounterId=0;subindexCounterId<100;subindexCounterId++){//ese 100 es el hardcodeado anterior
-		arpDialoguesTable[subindexCounterId].index=subindexCounterId;
+		arpDialoguesTable[subindexCounterId].index=3;//subindexCounterId;
 		arpDialoguesTable[subindexCounterId].ethSrcMac=NULL;
 		arpDialoguesTable[subindexCounterId].ethDstMac=NULL;
 		arpDialoguesTable[subindexCounterId].arpSrcMac=NULL;
@@ -233,8 +233,8 @@ struct arpDialog{
                         //n como contador de lo que se leyo
                         int n=0,k=0,paquete=0;
 			//printf("hola\n");
-			arpDTMWorker_arguments arguments[2];
-			arguments[0].shmPtr=(struct arpDialog *)&shmPtr;
+			arpDTMWorker_arguments arguments[1];
+			arguments[0].shmPtr=shmPtr;//asignacion que Funciona!!
 			while((n=read(fdPipe[0], bufl, sizeof bufl))){
 				paquete++;
 				puts("lei del pipe\n");
