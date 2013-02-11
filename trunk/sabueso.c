@@ -134,7 +134,7 @@ struct arpDialog{
 	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla
 	struct arpDialog arpDialoguesTable[100];//hardcodeado, luego deberia parametrizarlo y variabilizarlo
 	for(subindexCounterId=0;subindexCounterId<100;subindexCounterId++){//ese 100 es el hardcodeado anterior
-		arpDialoguesTable[subindexCounterId].index=3;//subindexCounterId;
+		arpDialoguesTable[subindexCounterId].index=subindexCounterId;
 		arpDialoguesTable[subindexCounterId].ethSrcMac=NULL;
 		arpDialoguesTable[subindexCounterId].ethDstMac=NULL;
 		arpDialoguesTable[subindexCounterId].arpSrcMac=NULL;
@@ -145,7 +145,7 @@ struct arpDialog{
 		arpDialoguesTable[subindexCounterId].doCheckIpI=0;
 		arpDialoguesTable[subindexCounterId].doCheckSpoofer=0;
 		arpDialoguesTable[subindexCounterId].doCheckHosts=0;
-		arpDialoguesTable[subindexCounterId].nextState=0;
+		arpDialoguesTable[subindexCounterId].nextState=4;
 		arpDialoguesTable[subindexCounterId].hit=0;
 		//int sem_init(sem_t *sem, int pshared, unsigned int value);
 		sem_init(&(arpDialoguesTable[subindexCounterId].semaforo),1,1);//inicializa semaforos de cada entrada de la tabla

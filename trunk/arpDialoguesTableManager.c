@@ -13,15 +13,6 @@
 
 void* arpDialoguesTableManager(void *arguments){
 
-//	char* paquete=(((arpDTMWorker_arguments *) arguments)->packet);
-//	struct arpDialog** shmPtr = NULL;
-//	*shmPtr= (((arpDTMWorker_arguments *) arguments)->shmPtr);
-//	printf("imprimiendo...... %d\n",  (((arpDTMWorker_arguments *) arguments)->shmPtr)->index );
-
-
-
-
-
 	printf("-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-\n");
 
 	int srcMacEquals=1;//coinciden por default
@@ -47,12 +38,6 @@ void* arpDialoguesTableManager(void *arguments){
 	arpDstMac=(((arpDTMWorker_arguments *) arguments)->arpDstMac);
 	arpSrcIp=(((arpDTMWorker_arguments *) arguments)->arpSrcIp);
 	arpDstIp=(((arpDTMWorker_arguments *) arguments)->arpDstIp);
-
-	//test semaforo
-//	sem_post((sem_t *) & (shmPtr[0].semaforo)); //moverlo arriba para tener lo menos posible este bloqueo
-
-	//test leido de la estructura apuntada :P
-//	printf("que se trae el arguments en el HILILLO: %s	%s	%s	%s	%s	%s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
 
 	//Ahora como minimo reviso consistencias menores en la trama y el mensaje ARP
 	if(*ethSrcMac!=*arpSrcMac){
@@ -153,35 +138,61 @@ void* arpDialoguesTableManager(void *arguments){
 	}
 //	sem_post((sem_t *) & (shmPtr[0].semaforo)); //moverlo arriba para tener lo menos posible este bloqueo
 
-
 	//Bueno, en general me voy a interesar en los casos LEGITIMOS y en los casos con Taxonomia de ATAQUE, luego vere que hago con los otros
 	
 	//tomar una entrada de la tabla para guardar los datos:
 
-	printf("Antes del lazo for....\n");
-
-	for(i=1;i<10;i++){//ese tamaño de la tabla de memoria deberia ser un sizeof o de alguna manera conocerlo ahora hardcodeado
+	int insertFlag=0;
+	for(i=1;i<100;i++){//ese tamaño de la tabla de memoria deberia ser un sizeof o de alguna manera conocerlo ahora hardcodeado
 		printf("dentro antes del for...\n");
-//						       ((( (arpDTMWorker_arguments *) arguments)->ethSrcMac);
-		printf("imprimo el index: %d\n", (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).index  );
-//						 (((arpDTMWorker_arguments *) arguments)->shmPtr[0]).index );
-		//printf("valor del hit = %d, para i= %d\n",(int)(shmPtr[i].hit), i);
-		/*
-		if(((int)(shmPtr[i].hit))==4){
-			printf("entrada en la tabla n° %d disponible para uso\n",i);
+		printf("Estado de la entrada n°%d: %d\n", i,(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).hit  );
+		if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).nextState==4){
+			printf("entrada en la tabla n° %d esta disponible para uso\n",i);
 			//Obtener acceso exclusivo en la entrada de la tabla
 			//sem_wait((sem_t *) & (shmPtr[i].semaforo));
+			sem_wait( & ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).semaforo) );
 			//usar la entrada de la tabla
+			//vuelvo a comprobar, por las dudas de haberme encolado y haber sido utilizada la entrada antes de mi turno
+			if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).nextState!=4){
+				printf("la entrada fue utilizada, continuar busqueda...\n");
+				//desbloquearla antes de soltar:
+				sem_post( & ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).semaforo) );
+				break;
+			}
+			//else...continua sin mas
+
+			//aca quiero pasarle la cadena que esta con los punteros locales a la estructura, pero que cuando muera
+			// el hilo, no me de segmentation fault!!! ajajaj consultar esta parte.
+
+			(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac=ethSrcMac;
+			(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethDstMac=ethDstMac;
+			(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpSrcMac=arpSrcMac;
+			(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpDstMac=arpDstMac;
+			(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpSrcIp=arpSrcIp;
+			(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpDstIp=arpDstIp;
+			//informacion de estado:
+			(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).doCheckIpI=doCheckIpI;
+			(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).doCheckSpoofer=doCheckSpoofer;
+			(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).nextState=nextState;
+			(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).type=type;
+			//segun el caso, setear el hit:
+			(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).hit++;
 			//Liberar la entrada de la tabla:
-			//sem_post((sem_t *) & (shmPtr[0].semaforo));
-			break;
+			sem_post( & ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).semaforo) );
+			insertFlag=1;
+			break;//;) por eso corta y funciona el printf siguiente cuando no.. 
 		}
-		*/
-		printf("Salto el for para i=%d\n",i);
+		printf("La %d entrada en la tabla no esta disponible\n",i);
 	}
 	//una vez almacenada... termino la vida de este Worker =)
 
 	printf("sale del for\n");
+	if(insertFlag==0){
+		printf("No ha sido posible cargar la nueva entrada en la tabla, es probable que este LLENA!!! \n");
+	}
+	else{
+		printf("se inserto la entrada en la tabla\n");
+	}
 
 
 	return 0;
