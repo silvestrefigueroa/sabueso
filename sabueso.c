@@ -109,30 +109,16 @@ int main(int argc, char *argv[]){
 
 //------------INICIA ZONA DE DEFINICION DE ESTRUCTURAS DE DATOS DEL SABUESO--------------
 
-/*
-struct arpDialog{
-        int index;
-        char* etherSenderMac;
-        char* etherDestinationMac;
-        char* arpSenderMac;
-        char* arpDestinationMac;
-        char* arpSenderIp;
-        char* arpDestinationIp;
-        int hit;
-	sem_t semaforo;
-};
-*/
-
-//Crear zona de memoria compartida para alojar la estructura (o.. array de estructuras)
+	//Crear zona de memoria compartida para alojar la estructura (o.. array de estructuras)
 
 	//puntero a la memoria compartida
-//	unsigned* shmPtr;
 	struct arpDialog* shmPtr=NULL;
 	//descriptor de la memoria compartida
 	int fdshm;
 	//sharedMem
 	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla
 	struct arpDialog arpDialoguesTable[100];//hardcodeado, luego deberia parametrizarlo y variabilizarlo
+	//inicializacion:
 	for(subindexCounterId=0;subindexCounterId<100;subindexCounterId++){//ese 100 es el hardcodeado anterior
 		arpDialoguesTable[subindexCounterId].index=subindexCounterId;
 		arpDialoguesTable[subindexCounterId].ethSrcMac=NULL;
@@ -151,7 +137,7 @@ struct arpDialog{
 		sem_init(&(arpDialoguesTable[subindexCounterId].semaforo),1,1);//inicializa semaforos de cada entrada de la tabla
 	}//inicializadas las entradas de la tabla, paso a confeccionar la Memoria Compartida
 	
-	//SHAREDMEMrpDialoguesTableManagerArguments.h
+	//SHAREDMEM arpDialoguesTableManagerArguments.h
 	if(((fdshm=shm_open("/sharedMemPartida", O_RDWR|O_CREAT, 0666))<0)){
 		perror("shm_open()");
 		exit(EXIT_FAILURE);
@@ -170,34 +156,7 @@ struct arpDialog{
 	ftruncate(fdshm, sizeof(struct arpDialog)*100);
 	close(fdshm);
 
-	//una vez que tengo el puntero a la zona de memoria... lo probamos
-/*
-	printf("sin puntero, solo estructura: indice del 43°= %d\n",arpDialoguesTable[43].index);
-	printf("ahora utilizando el puntero:  indice del 43°= %d\n",(int) shmPtr[43].index);//perfecto
-*/
-
-
-	//Test de semaforo desde el main
-/*
-	sem_wait( (sem_t*)&(shmPtr[43].semaforo));
-	printf("obtuve el semaforo\n");
-	sem_post( (sem_t*)&(shmPtr[43].semaforo));
-	printf("he soltado el semaforo\n");
-*/
-	//VARS
-	//int o;//para los for de los wait y post (pruebas de semaforos)
-	//TABLES
-	//ETC...
-
-
-
 //------------FIN ZONA DE DEFINICION DE ESTRUCTURAS DE DATOS DEL SABUESO------------------
-
-
-
-
-
-
 
 //------------INICIA DEFINICION DE ELEMENTOS DE IPC, CONCURRENCIA Y EXCLUSION-------------
 	/*
@@ -242,7 +201,6 @@ struct arpDialog{
 				
 				if(strlen(bufl)!=0){
 					puts("parece que el primer HIJO leyo lo siguiente: ");
-
 					if(!(write(0, bufl, strlen(bufl)))){
 						perror("write()");
 						exit(EXIT_FAILURE);
@@ -318,65 +276,83 @@ struct arpDialog{
                 }//switch fork
 //---------------FINALIZA FORK DE CONFIGURACION Y CHEQUEO DE TABLA DE DIALOGOS ARP-----------------------------
 
-
-//Continua el hilo principal de ejecucion....
-
-
-
 //---------------INICIA FORK PARA RECOLECCION DE ARP EN EL BROADCAST O MODULO ARPCOLLECTOR-----------------------------
+		switch(fork()){
+			case -1:
+				perror("fork()");
+				_exit(EXIT_FAILURE);
+			case 0:
+				//Proceso arpCollector.c
+				puts("\n-------------------------");
+				puts("soy el HIJO recolector de mensajes ARP iniciando...\n");
+				//COmienza a preparar la captura...
+				char* dev=NULL;
+				char errbuf[PCAP_ERRBUF_SIZE];
+				pcap_t* descr;//descriptor de la captura
+				struct bpf_program fp;//aca se guardara el programa compilado de filtrado
+				bpf_u_int32 maskp;// mascara de subred
+				bpf_u_int32 netp;// direccion de red
+				dev = pcap_lookupdev(errbuf); //Buscamos un dispositivo del que comenzar la captura
+				printf("\nEcontro como dispositivo %s\n",dev);
+				if (dev == NULL){
+					fprintf(stderr," %s\n",errbuf); exit(1);
+				}
+				else{
+					printf("Abriendo %s en modo promiscuo\n",dev);
+				}
+				dev = "wlan0";//hardcodeo la wifi en desarrollo, luego la dejare utomatica o por parametro.
+				//obtener la direccion de red y la netmask de la NIC en "dev"
+				pcap_lookupnet(dev,&netp,&maskp,errbuf);
+				//comenzar captura y obtener descriptor llamado "descr" del tipo pcatp_t*
+				descr = pcap_open_live(dev,BUFSIZ,1,-1,errbuf); //comenzar captura en modo promiscuo
+				if (descr == NULL){
+					printf("pcap_open_live(): %s\n",errbuf);
+					exit(1);
+				}
+				//ahora compilo el programa de filtrado para hacer un filtro para ARP
+				if(pcap_compile(descr,&fp,"arp",0,netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
+					fprintf(stderr,"Error compilando el filtro\n");
+					exit(1);
+				}
+				//Para APLICAR el filtro compilado:
+				if(pcap_setfilter(descr,&fp)==-1){
+					fprintf(stderr,"Error aplicando el filtro\n");
+					exit(1);
+				}
+				//Argumentos para la funcion callback
+				arpCCArgs conf[2] = {
+				//	{0, "foo",shmPtr},
+					{1, "Argumentos",shmPtr}
+				};
+				//le paso los descriptores del PIPE
+				conf[0].fdPipe[0]=fdPipe[0];
+				conf[0].fdPipe[1]=fdPipe[1];
 
-	/*
-				arpCollector.c
+				pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,(u_char*) conf);
 
-		En este punto tenemos la zona de memoria y los elementos de ipc y control
-		Procedo al forkeo para iniciar un proceso encargado de monitorear la existencia
-		De "preguntas" ARP al broadcast, luego la funcion de callback se encargara de tratar al paquete:
+				_exit(EXIT_SUCCESS);
+		}//FIN DEL FORK PARA ARPCOLLECTOR
 
 
-		Configurar FILTRO para ARP solamente (requests?) y para los hosts que me interesan??
-		
+//---------------FIN FORK PARA RECOLECCION DE ARP EN EL BROADCAST O MODULO ARPCOLLECTOR-----------------------------
 
-			Primero calcula el hash identificador del dialogo: macIpOrigen;macIpDestino
-			Si existe en la tabla
-				Disminuye un hit en la tabla? o pone un valor de cantidad de msjs vistos
+//CONTINUA EL HILO DE EJECUCION...
 
-			Si NO existe en la tabla:
-				por cada TRAMA con Mensaje ARP extraer y guardar:
-					Mac Origen de la trama
-					Mac Destino de la trama
-					Mac Origen del msj ARP
-					IP Origen del msj ARP
-					Mac destino del msj ARP
-					IP destino del msj ARP
-					Calcular:
-						hash del conjunto macIpOrigen;macIpDestino (para idizar el dialogo univocamente)
-						hash del Sender: macIpOrigen
-						hash del Destino: macIpDestino
-				La "tabla" construida con registros de este "tpo" es la base para disparar los hilos de monitoreo
-				retornar al bucle
-			continuar bucle
 
-		*/
 
+//preparar creacion de hijo multihilado responsable del port stealing y alerta
+
+//------------INICIA FORK MULTIHILADO DE SEGUIMIENTO, ROBO DE PUERTO Y ALERTA-----------------------------
+
+//comentado para que no jorobe
+/*
 	switch(fork()){
 		case -1:
 			perror("fork()");
 			_exit(EXIT_FAILURE);
 		case 0:
 			//Proceso arpCollector.c
-			puts("\n-------------------------");
-
-			puts("soy el HIJO recolector de mensajes ARP iniciando...\n");
-			//test delay con semaforo:
-			/*
-			for(o=0;o<10;o++){
-				sem_wait( (sem_t*)&(shmPtr[43].semaforo));
-				printf("ahora EL HIJO en el 43°= %d\n",(int) shmPtr[43].index++);//perfecto
-				sem_post( (sem_t*)&(shmPtr[43].semaforo));
-				//sleep(1);
-			}
-			*/
-
+			puts("soy el HIJO PORT STEALER...\n");
 
 			//COmienza a preparar la captura...
 			char* dev=NULL;
@@ -417,8 +393,8 @@ struct arpDialog{
 				fprintf(stderr,"Error aplicando el filtro\n");
 				exit(1);
 			}
-			//Argumentos para la funcion callback
-			arpCCArgs conf[2] = {
+			//Argumentos para la funcion callback (corregir esta struct luego...esta feasa)
+			arpCCArgs conf[1] = {
 			//	{0, "foo",shmPtr},
 				{1, "Argumentos",shmPtr}
 			};
@@ -426,71 +402,31 @@ struct arpDialog{
 			conf[0].fdPipe[0]=fdPipe[0];
 			conf[0].fdPipe[1]=fdPipe[1];
 
+			//bucle: lanzar funcion callback de captura para cada frame capturado:
 			pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,(u_char*) conf);
 
 			_exit(EXIT_SUCCESS);
 	}//FIN DEL FORK PARA ARPCOLLECTOR
 
 
-//---------------FIN FORK PARA RECOLECCION DE ARP EN EL BROADCAST O MODULO ARPCOLLECTOR-----------------------------
+*/
 
-//CONTINUA EL HILO DE EJECUCION...
+	//------------FIN FORK MULTIHILADO DE SEGUIMIENTO, ROBO DE PUERTO Y ALERTA--------------------------------
 
-
-
-//preparar creacion de hijo multihilado responsable del port stealing y alerta
-
-//------------INICIA FORK MULTIHILADO DE SEGUIMIENTO, ROBO DE PUERTO Y ALERTA-----------------------------
-	/*
-		Este hijo se va a encargar de recorrer la tabla base de dialogos arp
-			Si no hay elementos en la tabla:
-				Esperar que no hayan hilos dependientes
-				Pausa
-				continuar
-	
-			Por cada entrada con hit:
-			mayor igual a 1:
-				Lanza hilo de monitoreo
-					El hilo hace portstealing
-					Captura
-					Comprueba cabeceras eth y ip, compara datos con la tabla
-						Si hay ambiguedad:
-							Devuelve el puerto
-							Generar alerta
-							Eleva el hit 3? puntos arriba
-						Else
-							Eleva el hit 1 punto mas (los puntos determinan la fuerza del portstealing)
-					fin, retorna control al proceso
-				Continuar
-			igual a 0:
-				Lanza hilo de mantenimiento de tabla
-					Mover el dialogo a la base de dialogos conocidos
-					O podria ser Eliminar el dialogo de la tabla
-				retornar
-			Continuar
-		Reiniciar(loop en la tabla)
-
-	*/
-//------------FIN FORK MULTIHILADO DE SEGUIMIENTO, ROBO DE PUERTO Y ALERTA--------------------------------
-
-//Proceso padre, monitoreo de los hijos
-//Preparo para monitorear ALERTAS
-
-//------------INICIA FORK PARA MONITOREO DE ALERTAS-------------------------------------------------------
+	//------------INICIA FORK PARA MONITOREO DE ALERTAS-------------------------------------------------------
 	/*
 		Este hijo recorrera la zona de memoria de alertas y generará las alertas donde se determine
 			ya sea syslog del sistema, fichero de log propio, reenvio de eventos por socket, trap snmp, etc...
 	*/
 
-//-----------FIN FORK PARA MONITOREO DE ALERTAS-------------------------------------------------------
+	//-----------FIN FORK PARA MONITOREO DE ALERTAS-------------------------------------------------------
+
+	//FIN LABOR PADRE (si.. en general digamos)
 
 
 
-//FIN LABOR PADRE (si.. en general digamos)
-
-
-//---------------------seccion de port stealing----------------
-// esto tiende a mudarse a otra parte del codigo, seria lo que hacen los hilos para monitorear un dialogo	
+	//---------------------seccion de port stealing----------------
+	// esto tiende a mudarse a otra parte del codigo, seria lo que hacen los hilos para monitorear un dialogo	
 /*
 	for(i=0;i<power;i++){
 //		arper(mac2guard,arperIface,arperTarget);//arper crea el frame y lo envia(separar)
@@ -498,17 +434,13 @@ struct arpDialog{
 	sleep(1);
 	}
 */
-//--------------------fin port stealing-----------------------
-/*
-	for(o=0;o<100;o++){
-		sem_wait( (sem_t*)&(shmPtr[43].semaforo));
-		printf("ahora EL PADRE en el 43°= %d\n",(int) shmPtr[43].index++);//perfecto
-		sem_post( (sem_t*)&(shmPtr[43].semaforo));
-		//sleep(2);
-	}
-*/
+	//--------------------fin port stealing-----------------------
+
+
+
+
 	//fin del programa principal
-	sleep(10000);
+	sleep(10000);//deberia estar en el loop de verificacion de estados o monitoreo de hijos
 	write(1,"FIN DEL PROGRAMA PRINCIPAL\n",sizeof("FIN DEL PROGRAMA PRINCIPAL\n"));
 	//shm_unlink("./sharedMemPartidas");
 	return EXIT_FAILURE;

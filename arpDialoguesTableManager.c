@@ -31,6 +31,7 @@ void* arpDialoguesTableManager(void *arguments){
 	char* type=NULL;//consultar posibles valores en tabla_de_dialogos.txt [Arquitectura]
 	int i=0;
 
+	//mapear los datos para facilitar la manipulacion de los mismos y el codeado.
 
 	ethSrcMac=(((arpDTMWorker_arguments *) arguments)->ethSrcMac);
 	ethDstMac=(((arpDTMWorker_arguments *) arguments)->ethDstMac);
@@ -108,15 +109,15 @@ void* arpDialoguesTableManager(void *arguments){
 		//o bien son tramas ARP que cayeron en el filtro (y vienen del portstealing) pero spoofeadas tambien por que no?
 		//primero que nada chekeo si las MAC origen son iguales (primer verificacion, leo el resultado directamente)
 			//si son iguales, veo el match MAC-IP del origen para ver si es ataque (consulto info real)
-			switch(srcMacEquals){//lo puse en switch porque podria ser casos especiales de MAC Reservadas, de momento funciona igual q con IF-else
+			switch(srcMacEquals){//lo puse en switch porque podria ser casos especiales de MAC Reservadas, 
+						//de momento funciona igual q con IF-else
 				case 1:
 					//trama OK, debera verificar capa de red IP
 						//si no matchea, entonces ALERTO EL ATAQUE!!!
 						//SI MATCHEA, tenemos origen OK, destino OK.... nada raro.. me robe un ARP..
-						//printf("LOG:trama aparentemente normal,[Taxonomia de respuesta o ATAQUE], marcada para chekear IP\n");
 						printf("LOG:[Taxonomia de respuesta o ATAQUE], par[%s]-[%s]\n",ethDstMac,arpDstMac);
 						//marcar para portstelear y GUARDAR el dialogo en la tabla
-						doCheckIpI=1;//siempre primero, es la trivial.. si conozco la info real, no noecesito el stealer.
+						doCheckIpI=1;//siempre primero, es la trivial.si conozco la info real, no noecesito el stealer.
 						doCheckSpoofer=1;
 						type="PASS";
 						nextState=1;
@@ -125,9 +126,12 @@ void* arpDialoguesTableManager(void *arguments){
 				break;
 				case 0:
 						//no son iguales las MAC origen
-						//Puede ser proxyARP????(ojo que esta filtrado) o bien el origen (sender) esta haciendo algo raro
+						//Puede ser proxyARP????(ojo que esta filtrado) o bien 
+							//el origen (sender) esta haciendo algo raro
 						//WARNING-> inconsistencia en las MAC origen
 						printf("LOG:macs origen no coinciden, posible proxyARP o trama anomala\n");
+						type="WARN";
+						nextState=2;
 				break;
 				default:
 					printf("LOG:caso anomalo no tratado, no pudo determinarse igualdad de mac origen\n");
@@ -136,7 +140,105 @@ void* arpDialoguesTableManager(void *arguments){
 				break;
 			}
 	}
-//	sem_post((sem_t *) & (shmPtr[0].semaforo)); //moverlo arriba para tener lo menos posible este bloqueo
+	
+	//antes de ir a meterlo en la tabla, deberia comprobar que la informacion que estoy metiendo no existe ya de antes!!!
+
+
+	//meter un lazo for como el siguiente para esta parte!!
+
+	int dropFlag=0;
+	for(i=1;i<100;i++){//ese tamaño de la tabla de memoria deberia ser un sizeof o de alguna manera conocerlo ahora hardcodeado
+
+		//debera comparar con todas entradas en la tabla, si coinciden tengo un conocimento, descartar si es igual
+
+		//comprobar si existe la entrada en la tabla (de cualquier sentido)
+		
+		//pero si la entrada en la tabla esta para descartar o para usar entonces saltar el CICLO ACTUAL
+		/*
+		if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).hit==(3|4)){
+			//saltar ciclo
+			printf("saltando esta entrada de la tabla por no ser conocimiento...\n");
+			continue;
+		}
+		*/
+		//printf("Estado de la entrada n°%d: %d\n", i,(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).hit  );
+		//Comparo las ethSrcMac de la tabla con las MAC que tengo en este hilo
+		if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac==ethSrcMac){
+			printf("Coincidencia de ethSrcMac_en_tabla con ethSrcMac\n");
+			//comprobar si el otro participande del dialogo es el de ahora:
+			if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethDstMac==ethDstMac){
+				printf("coinsidencia de dialogo!! tambien coincidieron las mac destino\n");
+				//comprobar integridad IP:
+				if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpSrcIp==arpSrcIp){
+					printf("IP src OK\n");
+					if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpDstIp==arpDstIp){
+						printf("IP destino OK, entrada REPETIDA EN LA TABLA\n");
+						dropFlag=1;
+					}
+					else{
+						printf("conflicto: La IP destino actual no coincide con la almacenada posible spoofing\n");
+						//marcar de algun modo el conflicto!!! (podria ser el hit???)
+						dropFlag=0;
+					}
+				}
+				else{
+					//IP origen de ahora no coincide con el origen de la entrada almacenada
+					printf("IP origen en discordia con la entrada almacenada\n");
+					//deberia marcarla para revisar, entonces se almacena
+					dropFlag=0;
+				}
+			}
+			else{
+				//no seria la misma trama porque tienen mismo origen pero distinto destino en MAC
+				dropFlag=0;
+			}
+		}
+		else{
+			if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac==ethDstMac){
+	                        printf("Coincidencia de ethDstMac_en_tabla con ethSrcMac\n");
+        	                //comprobar si el otro participande del dialogo es el de ahora:
+				if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethDstMac==ethSrcMac){
+					printf("coinsidencia de dialogo pero cruzado!!\n");
+					//comprobar integridad IP:
+					if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpSrcIp==arpDstIp){
+						//macs iguales aunque cruzadas:
+
+						printf("IP src y dst cruzadas OK\n");
+						if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpDstIp==arpSrcIp){
+							printf("IP destino OK, entrada REPETIDA EN LA TABLA (CRUZADA)\n");
+							dropFlag=1;
+						}
+						else{
+							printf("conflicto: IP dest. actual no coincide con la almacenada posible spoofing\n");
+							//marcar de algun modo el conflicto!!! (podria ser el hit???)
+							dropFlag=0;
+						}
+					}
+					else{
+						//IP origen de ahora no coincide con el origen de la entrada almacenada
+						printf("IP origen (CRUZADA) en discordia con la entrada almacenada\n");
+						//deberia marcarla para revisar, entonces se almacena
+						dropFlag=0;
+					}
+				}
+				else{
+					//no seria la misma trama porque tienen mismo origen pero distinto destino en MAC
+					dropFlag=0;
+				}
+			}
+		}//else if
+		//ahora si esta dropFlag arriba, entonces corto el lazo y termino descartando la trama
+		if(dropFlag==1){
+			printf("LOG: se desacarta la trama por coincidir en la tabla\n");
+			return 0;
+		}		
+	}//lazo FOR
+	//facil, si esta activo el DROP, pues finalizar, sino continuar ejecucion
+	if(dropFlag==1){
+		printf("LOG: se desacarta la trama por coincidir en la tabla\n");
+		return 0;
+	}
+
 
 	//Bueno, en general me voy a interesar en los casos LEGITIMOS y en los casos con Taxonomia de ATAQUE, luego vere que hago con los otros
 	
