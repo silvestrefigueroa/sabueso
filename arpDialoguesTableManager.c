@@ -30,6 +30,8 @@ void* arpDialoguesTableManager(void *arguments){
 	int nextState=0;//por default, almacenarla y ya
 	char* type=NULL;//consultar posibles valores en tabla_de_dialogos.txt [Arquitectura]
 	int i=0;
+	int dstZeroMacFlag=0;
+	int dstBrdMacFlag=0;
 
 	//mapear los datos para facilitar la manipulacion de los mismos y el codeado.
 
@@ -57,6 +59,7 @@ void* arpDialoguesTableManager(void *arguments){
 		//puts("siguio...\n");
 		//printf("LOG:aaaaaaaaaaa tengo: %s y %s \n\n",ethDstMac,"ff:ff:ff:ff:ff:ff");
 		if(*ethDstMac==*broadcastMac){
+			dstBrdMacFlag=1;
 			puts("LOG:ethDsrMac es broadcast!!!\n");
 			//mmm iba al broadcast, sera una pregunta realmente? o sera para engañar?
 			if(*arpDstMac==*zeroMac){//si es una pregunta ARP, lo marco para consultar su credibilidad? o consulto yo?
@@ -64,6 +67,7 @@ void* arpDialoguesTableManager(void *arguments){
 				//es al menos una trama aceptable, podria verificarse luego pero al menos la acepto asi!
 				//verifico si la IP de destino coincide con la del host que tiene la MAC ethDstMac
 				//si quiero realmente probar esto, deberia chequear los pares MACIP de cada host participante
+				dstZeroMacFlag=1;
 				printf("LOG:puede que sea una pregunta ARP legitima..\n");//faltaria verificar match de ip-mac origen.
 				//bien, esta trama esta marcada para verificarse integridad IP, luego steal en busqueda de spoofers
 				doCheckIpI=1;
@@ -86,6 +90,7 @@ void* arpDialoguesTableManager(void *arguments){
 			//Este curioso caso se da por ejemplo con el DDwrt. el destino en ARP debera ser 0:0:0:0:0:0
 			printf("LOG:antes de comparar con zero, tengo %s y %s\n",arpDstMac,zeroMac);
 			if(*arpDstMac==*zeroMac){
+				dstZeroMacFlag=1;
 				//es altamente probable que sea una preguntita del AP que se hace el que no sabe quien es el cliente
 				//para confirmar, valido ethSrcMac con arpSrcMac y luego arpSrcMac con arpSrcIp =)
 				printf("LOG:Posible mensaje del AP, compruebe que ethSrcMac matchea con arpSrcIp para descartar ataque DoS\n");
@@ -161,6 +166,21 @@ void* arpDialoguesTableManager(void *arguments){
 			continue;
 		}
 		*/
+		//evaluo primero los casos especiales de broadcast
+		if(dstBrdMacFlag==1){
+			//este caso es especial, es una pregunta al broadcast
+			printf("tratar este caso (descartado ahora).. es cuando se trata de broadcast en ARP\n");
+			dropFlag=1;
+			break;//continue;
+		}
+		if(dstZeroMacFlag==1){
+			printf("tratar este caso (descartando ahora).. es mensaje del AP o destino ARP 0.0.0.0\n");
+			dropFlag=1;
+			break;//continue;
+		}
+
+
+
 		//printf("Estado de la entrada n°%d: %d\n", i,(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).hit  );
 		//Comparo las ethSrcMac de la tabla con las MAC que tengo en este hilo
 		if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac==ethSrcMac){
@@ -229,13 +249,13 @@ void* arpDialoguesTableManager(void *arguments){
 		}//else if
 		//ahora si esta dropFlag arriba, entonces corto el lazo y termino descartando la trama
 		if(dropFlag==1){
-			printf("LOG: se desacarta la trama por coincidir en la tabla\n");
+			printf("LOG: se desacarta la trama (quiza por coincidir en la tabla)\n");
 			return 0;
 		}		
 	}//lazo FOR
 	//facil, si esta activo el DROP, pues finalizar, sino continuar ejecucion
 	if(dropFlag==1){
-		printf("LOG: se desacarta la trama por coincidir en la tabla\n");
+		printf("LOG: se desacarta la trama (quizaa por coincidir en la tabla)\n");
 		return 0;
 	}
 
