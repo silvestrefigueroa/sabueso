@@ -27,6 +27,7 @@ void* arpDialoguesTableManager(void *arguments){
 	char* zeroMac="0:0:0:0:0:0";//lo mismo que el anterior
 	int doCheckIpI=0;
 	int doCheckSpoofer=0;
+	int doHitIncrement=0;
 	int nextState=0;//por default, almacenarla y ya
 	char* type=NULL;//consultar posibles valores en tabla_de_dialogos.txt [Arquitectura]
 	int i=0;
@@ -152,7 +153,11 @@ void* arpDialoguesTableManager(void *arguments){
 	//meter un lazo for como el siguiente para esta parte!!
 
 	int dropFlag=0;
+	int askFlag=0;
+
 	for(i=1;i<100;i++){//ese tamaño de la tabla de memoria deberia ser un sizeof o de alguna manera conocerlo ahora hardcodeado
+
+		printf("Revisor de tabla, pasada %d\n",i);
 
 		//debera comparar con todas entradas en la tabla, si coinciden tengo un conocimento, descartar si es igual
 
@@ -169,20 +174,95 @@ void* arpDialoguesTableManager(void *arguments){
 		//evaluo primero los casos especiales de broadcast
 		if(dstBrdMacFlag==1){
 			//este caso es especial, es una pregunta al broadcast
-			printf("tratar este caso (descartado ahora).. es cuando se trata de broadcast en ARP\n");
-			dropFlag=1;
-			break;//continue;
+			//estos son los que me interesan porque me dice quien esta interesado en hablar con quien:
+			
+			if(dstZeroMacFlag==1){
+				printf("Tenemos una pregunta ARP aparentemente, entonces el pregunton es posible victima a futuro\n");
+				dropFlag=0;
+				askFlag=1;
+				//break;//continue;
+			}
 		}
-		if(dstZeroMacFlag==1){
-			printf("tratar este caso (descartando ahora).. es mensaje del AP o destino ARP 0.0.0.0\n");
-			dropFlag=1;
-			break;//continue;
+		else{
+			if(dstZeroMacFlag==1){
+				printf("tratar este caso (descartando ahora).. es mensaje del AP o destino ARP 0.0.0.0 sin brd en eth\n");
+				dropFlag=1;
+				break;//continue;
+			}
 		}
+		int comparacion=69;
+		if(askFlag==1){
+			//si es una pregunta, me fijo si el pregunton esta en la tabla junto a su destino
+			printf("se va a comparar : %s con %s\n",( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac ),ethSrcMac );
+			if(  ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac) != NULL){
+				printf("no nulo\n");
+				comparacion=strncmp( ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac), ethSrcMac, (int) strlen(ethSrcMac));
+				printf("valor de la comparacion = %d\n",comparacion);
+				if(comparacion == 0){
+					printf("eran iguales entonces por el strlen\n");
+				}
+				else{
+					printf("eran DISTINTOS por el strlen\n");
+				}
+			}
+			else{
+				//si esta nula la entrada, saltarla y ahorrar tiempo!!
+				continue;//salta con este?
+				printf("era nulo....\n");
+			}
+			if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac==ethSrcMac){
+				printf("este pregunton ya pregunto antes, a ver si es el mismo destino...\n");
+				if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpDstIp==arpDstIp){
+					printf("es el mismo destino, a ver si no esta spoofeada la pregunta...\n");
+					//ahora puedo hacer una busqueda en la tabla..si coincide que la ip es distinta entonces
+					//se que estamos frente a una pregunta spoofeada
+					if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpSrcIp==arpSrcIp){
+						//si entra aca significa que coincidio origen, destino y las IP origen
+						printf("esta entrada ya existia en la tabla, la descartamos...\n");
+						dropFlag=1;//descartar...
+						//incremento el hit de la entrada.
+						//bloquear entrada...
+						sem_wait( & ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).semaforo) );
+						//usar la entrada de la tabla
+						//Si estaba para eliminar, le cambio el nextState
+						if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).nextState==(3||4)){
+							printf("Esta entrada se iba a eliminar...\n");
+							(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).nextState=1;
+						}
+						//aumento el hit
+						(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).hit++;
+						//liberar entrada de la tabla
+						sem_post( & ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).semaforo) );
+						//ahora corto porque solo queria aumentar el HIT
+						break;
+					}
+					else{
+						printf("se encontro la entrada, pero difieren IP origen, posible pregunta spoofed\n");
+						dropFlag=0;//corresponde.... por mas que venga de antes en 0
+						doCheckSpoofer=1;//sip.. si hay inconsistencia hay algo raro..
+					}
+				}
+			}
+		}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 		//printf("Estado de la entrada n°%d: %d\n", i,(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).hit  );
 		//Comparo las ethSrcMac de la tabla con las MAC que tengo en este hilo
+		printf("mostrando comparacion: %s con %s \n",(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac,ethSrcMac);
 		if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac==ethSrcMac){
 			printf("Coincidencia de ethSrcMac_en_tabla con ethSrcMac\n");
 			//comprobar si el otro participande del dialogo es el de ahora:
@@ -265,6 +345,9 @@ void* arpDialoguesTableManager(void *arguments){
 	//tomar una entrada de la tabla para guardar los datos:
 
 	int insertFlag=0;
+	int whiler=0;
+	//while(whiler<1000){while ++;sleep(whiler);//para que mantenga la intencion de almacenar aunque este lleno y espere mas cda vez..
+
 	for(i=1;i<100;i++){//ese tamaño de la tabla de memoria deberia ser un sizeof o de alguna manera conocerlo ahora hardcodeado
 		printf("dentro antes del for...\n");
 		printf("Estado de la entrada n°%d: %d\n", i,(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).hit  );
