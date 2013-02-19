@@ -14,7 +14,6 @@
 void* arpDialoguesTableManager(void *arguments){
 
 	printf("-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-\n");
-
 	int srcMacEquals=1;//coinciden por default
 	//reducir la perogruyada de asignacion que hago abajo..no me salio en una sola linea..
 	char* ethSrcMac=NULL;
