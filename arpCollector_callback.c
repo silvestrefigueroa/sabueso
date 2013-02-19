@@ -84,6 +84,10 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		//preparo el pipe para SOLO escritura:
 		//cierro lectura ya que desde aca SOLO escribimos
 		close(args[0].fdPipe[0]);
+
+		//-----------en lugar de crear el paquete como hago a continuacion.. mejor guardo derecho en las variables y luego analizo:
+//---------------------------------
+/*
 		//creo el paquete que voy a inyectar en el PIPE (de momento con strcpy, optimizar luego sin usar strcpy)
 		//ISSUE REPORTED TO GCode svn
 		//si bien el formato que sigue es distinto a lo que usba para debug, me ahorra dolores de cabeza con
@@ -100,7 +104,45 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		strcpy(paquete+strlen(paquete),inet_ntoa(*(struct in_addr *) arpPtr->arp_spa));
 		strcpy(paquete+strlen(paquete),"|");//arpDstIp=");
 		strcpy(paquete+strlen(paquete),inet_ntoa(*(struct in_addr *) arpPtr->arp_tpa));
+*/
 
+
+		printf("-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-\n");
+		int srcMacEquals=1;//coinciden por default
+		char* ethSrcMac=NULL;
+		char* ethDstMac=NULL;
+		char* arpSrcMac=NULL;
+		char* arpDstMac=NULL;
+		char* arpSrcIp=NULL;
+		char* arpDstIp=NULL;
+		char* broadcastMac="ff:ff:ff:ff:ff:ff";//Estara mal? deberia inicializar a null y luego cargarle la cadena?deberia reservar?
+		char* zeroMac="0:0:0:0:0:0";//lo mismo que el anterior
+		int doCheckIpI=0;
+		int doCheckSpoofer=0;
+	//	int doHitIncrement=0;
+		int nextState=0;//por default, almacenarla y ya
+		char* type=NULL;//consultar posibles valores en tabla_de_dialogos.txt [Arquitectura]
+		int i=0;
+		int dstZeroMacFlag=0;
+		int dstBrdMacFlag=0;
+
+		//mapear los datos para facilitar la manipulacion de los mismos y el codeado.
+
+		ethSrcMac=ether_ntoa((const struct ether_addr*) eptr->ether_shost);
+		ethDstMac=ether_ntoa((const struct ether_addr*) eptr->ether_dhost);
+		arpSrcMac=ether_ntoa((const struct ether_addr*) arpPtr->arp_sha);
+		arpDstMac=ether_ntoa((const struct ether_addr*) arpPtr->arp_tha);
+		arpSrcIp=inet_ntoa(*(struct in_addr *) arpPtr->arp_spa);
+		arpDstIp=inet_ntoa(*(struct in_addr *) arpPtr->arp_tpa);
+
+
+		printf("He mapeado estos datos: \n%s\n%s\n%s\n%s\n%s\n%s\n\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
+
+		//Ahora como minimo reviso consistencias menores en la trama y el mensaje ARP
+//		if(*ethSrcMac!=*arpSrcMac){...//deberia usar strncmp!! esa igualdad es una mentira!!!
+		
+
+//--------------------------------
 
 		/*
 		//escribo en el pipe...
