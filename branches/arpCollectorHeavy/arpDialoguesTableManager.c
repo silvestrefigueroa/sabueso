@@ -26,7 +26,7 @@ void* arpDialoguesTableManager(void *arguments){
 	char* zeroMac="0:0:0:0:0:0";//lo mismo que el anterior
 	int doCheckIpI=0;
 	int doCheckSpoofer=0;
-	int doHitIncrement=0;
+//	int doHitIncrement=0;
 	int nextState=0;//por default, almacenarla y ya
 	char* type=NULL;//consultar posibles valores en tabla_de_dialogos.txt [Arquitectura]
 	int i=0;
@@ -344,7 +344,7 @@ void* arpDialoguesTableManager(void *arguments){
 	//tomar una entrada de la tabla para guardar los datos:
 
 	int insertFlag=0;
-	int whiler=0;
+//	int whiler=0;
 	//while(whiler<1000){while ++;sleep(whiler);//para que mantenga la intencion de almacenar aunque este lleno y espere mas cda vez..
 
 	for(i=1;i<100;i++){//ese tamaño de la tabla de memoria deberia ser un sizeof o de alguna manera conocerlo ahora hardcodeado

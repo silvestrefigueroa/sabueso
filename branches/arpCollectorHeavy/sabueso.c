@@ -171,7 +171,7 @@ int main(int argc, char *argv[]){
 //------------FIN DEFINICION DE ELEMENTOS DE IPC, CONCURRENCIA Y EXCLUSION----------------
 
 //---------------INICIA FORK DE CONFIGURACION Y CHEQUEO DE TABLA DE DIALOGOS ARP-----------------------------
-
+/*
         switch(fork()){
                 case -1:
                         perror("fork()");
@@ -274,6 +274,9 @@ int main(int argc, char *argv[]){
                         }
                         _exit(EXIT_SUCCESS);
                 }//switch fork
+
+
+*/
 //---------------FINALIZA FORK DE CONFIGURACION Y CHEQUEO DE TABLA DE DIALOGOS ARP-----------------------------
 
 //---------------INICIA FORK PARA RECOLECCION DE ARP EN EL BROADCAST O MODULO ARPCOLLECTOR-----------------------------
