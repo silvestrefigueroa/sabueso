@@ -25,12 +25,46 @@
 //Include de la estructura arpDialog
 #include "arpDialogStruct.h"
 
+
+//Define (macros) para facilitar el codeo
+#define ETHSRCMAC ether_ntoa_r( ((const struct ether_addr*) eptr->ether_shost), ethSrcMacBuf)
+#define ETHDSTMAC ether_ntoa_r( ((const struct ether_addr*) eptr->ether_dhost), ethSrcMacBuf)
+#define ARPSRCMAC ether_ntoa_r( ((const struct ether_addr*) arpPtr->arp_sha), arpSrcMacBuf)
+#define ARPDSTMAC ether_ntoa_r( ((const struct ether_addr*) arpPtr->arp_tha), arpDstMacBuf)
+
+#define ARPSRCIP inet_ntoa(*(struct in_addr *) arpPtr->arp_spa)
+#define ARPDSTIP inet_ntoa(*(struct in_addr *) arpPtr->arp_tpa)
+
+
+
+
+
+
+
+
+
+
 //Callback starts here!!
 void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,const u_char* packet){
 	static int count = 1;
 
-	//creo el paquete de datos:
-	char paquete[4096];//ajustar este tamaño!! hay que dimensionarlo!!
+
+	//bufers para las reentrante de ether e inet
+	char ethSrcMacBuf[20];
+	char ethDstMacBuf[20];
+	char arpSrcMacBuf[20];
+	char arpDstMacBuf[20];
+	char arpSrcIpBuf[20];
+	char arpDstIpBuf[20];
+	
+	//los punteritos comodos ajaja
+	char* ethSrcMac=NULL;
+	char* ethDstMac=NULL;
+	char* arpSrcMac=NULL;
+	char* arpDstMac=NULL;
+	char* arpSrcIp=NULL;
+	char* arpDstIp=NULL;
+
 
 
 	//test de semaforos desde la callback
@@ -51,18 +85,20 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 	printf("-------------------------------------------------------------------------------------------------------------------\n");
 	printf("Paquete numero: %d\n",count);
 	//printf("MAC origen en la TRAMA ETHERNET: %s\n", ether_ntoa(eptr−>ether_shost));
-	printf("EthernetSourceMAC:             %s\n", ether_ntoa((const struct ether_addr*) eptr->ether_shost));
+	printf("EthernetSourceMAC:             %s\n",ether_ntoa((const struct ether_addr*) eptr->ether_shost));
 	//printf("MAC destino en la TRAMA ETHERNET: %s\n", ether_ntoa(eptr−>ether_dhost));
 	printf("EthernetDestinationMAC:        %s\n",ether_ntoa((const struct ether_addr*) eptr->ether_dhost));
 
-	
-	//ahora examino datos del payload (en este caso es ARP por el filtro)
+	//utiliznado las funciones reentrantes:
+	ethSrcMac=ether_ntoa_r( ((const struct ether_addr*) eptr->ether_shost), ethSrcMacBuf);
+	ethDstMac=ether_ntoa_r( ((const struct ether_addr*) eptr->ether_dhost), ethDstMacBuf);
+
+	//ahora examino datos del payload de la trama ethernet (en este caso es ARP si o si por el filtro del arpCollector)
 	//compruebo que sea ARP
 	if(ntohs(eptr->ether_type)!=ETHERTYPE_ARP){
 		printf("No viaja ARP sobre esta trama (aunque ya esta filtrada...)\n");
 	}
 	else{
-		//puts("vamos con el ARP\n");	
 		struct ether_arp *arpPtr;
 		//ahora posiciono el puntero en el primer byte(es decir con un offset de size of ether header)
 		arpPtr =(struct ether_arp*)(packet+sizeof(struct ether_header));//o lo que es lo mismo packet+14;
@@ -72,8 +108,23 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 //		fprintf(stdout,"ARP: IP Destino: %d.%d.%d.%d\n",arpPtr->arp_tpa[0],arpPtr->arp_tpa[1],arpPtr->arp_tpa[2],arpPtr->arp_tpa[3]);
 		fprintf(stdout,"ARP: IP DESTINO: %s\n",inet_ntoa(*(struct in_addr *) arpPtr->arp_tpa));
 
+		//ahora utilizo las reentrantes:
+		arpSrcIp=inet_ntop(AF_INET,arpPtr->arp_spa, arpSrcIpBuf, sizeof arpSrcIpBuf );
+		arpDstIp=inet_ntop(AF_INET,arpPtr->arp_tpa, arpDstIpBuf, sizeof arpDstIpBuf );
+
+	
 		printf("ARP: MAC Origen:               %s\n",ether_ntoa((const struct ether_addr*) arpPtr->arp_sha));
 		printf("ARP: MAC Destino:              %s\n",ether_ntoa((const struct ether_addr*) arpPtr->arp_tha));
+
+		//utilizando las reentrantes:		
+		arpSrcMac=ether_ntoa_r( ((const struct ether_addr*) arpPtr->arp_sha), arpSrcMacBuf);
+		arpDstMac=ether_ntoa_r( ((const struct ether_addr*) arpPtr->arp_tha), arpDstMacBuf);
+
+		printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
+
+		//los printf anteriores muestran los datos directamente desde la estructura
+		//en adelante los referire mediante macro predefinidas: ETHSRCMAC,ETHDSTMAC,ARPSRCMAC,ARPDSTMAC,ARPSRCIP Y ARPDSTIP
+
 
 		//lo envio por el PIPE para que lo procese el manejador de dialogos.
 		//MENSAJE: "<ethSrcMac|ethDstMac|arpSrcMac|arpDstMac|arpSrcIp|arpDstIp>"
@@ -108,35 +159,29 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 
 
 		printf("-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-\n");
-		int srcMacEquals=1;//coinciden por default
-		char* ethSrcMac=NULL;
-		char* ethDstMac=NULL;
-		char* arpSrcMac=NULL;
-		char* arpDstMac=NULL;
-		char* arpSrcIp=NULL;
-		char* arpDstIp=NULL;
-		char* broadcastMac="ff:ff:ff:ff:ff:ff";//Estara mal? deberia inicializar a null y luego cargarle la cadena?deberia reservar?
-		char* zeroMac="0:0:0:0:0:0";//lo mismo que el anterior
-		int doCheckIpI=0;
-		int doCheckSpoofer=0;
+//		int srcMacEquals=1;//coinciden por default
+//		char* broadcastMac="ff:ff:ff:ff:ff:ff";//Estara mal? deberia inicializar a null y luego cargarle la cadena?deberia reservar?
+//		char* zeroMac="0:0:0:0:0:0";//lo mismo que el anterior
+//		int doCheckIpI=0;
+//		int doCheckSpoofer=0;
 	//	int doHitIncrement=0;
-		int nextState=0;//por default, almacenarla y ya
-		char* type=NULL;//consultar posibles valores en tabla_de_dialogos.txt [Arquitectura]
-		int i=0;
-		int dstZeroMacFlag=0;
-		int dstBrdMacFlag=0;
+//		int nextState=0;//por default, almacenarla y ya
+//		char* type=NULL;//consultar posibles valores en tabla_de_dialogos.txt [Arquitectura]
+//		int i=0;
+//		int dstZeroMacFlag=0;
+//		int dstBrdMacFlag=0;
 
 		//mapear los datos para facilitar la manipulacion de los mismos y el codeado.
+//		ethSrcMac=ether_ntoa((const struct ether_addr*) eptr->ether_shost);
+//		ethDstMac=ether_ntoa((const struct ether_addr*) eptr->ether_dhost);
+//		arpSrcMac=ether_ntoa((const struct ether_addr*) arpPtr->arp_sha);
+//		arpDstMac=ether_ntoa((const struct ether_addr*) arpPtr->arp_tha);
+//		arpSrcIp=inet_ntoa(*(struct in_addr *) arpPtr->arp_spa);
+//		arpDstIp=inet_ntoa(*(struct in_addr *) arpPtr->arp_tpa);
 
-		ethSrcMac=ether_ntoa((const struct ether_addr*) eptr->ether_shost);
-		ethDstMac=ether_ntoa((const struct ether_addr*) eptr->ether_dhost);
-		arpSrcMac=ether_ntoa((const struct ether_addr*) arpPtr->arp_sha);
-		arpDstMac=ether_ntoa((const struct ether_addr*) arpPtr->arp_tha);
-		arpSrcIp=inet_ntoa(*(struct in_addr *) arpPtr->arp_spa);
-		arpDstIp=inet_ntoa(*(struct in_addr *) arpPtr->arp_tpa);
 
 
-		printf("He mapeado estos datos: \n%s\n%s\n%s\n%s\n%s\n%s\n\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
+//		printf("He mapeado estos datos: \n %s\n %s\n %s\n %s\n %s\n %s\n\n",ETHSRCMAC,ETHDSTMAC,ARPSRCMAC,ARPDSTMAC,ARPSRCIP,ARPDSTIP);
 
 		//Ahora como minimo reviso consistencias menores en la trama y el mensaje ARP
 //		if(*ethSrcMac!=*arpSrcMac){...//deberia usar strncmp!! esa igualdad es una mentira!!!
