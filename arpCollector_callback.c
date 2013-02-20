@@ -31,17 +31,8 @@
 #define ETHDSTMAC ether_ntoa_r( ((const struct ether_addr*) eptr->ether_dhost), ethSrcMacBuf)
 #define ARPSRCMAC ether_ntoa_r( ((const struct ether_addr*) arpPtr->arp_sha), arpSrcMacBuf)
 #define ARPDSTMAC ether_ntoa_r( ((const struct ether_addr*) arpPtr->arp_tha), arpDstMacBuf)
-
-#define ARPSRCIP inet_ntoa(*(struct in_addr *) arpPtr->arp_spa)
-#define ARPDSTIP inet_ntoa(*(struct in_addr *) arpPtr->arp_tpa)
-
-
-
-
-
-
-
-
+#define ARPSRCIP inet_ntop(AF_INET,arpPtr->arp_spa, arpSrcIpBuf, sizeof arpSrcIpBuf)
+#define ARPDSTIP inet_ntop(AF_INET,arpPtr->arp_tpa, arpSrcIpBuf, sizeof arpSrcIpBuf)
 
 
 //Callback starts here!!
@@ -108,9 +99,9 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 //		fprintf(stdout,"ARP: IP Destino: %d.%d.%d.%d\n",arpPtr->arp_tpa[0],arpPtr->arp_tpa[1],arpPtr->arp_tpa[2],arpPtr->arp_tpa[3]);
 		fprintf(stdout,"ARP: IP DESTINO: %s\n",inet_ntoa(*(struct in_addr *) arpPtr->arp_tpa));
 
-		//ahora utilizo las reentrantes:
-		arpSrcIp=inet_ntop(AF_INET,arpPtr->arp_spa, arpSrcIpBuf, sizeof arpSrcIpBuf );
-		arpDstIp=inet_ntop(AF_INET,arpPtr->arp_tpa, arpDstIpBuf, sizeof arpDstIpBuf );
+		//ahora utilizo las reentrantes:(los puse casteados a char* porque el compilador chillaba porq tenia const char*!!!!
+		arpSrcIp=(char *)inet_ntop(AF_INET,arpPtr->arp_spa, arpSrcIpBuf, sizeof arpSrcIpBuf );
+		arpDstIp=(char *)inet_ntop(AF_INET,arpPtr->arp_tpa, arpDstIpBuf, sizeof arpDstIpBuf );
 
 	
 		printf("ARP: MAC Origen:               %s\n",ether_ntoa((const struct ether_addr*) arpPtr->arp_sha));
@@ -125,38 +116,9 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		//los printf anteriores muestran los datos directamente desde la estructura
 		//en adelante los referire mediante macro predefinidas: ETHSRCMAC,ETHDSTMAC,ARPSRCMAC,ARPDSTMAC,ARPSRCIP Y ARPDSTIP
 
-
-		//lo envio por el PIPE para que lo procese el manejador de dialogos.
-		//MENSAJE: "<ethSrcMac|ethDstMac|arpSrcMac|arpDstMac|arpSrcIp|arpDstIp>"
-		//EL tamaño seria el tamaño de toooodo eso mas los pipes mas los piquitos.
-		//como va a terminar siendo un string...mmmm seria la cantidad de caracteres...
-		//tengo los : de la MAC, los . de las IP.. los pipes.. los piquitos.. OJO!!
-
 		//preparo el pipe para SOLO escritura:
 		//cierro lectura ya que desde aca SOLO escribimos
 		close(args[0].fdPipe[0]);
-
-		//-----------en lugar de crear el paquete como hago a continuacion.. mejor guardo derecho en las variables y luego analizo:
-//---------------------------------
-/*
-		//creo el paquete que voy a inyectar en el PIPE (de momento con strcpy, optimizar luego sin usar strcpy)
-		//ISSUE REPORTED TO GCode svn
-		//si bien el formato que sigue es distinto a lo que usba para debug, me ahorra dolores de cabeza con
-		//el strtok, asi que lo dejare de cualquier modo asi!!
-		strcpy(paquete,"|");//<ethSrcMac=");
-		strcpy(paquete+strlen(paquete),(char*)ether_ntoa((const struct ether_addr*) eptr->ether_shost));
-		strcpy(paquete+strlen(paquete),"|");//ethDstMac=");
-		strcpy(paquete+strlen(paquete),(char*)ether_ntoa((const struct ether_addr*) eptr->ether_dhost));
-		strcpy(paquete+strlen(paquete),"|");//arpSrcMac=");
-		strcpy(paquete+strlen(paquete),(char*)ether_ntoa((const struct ether_addr*) arpPtr->arp_sha));
-		strcpy(paquete+strlen(paquete),"|");//arpDstMac=");
-		strcpy(paquete+strlen(paquete),(char*)ether_ntoa((const struct ether_addr*) arpPtr->arp_tha));
-		strcpy(paquete+strlen(paquete),"|");//arpSrcIp=");
-		strcpy(paquete+strlen(paquete),inet_ntoa(*(struct in_addr *) arpPtr->arp_spa));
-		strcpy(paquete+strlen(paquete),"|");//arpDstIp=");
-		strcpy(paquete+strlen(paquete),inet_ntoa(*(struct in_addr *) arpPtr->arp_tpa));
-*/
-
 
 		printf("-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-\n");
 //		int srcMacEquals=1;//coinciden por default
