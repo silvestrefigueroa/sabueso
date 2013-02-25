@@ -136,6 +136,12 @@ int main(int argc, char *argv[]){
 		//int sem_init(sem_t *sem, int pshared, unsigned int value);
 		sem_init(&(arpDialoguesTable[subindexCounterId].semaforo),1,1);//inicializa semaforos de cada entrada de la tabla
 	}//inicializadas las entradas de la tabla, paso a confeccionar la Memoria Compartida
+
+	//por debug, inicializo el 43 con el hit = 5;
+	arpDialoguesTable[43].hit=5;
+
+	
+
 	
 	//SHAREDMEM arpDialoguesTableManagerArguments.h
 	if(((fdshm=shm_open("/sharedMemPartida", O_RDWR|O_CREAT, 0666))<0)){
