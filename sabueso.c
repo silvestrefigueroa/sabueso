@@ -117,9 +117,9 @@ int main(int argc, char *argv[]){
 	int fdshm;
 	//sharedMem
 	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla
-	struct arpDialog arpDialoguesTable[100];//hardcodeado, luego deberia parametrizarlo y variabilizarlo
+	struct arpDialog arpDialoguesTable[10];//hardcodeado, luego deberia parametrizarlo y variabilizarlo
 	//inicializacion:
-	for(subindexCounterId=0;subindexCounterId<100;subindexCounterId++){//ese 100 es el hardcodeado anterior
+	for(subindexCounterId=0;subindexCounterId<10;subindexCounterId++){//ese 100 es el hardcodeado anterior
 		arpDialoguesTable[subindexCounterId].index=subindexCounterId;
 		arpDialoguesTable[subindexCounterId].ethSrcMac=NULL;
 		arpDialoguesTable[subindexCounterId].ethDstMac=NULL;
@@ -138,7 +138,8 @@ int main(int argc, char *argv[]){
 	}//inicializadas las entradas de la tabla, paso a confeccionar la Memoria Compartida
 
 	//por debug, inicializo el 43 con el hit = 5;
-	arpDialoguesTable[43].hit=5;
+	arpDialoguesTable[4].hit=5;
+	arpDialoguesTable[4].ethSrcMac="aa:bb:cc:dd:ee:ff";
 
 	
 
@@ -154,12 +155,12 @@ int main(int argc, char *argv[]){
 	exit(EXIT_FAILURE);
 	}
 	//ojo con ese 100 de abajo.. es el hardcodeado, representa la cantidad de estructuras struct arpDilog que hay en el array arpDialoguesTable
-	if(!(shmPtr=mmap(NULL, sizeof(struct arpDialog)*100, PROT_READ|PROT_WRITE, MAP_SHARED, fdshm, 0))){
+	if(!(shmPtr=mmap(NULL, sizeof(struct arpDialog)*10, PROT_READ|PROT_WRITE, MAP_SHARED, fdshm, 0))){
 		perror("mmap()");
 		exit(EXIT_FAILURE);
 	}
 	//la truncada de suerte!!:
-	ftruncate(fdshm, sizeof(struct arpDialog)*100);
+	ftruncate(fdshm, sizeof(struct arpDialog)*10);
 	close(fdshm);
 
 //------------FIN ZONA DE DEFINICION DE ESTRUCTURAS DE DATOS DEL SABUESO------------------
