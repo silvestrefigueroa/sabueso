@@ -140,6 +140,14 @@ int main(int argc, char *argv[]){
 	//por debug, inicializo el 43 con el hit = 5;
 	arpDialoguesTable[4].hit=5;
 	arpDialoguesTable[4].ethSrcMac="aa:bb:cc:dd:ee:ff";
+	arpDialoguesTable[1].ethSrcMac="aa:bb:cc:dd:ee:ff";
+	arpDialoguesTable[0].nextState=3;
+	arpDialoguesTable[1].nextState=3;
+	arpDialoguesTable[2].nextState=3;
+	arpDialoguesTable[7].nextState=3;
+	arpDialoguesTable[9].nextState=3;
+
+	
 
 	
 

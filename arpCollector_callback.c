@@ -65,6 +65,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 	eptr = (struct ether_header*) packet;//apunta a la cabecera ethernet (casteado a ethernet)
 	printf("-------------------------------------------------------------------------------------------------------------------\n");
 	printf("Paquete numero: %d\n",count);
+	count++;//lo hago aca para asegurarme que lo incrmente.. hay muchos breaks dando vueltas
 	//printf("MAC origen en la TRAMA ETHERNET: %s\n", ether_ntoa(eptr−>ether_shost));
 	printf("EthernetSourceMAC:             %s\n",ether_ntoa((const struct ether_addr*) eptr->ether_shost));
 	//printf("MAC destino en la TRAMA ETHERNET: %s\n", ether_ntoa(eptr−>ether_dhost));
@@ -126,6 +127,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		int askFlag=0;
 		int dropFlag=0;
 		int comparacion=11;//el numero minimo de elementos de una mac segun pcap =) (lo uso en los for..un capricho)
+		int savedFlag=0;//se utiliza para saber si se almacenaron o no los datos... en el for de almacenamiento..
 		//Ahora como minimo reviso consistencias menores en la trama y el mensaje ARP
 
 		//pasted code start here
@@ -277,22 +279,13 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 				//si es una pregunta, me fijo si el pregunton esta en la tabla junto a su destino
 				printf("-------------------------------------------------mostrar HIT: %d\n", args[0].shmPtr[i].hit);
 			}
-			//test de semaforos desde la callback
-		        /*
-	        	//bloqueo semaforo
-		        sem_wait((sem_t*) & (args[0].shmPtr[43].semaforo));
-			//printf("test: id%d title: %s\n", args[0].id,args[0].title);
-			//sleep(5);
-		        sem_post((sem_t*) & (args[0].shmPtr[43].semaforo));
-		        */
-
-
 
 			//PARA COMPRAR EN LA TABLA TENGO 2 CASOS, O BIEN ES PREGUNTA O BIEN ES RESPUESTA
 				//SI ES PREGUNTA ES UNIVOCA
 				//SI ES RESPUESTA LA INFORMACION PUEDE SER IDENTICA O ESPECAJA (CRUZADA)
 
-			//PRIMERO VERIFICARE PARA EL CASO DE PREGUNTA ARP, LUEGO PARA RESPUESTA
+			//COMO SIRVE EL MISMO METODO, SOLO QUE EN LA RESPUESTA PUEDE QUE NECESITE ADEMAS HACERLO CRUZADO, APLICO SIEMPRE
+			//EL METODO COMPATIBLE CON LA PREGUNTA ARP Y SOLO EN CASO DE NO SER UNA PREGUNTA APLICO EL CRUZADO =)
 
 //			if(askFlag==1){
 				printf("estoy frente a una pregunta ARP\n");
@@ -410,77 +403,131 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 				}
 			}//Si no es NULL la entrada...(solo para potimizar)
 			*/
+		}//LAZO FOR
 
-/*
 
-				printf("se va a comparar : %s con %s\n",( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac ),ethSrcMac );
-				if(  ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac) != NULL){
-					printf("no nulo\n");
-					comparacion=strncmp( ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac), ethSrcMac, (int) strlen(ethSrcMac));
-					printf("valor de la comparacion = %d\n",comparacion);
-					if(comparacion == 0){
-						printf("eran iguales entonces por el strlen\n");
-					}
-					else{
-						printf("eran DISTINTOS por el strlen\n");
-					}
+//ACA VA EL CODIGO ENCARGADO DE ALMACENAR LA ENTRADA
+
+		//cancelar si el flag de drop esta arriba
+		if(dropFlag!=0){
+			printf("LOG: se cancela el almacenamiento de la trama por flag de DROP\n");
+			return;//finaliza el tratamiento de esta trama...
+		}
+		else{
+			printf("LOG: se procede al almacenamiento de la trama....\n");
+		}
+		for(i=0,savedFlag=0;i<10;i++){//lazo para almacenar datos, con flag en "unsaved" por default
+			printf("almacenador, pasada %d\n",i);
+			//este for recorre todas las entradas de la tabla, si esta "usable" la bloquea, vuelve a verificar, luego almacena y libera"
+			if(((int) args[0].shmPtr[i].nextState) == (3)){//si esta disponible (para eliminar o para usar...)
+				printf("la entrada %d esta disponible para su uso\n",i);//podria comenzar con las q se de antes que estan en NULL..(optimizar)
+				//como esta disponible, pido semaforo
+				//bloqueo semaforo
+				sem_wait((sem_t*) & (args[0].shmPtr[i].semaforo));
+				printf("Bloqueada la entrada %d de la tabla\n", i);
+				//compruebo por las dudas de que mientras esperaba el semaforo el anterior "ocupante" haya cambiado la entrada...
+				if(args[0].shmPtr[i].nextState == (3)){//para test, inicializar algunas en 3 otras en 4..sola las pasara a 0
+					printf("entrada bloqueada y libre para uso!! PERSISTIENDO DATOS...\n");
+					args[0].shmPtr[i].ethSrcMac=ethSrcMac;//ESTARA BIEN ESE ALMACENAMIENTO??? O EL PUNTERO QUEDA APUNTANDO ALLI??
+					args[0].shmPtr[i].ethDstMac=ethDstMac;
+					args[0].shmPtr[i].arpSrcMac=arpSrcMac;
+					args[0].shmPtr[i].arpDstMac=arpDstMac;
+					args[0].shmPtr[i].arpSrcIp=arpSrcIp;
+					args[0].shmPtr[i].arpDstIp=arpDstIp;
+					args[0].shmPtr[i].nextState=0;//en principio lo marco como para checkear... de momento hardcodeado
+					args[0].shmPtr[i].type=type;
+				}
+				else{//en caso fallido.. continuar intentando
+					//OJO: para cuando se llene puedo hacer que en lugar de un for sea un while y siga y siga hasta flag saved =1..
+					printf("LOG: la entrada fue modificada mientras esperaba... continuar con proxima entrada..\n");
+					continue;
+				}
+				//sleep(5);
+				printf("liberando semaforo...\n");
+				sem_post((sem_t*) & (args[0].shmPtr[i].semaforo));
+				savedFlag=1;
+			}//IF nextstate 3|4
+			if(savedFlag==1){//evaluo el flag que me dice si se guardo la entrada en la tabla..
+				printf("se almacenaron los datos en la entrada %d de la tabla\n",i);
+				break;
+			}
+			else{
+				printf("los datos no se guardaron en la entrada %d, continuar con la siguiente....\n",i);
+				continue;
+			}
+			//el codigo aqui no hace nada debido al continue del else anterior...
+		}//lazo for para almacenar los datos en las entradas
+		//verifico que paso al final tras completar el for:
+		if(savedFlag==0){//no se guardo en NINGUNA entrada
+			printf("LOG: WARNING: la trama no pudo almacenarse en ninguna entrada de la tabla...\n");
+		}
+		else{
+			printf("LOG: se guardo con exito la trama en la tabla\n");
+		}
+		
+
+
+		//UNA VEZ TERMINA DE RECORRER... PODRIA USAR ETIQUETAS DEL SIGUIENTE MODO:
+			//1| MUSTRO MENSAJE DE TABLA LLENA Y SOLICITO AL MANTENEDOR DE TABLA QUE REVISE LA TABLA O ESPERO...
+			//2| VUELVO A LA ETIQUETA DEFINIDA JUSTO ANTES DEL LAZO FOR ;) ASI INTENTO DE NUEVO..
+			//3| DEFINIR UN NUMERO DE REINTENTOS.. SI SE LLEGA A ESE NUMERO, ENTONCES BREAKEAR Y MOSTRAR EL ERROR
+			//OJO: NO SE SI LOS OTROS FRAMES CAPTURADOS SE VERAN AFECTADOS A LA HORA DE ALMACENAR ESTOS DATOS.. :(
+				//QUIZA HASTA ESTA SEA UNA TAREA PARA HILOS :(
+				
+
+		/*
+			printf("se va a comparar : %s con %s\n",( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac ),ethSrcMac );
+			if(  ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac) != NULL){
+				printf("no nulo\n");
+				comparacion=strncmp( ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac), ethSrcMac, (int) strlen(ethSrcMac));
+				printf("valor de la comparacion = %d\n",comparacion);
+				if(comparacion == 0){
+					printf("eran iguales entonces por el strlen\n");
 				}
 				else{
-					//si esta nula la entrada, saltarla y ahorrar tiempo!!
-					continue;//salta con este?
-					printf("era nulo....\n");
+					printf("eran DISTINTOS por el strlen\n");
 				}
-				if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac==ethSrcMac){
-					printf("este pregunton ya pregunto antes, a ver si es el mismo destino...\n");
-					if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpDstIp==arpDstIp){
-						printf("es el mismo destino, a ver si no esta spoofeada la pregunta...\n");
-						//ahora puedo hacer una busqueda en la tabla..si coincide que la ip es distinta entonces
-						//se que estamos frente a una pregunta spoofeada
-						if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpSrcIp==arpSrcIp){
-							//si entra aca significa que coincidio origen, destino y las IP origen
-							printf("esta entrada ya existia en la tabla, la descartamos...\n");
-							dropFlag=1;//descartar...
-							//incremento el hit de la entrada.
-							//bloquear entrada...
-							sem_wait( & ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).semaforo) );
-							//usar la entrada de la tabla
-							//Si estaba para eliminar, le cambio el nextState
-							if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).nextState==(3||4)){
-								printf("Esta entrada se iba a eliminar...\n");
-								(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).nextState=1;
-							}
-							//aumento el hit
-							(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).hit++;
+			}
+			else{
+				//si esta nula la entrada, saltarla y ahorrar tiempo!!
+				continue;//salta con este?
+				printf("era nulo....\n");
+			}
+			if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac==ethSrcMac){
+				printf("este pregunton ya pregunto antes, a ver si es el mismo destino...\n");
+				if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpDstIp==arpDstIp){
+					printf("es el mismo destino, a ver si no esta spoofeada la pregunta...\n");
+					//ahora puedo hacer una busqueda en la tabla..si coincide que la ip es distinta entonces
+					//se que estamos frente a una pregunta spoofeada
+					if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpSrcIp==arpSrcIp){
+						//si entra aca significa que coincidio origen, destino y las IP origen
+						printf("esta entrada ya existia en la tabla, la descartamos...\n");
+						dropFlag=1;//descartar...
+						//incremento el hit de la entrada.
+						//bloquear entrada...
+						sem_wait( & ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).semaforo) );
+						//usar la entrada de la tabla
+						//Si estaba para eliminar, le cambio el nextState
+						if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).nextState==(3||4)){
+							printf("Esta entrada se iba a eliminar...\n");
+							(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).nextState=1;
+						}
+						//aumento el hit
+						(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).hit++;
 							//liberar entrada de la tabla
-							sem_post( & ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).semaforo) );
-							//ahora corto porque solo queria aumentar el HIT
-							break;
-						}
-						else{
-							printf("se encontro la entrada, pero difieren IP origen, posible pregunta spoofed\n");
-							dropFlag=0;//corresponde.... por mas que venga de antes en 0
-							doCheckSpoofer=1;//sip.. si hay inconsistencia hay algo raro..
-						}
+						sem_post( & ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).semaforo) );
+						//ahora corto porque solo queria aumentar el HIT
+						break;
+					}
+					else{
+						printf("se encontro la entrada, pero difieren IP origen, posible pregunta spoofed\n");
+						dropFlag=0;//corresponde.... por mas que venga de antes en 0
+						doCheckSpoofer=1;//sip.. si hay inconsistencia hay algo raro..
 					}
 				}
 			}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-			//printf("Estado de la entrada n°%d: %d\n", i,(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).hit  );
+		}
+		//printf("Estado de la entrada n°%d: %d\n", i,(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).hit  );
 			//Comparo las ethSrcMac de la tabla con las MAC que tengo en este hilo
 			printf("mostrando comparacion: %s con %s \n",(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac,ethSrcMac);
 			if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac==ethSrcMac){
@@ -570,7 +617,6 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 
 		//puedo continuar con el proximo =) finaliza la tarea de la Callback
 		//aumenta el contador de frames
-	}
+	
 }
-count++;
 	}
