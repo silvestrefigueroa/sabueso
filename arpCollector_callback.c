@@ -442,8 +442,16 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 					printf("LOG: la entrada fue modificada mientras esperaba... continuar con proxima entrada..\n");
 					continue;
 				}
-				//sleep(5);
+				sleep(5);
 				printf("liberando semaforo...\n");
+				//desapunto los punteros??'
+				*ethSrcMac=NULL;
+				*ethDstMac=NULL;
+				*arpSrcMac=NULL;
+				*arpDstMac=NULL;
+				*arpSrcIp=NULL;
+				*arpDstIp=NULL;
+				
 				sem_post((sem_t*) & (args[0].shmPtr[i].semaforo));
 				savedFlag=1;
 			}//IF nextstate 3|4
