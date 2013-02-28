@@ -251,7 +251,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 			printf("LOG: se descarta la trama efectivamente...\n");
 			return;
 		}
-		printf("COMO NO SE DESCARTO LA TRAMA, SIGO EL PROCEDIMIENTO PARA GUARDARLA EN LA TABLA...\n");
+		printf("COMO NO SE DESCARTO LA TRAMA, SIGO EL PROCEDIMIENTO PARA REVISAR Y LUEGO GUARDARLA EN LA TABLA...\n");
 
 
 //COMIENZA LA PARTE EN LA QUE BUSCA UN LUGAR EN LA TABLA PARA GUARDAR LOS DATOS
@@ -259,7 +259,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 
 		//antes de ir a meterlo en la tabla, deberia comprobar que la informacion que estoy metiendo no existe ya de antes!!!
 		//LAZO PARA CHECKEAR SI EXISTE UNA ENTRADA IGUAL O CRUZADA DE ESTE CASO
-		for(i=1;i<10;i++){//ese tamaño de la tabla de memoria deberia ser un sizeof o de alguna manera conocerlo ahora hardcodeado
+		for(i=0;i<10;i++){//ese tamaño de la tabla de memoria deberia ser un sizeof o de alguna manera conocerlo ahora hardcodeado
 
 			printf("\nPasada de revision %d\n",i);
 			//debera comparar con todas entradas en la tabla, si coinciden TENGO UN CONOCIMIENTO, si es igual DESCARTAR
@@ -288,10 +288,14 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 			//EL METODO COMPATIBLE CON LA PREGUNTA ARP Y SOLO EN CASO DE NO SER UNA PREGUNTA APLICO EL CRUZADO =)
 
 //			if(askFlag==1){
+
+printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
+
 				printf("estoy frente a una pregunta ARP\n");
-				printf("se va a comparar: %s con %s\n", ethSrcMac, args[0].shmPtr[i].ethSrcMac);
+				printf("se va a comparar: %s con %s\n", ethSrcMac, (char*)args[0].shmPtr[i].ethSrcMac);
 				if(args[0].shmPtr[i].ethSrcMac == NULL){
 					printf("\nEntrada de la tabla %d VACIA\n",i);
+					printf("______________________________________________________________\n");
 					continue;//salto para optimizar, sigue comparando con el proximo subindice i
 				}
 				//no uso else por el continue anterior.. asi que sigo aca else if ethsrcmac==NULL....
@@ -417,42 +421,52 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 			printf("LOG: se procede al almacenamiento de la trama....\n");
 		}
 		for(i=0,savedFlag=0;i<10;i++){//lazo para almacenar datos, con flag en "unsaved" por default
+			printf("___________________________________________________________________________\n");
 			printf("almacenador, pasada %d\n",i);
 			//este for recorre todas las entradas de la tabla, si esta "usable" la bloquea, vuelve a verificar, luego almacena y libera"
 			if(((int) args[0].shmPtr[i].nextState) == (3)){//si esta disponible (para eliminar o para usar...)
 				printf("la entrada %d esta disponible para su uso\n",i);//podria comenzar con las q se de antes que estan en NULL..(optimizar)
-				//como esta disponible, pido semaforo
-				//bloqueo semaforo
+				//INICIA ZONA CRITICA, PIDO EL SEMAFORO
 				sem_wait((sem_t*) & (args[0].shmPtr[i].semaforo));
 				printf("Bloqueada la entrada %d de la tabla\n", i);
 				//compruebo por las dudas de que mientras esperaba el semaforo el anterior "ocupante" haya cambiado la entrada...
 				if(args[0].shmPtr[i].nextState == (3)){//para test, inicializar algunas en 3 otras en 4..sola las pasara a 0
 					printf("entrada bloqueada y libre para uso!! PERSISTIENDO DATOS...\n");
-					args[0].shmPtr[i].ethSrcMac=ethSrcMac;//ESTARA BIEN ESE ALMACENAMIENTO??? O EL PUNTERO QUEDA APUNTANDO ALLI??
-					args[0].shmPtr[i].ethDstMac=ethDstMac;
-					args[0].shmPtr[i].arpSrcMac=arpSrcMac;
-					args[0].shmPtr[i].arpDstMac=arpDstMac;
-					args[0].shmPtr[i].arpSrcIp=arpSrcIp;
-					args[0].shmPtr[i].arpDstIp=arpDstIp;
+					args[0].shmPtr[i].ethSrcMac=(char *)malloc (strlen(ethSrcMac));
+					strcpy(args[0].shmPtr[i].ethSrcMac,ethSrcMac);
+					args[0].shmPtr[i].ethDstMac=(char *)malloc (strlen(ethDstMac));
+					strcpy(args[0].shmPtr[i].ethDstMac,ethDstMac);
+					args[0].shmPtr[i].arpSrcMac=(char *)malloc (strlen(arpSrcMac));
+					strcpy(args[0].shmPtr[i].arpSrcMac,arpSrcMac);
+					args[0].shmPtr[i].arpDstMac=(char *)malloc (strlen(arpDstMac));
+					strcpy(args[0].shmPtr[i].arpDstMac,arpDstMac);
+					args[0].shmPtr[i].arpDstIp=(char *)malloc (strlen(arpDstIp));
+					strcpy(args[0].shmPtr[i].arpDstIp,arpDstIp);
+					args[0].shmPtr[i].arpSrcIp=(char *)malloc (strlen(arpSrcIp));
+					strcpy(args[0].shmPtr[i].arpSrcIp,arpSrcIp);
 					args[0].shmPtr[i].nextState=0;//en principio lo marco como para checkear... de momento hardcodeado
-					args[0].shmPtr[i].type=type;
+					args[0].shmPtr[i].type=(char *)malloc (strlen(type));
+					strcpy(args[0].shmPtr[i].type,type);
+					printf("ya paso la asignacion por strcpy\n");
 				}
-				else{//en caso fallido.. continuar intentando
+				else{//en caso fallido.. INFORMAR Y LIBERAR.. LUEGO CONTINUAR
 					//OJO: para cuando se llene puedo hacer que en lugar de un for sea un while y siga y siga hasta flag saved =1..
 					printf("LOG: la entrada fue modificada mientras esperaba... continuar con proxima entrada..\n");
-					continue;
 				}
-				sleep(5);
+				//sleep(5);
 				printf("liberando semaforo...\n");
+/*
 				//desapunto los punteros??'
-				*ethSrcMac=NULL;
-				*ethDstMac=NULL;
-				*arpSrcMac=NULL;
-				*arpDstMac=NULL;
-				*arpSrcIp=NULL;
-				*arpDstIp=NULL;
-				
+				ethSrcMac=NULL;
+				ethDstMac=NULL;
+				arpSrcMac=NULL;
+				arpDstMac=NULL;
+				arpSrcIp=NULL;
+				arpDstIp=NULL;
+*/
+				//LIBERO EL SEMAFORO				
 				sem_post((sem_t*) & (args[0].shmPtr[i].semaforo));
+				//FINALIZA ZONA CRITICA
 				savedFlag=1;
 			}//IF nextstate 3|4
 			if(savedFlag==1){//evaluo el flag que me dice si se guardo la entrada en la tabla..
