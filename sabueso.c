@@ -138,13 +138,15 @@ int main(int argc, char *argv[]){
 	}//inicializadas las entradas de la tabla, paso a confeccionar la Memoria Compartida
 
 	//por debug, inicializo el 43 con el hit = 5;
+
 	arpDialoguesTable[4].hit=5;
+/*
 	arpDialoguesTable[0].nextState=3;
 	arpDialoguesTable[1].nextState=3;
 	arpDialoguesTable[2].nextState=3;
 	arpDialoguesTable[7].nextState=3;
 	arpDialoguesTable[9].nextState=3;
-
+*/
 	
 
 	
