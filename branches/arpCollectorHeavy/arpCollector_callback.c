@@ -45,18 +45,6 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 	char* arpDstMac=NULL;
 	char* arpSrcIp=NULL;
 	char* arpDstIp=NULL;
-
-	
-
-	//test de semaforos desde la callback
-	/*
-	//bloqueo semaforo
-        sem_wait((sem_t*) & (args[0].shmPtr[43].semaforo));
-        //printf("test: id%d title: %s\n", args[0].id,args[0].title);
-        //sleep(5);
-        sem_post((sem_t*) & (args[0].shmPtr[43].semaforo));
-	*/
-
 //	fflush(stdout);
 	
 	//si.. muy lindo el contador.. pero me gustaria que:
@@ -102,14 +90,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		arpSrcMac=ether_ntoa_r( ((const struct ether_addr*) arpPtr->arp_sha), arpSrcMacBuf);
 		arpDstMac=ether_ntoa_r( ((const struct ether_addr*) arpPtr->arp_tha), arpDstMacBuf);
 
-		printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
-
-		//los printf anteriores muestran los datos directamente desde la estructura
-		//en adelante los referire mediante macro predefinidas: ETHSRCMAC,ETHDSTMAC,ARPSRCMAC,ARPDSTMAC,ARPSRCIP Y ARPDSTIP
-
-		//preparo el pipe para SOLO escritura:
-		//cierro lectura ya que desde aca SOLO escribimos
-		close(args[0].fdPipe[0]);
+//		printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
 
 		printf("-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-\n");
 		int srcMacEquals=1;//coinciden por default
@@ -122,16 +103,14 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		int nextState=0;//por default, almacenarla y ya
 		char* type=NULL;//consultar posibles valores en tabla_de_dialogos.txt [Arquitectura]
 		int i=0;
-		int dstZeroMacFlag=0;
-		int dstBrdMacFlag=0;
+	//	int dstZeroMacFlag=0;
+	//	int dstBrdMacFlag=0;
 		int askFlag=0;
 		int dropFlag=0;
 		int comparacion=11;//el numero minimo de elementos de una mac segun pcap =) (lo uso en los for..un capricho)
 		int savedFlag=0;//se utiliza para saber si se almacenaron o no los datos... en el for de almacenamiento..
+		int writableFlag=0;
 		//Ahora como minimo reviso consistencias menores en la trama y el mensaje ARP
-
-		//pasted code start here
-//		if(*ethSrcMac!=*arpSrcMac){
 		if(strncmp(ethSrcMac,arpSrcMac,strlen(arpSrcMac))){
 			printf("LOG:se ha detectado inconsistencia entre la MAC origen de la trama y la MAC origen del mensaje ARP\n");
 			//podria haber sido proxyARP???
@@ -147,19 +126,17 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		if(strcmp(ethDstMac,arpDstMac)){
 			printf("LOG: las mac destino son DISTINTAS por strcmp\n");
 			//codigo para cuando son distintas aqui...
-//			if(*ethDstMac==*broadcastMac){//old bad mode
 			if(!strcmp(ethDstMac,broadcastMac)){
-				dstBrdMacFlag=1;
+//				dstBrdMacFlag=1;
 				puts("LOG:ethDsrMac es broadcast por strcmp!!!\n");
 				//mmm iba al broadcast, sera una pregunta realmente? o sera para engañar?
-//				if(*arpDstMac==*zeroMac){//old bad mode
 				if(!strcmp(arpDstMac,zeroMac)){//si devuelve 0 son iguales :)
 					//si es una pregunta ARP, lo marco para consultar su credibilidad? o consulto yo en db conocimiento?
 					//OK, tiene la arquitectura de ARP request/question
 					//es al menos una trama aceptable, podria verificarse luego pero al menos la guardo
 					//verifico si la IP de destino coincide con la del host que tiene la MAC ethDstMac en dbconocimiento
 					//si quiero realmente probar esto, deberia chequear los pares MACIP de cada host participante
-					dstZeroMacFlag=1;
+//					dstZeroMacFlag=1;
 					printf("LOG:puede que sea una pregunta ARP legitima..\n");//faltaria verificar match de ip-mac origen.
 					//bien, esta trama esta marcada para verificarse integridad IP, luego steal en busqueda de spoofers
 					doCheckIpI=1;
@@ -183,10 +160,9 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 				//destino ethernet bien definido, pero MAC destino en ARP DISTINA!!MALFORMACION!!
 				//Este curioso caso se da por ejemplo con el DDwrt. el destino en ARP debera ser 0:0:0:0:0:0
 				printf("LOG:antes de comparar con zero, tengo %s y %s\n",arpDstMac,zeroMac);
-//				if(*arpDstMac==*zeroMac){//bad old style
 				if(!strcmp(arpDstMac,zeroMac)){
 					printf("LOG: por strcmp, mac destino en ARP es todo 0:  %s\n",arpDstMac);
-					dstZeroMacFlag=1;
+//					dstZeroMacFlag=1;
 					//es altamente probable que sea una preguntita del AP que se hace el que no sabe quien es el cliente
 					//para confirmar, valido ethSrcMac con arpSrcMac y luego arpSrcMac con arpSrcIp =)
 					printf("LOG:Posible mensaje del AP,compruebe que ethSrcMac matchea con arpSrcIp para descartar DoS\n");
@@ -263,18 +239,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 
 			printf("\nPasada de revision %d\n",i);
 			//debera comparar con todas entradas en la tabla, si coinciden TENGO UN CONOCIMIENTO, si es igual DESCARTAR
-
 			//comprobar si existe la entrada en la tabla (de cualquier sentido) (IDA O VUELTA)
-			
-			//pero si la entrada en la tabla esta para descartar o para usar entonces saltar el CICLO ACTUAL
-			/*
-			if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).hit==(3|4)){
-				//saltar ciclo
-				printf("saltando esta entrada de la tabla por no ser conocimiento...\n");
-				continue;
-			}
-			*/
-
 			if(askFlag==1){
 				//si es una pregunta, me fijo si el pregunton esta en la tabla junto a su destino
 				printf("-------------------------------------------------mostrar HIT: %d\n", args[0].shmPtr[i].hit);
@@ -287,132 +252,139 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 			//COMO SIRVE EL MISMO METODO, SOLO QUE EN LA RESPUESTA PUEDE QUE NECESITE ADEMAS HACERLO CRUZADO, APLICO SIEMPRE
 			//EL METODO COMPATIBLE CON LA PREGUNTA ARP Y SOLO EN CASO DE NO SER UNA PREGUNTA APLICO EL CRUZADO =)
 
-//			if(askFlag==1){
-
 printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
 
-				printf("estoy frente a una pregunta ARP\n");
-				printf("se va a comparar: %s con %s\n", ethSrcMac, (char*)args[0].shmPtr[i].ethSrcMac);
-				if(args[0].shmPtr[i].ethSrcMac == NULL){
-					printf("\nEntrada de la tabla %d VACIA\n",i);
-					printf("______________________________________________________________\n");
-					continue;//salto para optimizar, sigue comparando con el proximo subindice i
-				}
-				//no uso else por el continue anterior.. asi que sigo aca else if ethsrcmac==NULL....
-				printf("continuo aca no mas...\n");
-				printf("la entrada %d no esta vacia..\n",i);
-				comparacion=strncmp(args[0].shmPtr[i].ethSrcMac,ethSrcMac,(int) strlen(ethSrcMac));
-				printf("valor de la comparacion = %d\n",comparacion);//0 iguales else distintos
-				if(comparacion==0){//SI COINCIDIERON
-					printf("resulto que eran iguales el de la entrada y este\n");
-					if(srcMacEquals==1){//si las mac origen coinciden en la trama actual
-						printf("se de antes que las mac origen coinciden en eth y arp\n");
-						//comparo la IP origen
-						if(!strncmp(args[0].shmPtr[i].arpSrcIp,arpSrcIp,(int) strlen(arpSrcIp))){
-							printf("la ip origen arp coincide en la tabla y en este caso\n");
-							//comparo el destino de la trama con el de la tabla;
-							if(!strncmp(args[0].shmPtr[i].arpDstMac,arpDstMac,(int) strlen(arpDstMac))){
-								printf("tenemos la misma mac destino en ARP en tabla y en este caso..\n");
-								//misma mac destino, comparo la ip destino y listo
-								if(!strncmp(args[0].shmPtr[i].arpDstIp,arpDstIp,(int) strlen(arpDstIp))){
-									printf("tambien tenemos la misma IP destino...\n");
-									//misma IP destino, si llego aca DESCARTOOO!!!
-									printf("LOG: Coincidencia en la tabla, descartar trama\n");
-									dropFlag=1;
-									break;//rompo el lazo
-								}
-								else{
-									printf("no es la misma IP destino..tenemos inconsistencia de datos!!\n");
-									//ip destino distinta, aca ya es inconsistencia.
-									//marcar para ver inconsistencia??
-									//de momento no descarto
-									dropFlag=0;
-								}
+			printf("estoy frente a una pregunta o respuesta ARP\n");
+			printf("se va a comparar: %s con %s\n", ethSrcMac, (char*)args[0].shmPtr[i].ethSrcMac);
+			if(args[0].shmPtr[i].ethSrcMac == NULL){
+				printf("\nEntrada de la tabla %d VACIA\n",i);
+				printf("______________________________________________________________\n");
+				continue;//salto para optimizar, sigue comparando con el proximo subindice i
+			}
+			//no uso else por el continue anterior.. asi que sigo aca else if ethsrcmac==NULL....
+			printf("continuo aca no mas...\n");
+			printf("la entrada %d no esta vacia..\n",i);
+			comparacion=strncmp(args[0].shmPtr[i].ethSrcMac,ethSrcMac,(int) strlen(ethSrcMac));
+			printf("valor de la comparacion = %d\n",comparacion);//0 iguales else distintos
+			if(comparacion==0){//SI COINCIDIERON
+				printf("resulto que eran iguales el de la entrada y este\n");
+				if(srcMacEquals==1){//si las mac origen coinciden en la trama actual
+					printf("se de antes que las mac origen coinciden en eth y arp\n");
+					//comparo la IP origen
+					if(!strncmp(args[0].shmPtr[i].arpSrcIp,arpSrcIp,(int) strlen(arpSrcIp))){
+						printf("la ip origen arp coincide en la tabla y en este caso\n");
+						//comparo el destino de la trama con el de la tabla;
+						if(!strncmp(args[0].shmPtr[i].arpDstMac,arpDstMac,(int) strlen(arpDstMac))){
+							printf("tenemos la misma mac destino en ARP en tabla y en este caso..\n");
+							//misma mac destino, comparo la ip destino y listo
+							if(!strncmp(args[0].shmPtr[i].arpDstIp,arpDstIp,(int) strlen(arpDstIp))){
+								printf("tambien tenemos la misma IP destino...\n");
+								//misma IP destino, si llego aca DESCARTOOO!!!
+								printf("LOG: Coincidencia en la tabla, descartar trama\n");
+								dropFlag=1;
+								break;//rompo el lazo
 							}
 							else{
-								printf("el destino no es el mismo en la tabla y en este caso..\n");
-								//el destino ya no es el mismo...continuo...
+								printf("no es la misma IP destino. Inconsistencia de datos!!\n");
+								//ip destino distinta, aca ya es inconsistencia.
+								//marcar para ver inconsistencia??
+								//de momento no descarto
+								dropFlag=0;
 							}
-						}//if args.arpSrcIp == arpSrcIp
-						else{
-							//no es la misma trama, la ip origen no coincide para el mismo host
-							printf("LOG: WARN: IP origen no coincide para el mismo ethSrcMac en esta entrada de la tabla\n");
-							//break???log solamente?? meter para hacer un alert???
-							//me parece que lo mejor es almacenar y ya..
-							//que otro se encargue de tratar las inconsistencias de la tabla
-							//QUE NO SEA LA MISMA TRAMA ES SUFICIENTE PARA QUE LA GUARDE!!
 						}
-					}//if srcMacEquals
-					else{//comparo por las dudas que sea caso anomalo ya registrado
-						//NO SE GUARDA EN TABLA, SIMPLEMENTE GENERO EL WARNING (PODRIA SER OTRA TABLA?)
-						//IGUAL DEBERIA VENIR YA DESCARTADO DESDE LA PRIMER VERIFICACION ESTE CASO...
-						printf("LOG: WARNING: caso anomalo llego a compararse en la tabla: mac origen ambigua.. \n");
+						else{
+							printf("el destino no es el mismo en la tabla y en este caso..\n");
+							//el destino ya no es el mismo...continuo...
+						}
+					}//if args.arpSrcIp == arpSrcIp
+					else{
+						//no es la misma trama, la ip origen no coincide para el mismo host
+						printf("LOG: WARN INCONS.: srcIP no coincide para el mismo ethSrcMac en la tabla\n");
+						//break???log solamente?? meter para hacer un alert???
+						//me parece que lo mejor es almacenar y ya..
+						//que otro se encargue de tratar las inconsistencias de la tabla
+						//QUE NO SEA LA MISMA TRAMA ES SUFICIENTE PARA QUE LA GUARDE!!
 					}
-				}//del if comparacion == 0
-				else{//este me vino de 10, porque uso el anterior siempre... pero si NO es pregunta y no llego a conclusion,
-					//pruebo tambien el cruzado :)
-					printf("la comparacion dio DIFERENTE el actual y la tabla..si no es pregunta, probaria el cruzado\n");
+				}//if srcMacEquals
+				else{//comparo por las dudas que sea caso anomalo ya registrado
+					//NO SE GUARDA EN TABLA, SIMPLEMENTE GENERO EL WARNING (PODRIA SER OTRA TABLA?)
+					//IGUAL DEBERIA VENIR YA DESCARTADO DESDE LA PRIMER VERIFICACION ESTE CASO...
+					printf("LOG: WARNING: caso anomalo llego a compararse en la tabla: mac origen ambigua.. \n");
 				}
-//			}//if de pregunta arp askFlag==1
+			}//del if comparacion == 0
+			else{//este me vino de 10, porque uso el anterior siempre... pero si NO es pregunta y no llego a conclusion,
+				//pruebo tambien el cruzado :)
+				printf("la comparacion dio DIFERENTE el actual y la tabla..si no es pregunta, probaria el cruzado\n");
+			}
 			if(askFlag==1){//si es una pregunta salteo el cruzado...
 				printf("como era una pregunta arp me salteo el cruzado...\n");
 				continue;//salto
 			}
 			printf("sigo aca porque no se trataba de una pregunta..ahora evaluo cruzado...\n");
-		//de momento comento la verificacion cruzada.. vamos derecho al almacenamiento
-		/*
-			printf("la entrada cruzada %d no esta vacia..\n",i);
-			if(args[0].shmPtr[i].ethSrcMac != NULL){
-				comparacion=strncmp(args[0].shmPtr[i].ethSrcMac,ethDstMac,(int) strlen(ethDstMac));
-				printf("valor de la comparacion cruzada = %d\n",comparacion);//0 iguales else distintos
-				printf("resulto que eran iguales el de la entrada cruzada y este\n");
-				if(comparacion==0){//SI COINCIDIERON CRUZADAS
-					//comparo la IP origen
-					if(!strncmp(args[0].shmPtr[i].arpSrcIp,arpDstIp,(int) strlen(arpDstIp))){
-						//comparo el destino de la trama con el origen de la tabla;
-						if(!strncmp(args[0].shmPtr[i].arpDstMac,arpSrcMac,(int) strlen(arpSrcMac))){
-							//coinciden las mac cruzadas, comparar IPs
-							if(!strncmp(args[0].shmPtr[i].arpDstIp,arpSrcIp,(int) strlen(arpSrcIp))){
-								//misma IP destino, si llego aca DESCARTOOO!!!
-								printf("LOG: Coincidencia en la tabla cruzada  descartar trama\n");
+			//REVISION CRUZADA
+			//EN ESTA REVISION LO QUE HAGO ES REVISAR AL REVES LAS ENTRADAS, ES DECIR, HAGO DE CUENTA QUE EL EMISOR ES EL RECEPTOR Y COMPARO
+			//ESTO LO HAGO PARA EVITAR DUPLICIDAD YA QUE LO UNICO QUE ME INTERESA ES LAS DUPLAS MAC-IP NO IMPORTA SI ES EMISOR O RECEPTOR
+
+			printf("estoy frente a una respuesta ARP CRUZADA\n");
+			printf("se va a comparar: %s con %s\n", ethSrcMac, (char*)args[0].shmPtr[i].ethDstMac);//a ver si el actual emisor fue ante receptor..y asi cruzada..
+			if(args[0].shmPtr[i].ethSrcMac == NULL){
+				printf("\nEntrada cruzada de la tabla %d VACIA\n",i);
+				printf("______________________________________________________________\n");
+				continue;//salto para optimizar, sigue comparando con el proximo subindice i
+			}
+			//no uso else por el continue anterior.. asi que sigo aca else if ethsrcmac==NULL....
+			printf("continuo cruzado aca no mas...\n");
+			printf("la entrada %d no esta vacia..\n",i);
+			comparacion=strncmp(args[0].shmPtr[i].ethDstMac,ethSrcMac,(int) strlen(ethSrcMac));
+			printf("valor de la comparacion cruzada = %d\n",comparacion);//0 iguales else distintos
+			if(comparacion==0){//SI COINCIDIERON
+				printf("resulto que eran iguales pero cruzados el de la entrada y este\n");
+/*puedo evitar anidamiento aqui*/	if(srcMacEquals==1){//si las mac origen coinciden en la trama actual
+					printf("se de antes que las mac origen coinciden en eth y arp\n");
+					//comparo la IP origen cruzada con la destino de la tabla
+					if(!strncmp(args[0].shmPtr[i].arpDstIp,arpSrcIp,(int) strlen(arpSrcIp))){
+						printf("la ip origen arp cruzada coincide en la tabla y en este caso\n");
+						//comparo el destino de la trama con el ORIGEN de la tabla porque esta cruzada
+						if(!strncmp(args[0].shmPtr[i].arpSrcMac,arpDstMac,(int) strlen(arpDstMac))){
+							printf("tenemos la misma mac ORIGEN en ARP en tabla y en este caso..\n");
+							//misma mac ORIGEN, comparo la ip ORIGEN en tabla con el destino de este caso y listo
+							if(!strncmp(args[0].shmPtr[i].arpSrcIp,arpDstIp,(int) strlen(arpDstIp))){
+								printf("tambien tenemos la misma IP origen cruzado...\n");
+								//misma IP origen en la tabla coincide con el destino de este caso.llego aca DESCARTOOO!!!
+								printf("LOG: Coincidencia CRUZADA en la tabla, descartar trama\n");
 								dropFlag=1;
 								break;//rompo el lazo
 							}
-							else{//ojo que estamos en la cruzada
-								//ip INCONSISTENTE y distinta, aca ya es inconsistencia.(y distinto obvio)
-								//marcar para ver inconsistencia??
-								//de momento no descarto por ser DISTINTAS en algo
+							else{
+								printf("no es la misma IP origen en tabla y destino en este caso. Inconsistencia de datos!!\n");
+								//Para comprender este caso, revisar comentarios en la revision derecha (esta es la cruzada)
 								dropFlag=0;
 							}
-						}//if arpDstMac==arpSrcMac
-						else{
-							//La entrada no contiene al valor actual
-							//coincidio cruzado UN SOLO HOST
-							//problema de inconsistencia tambein
-							printf("LOG: no hubo coincidencias completa, es un caso de inconsistencia!!\n");
 						}
-					}//if args.arpSrcIp==arpDstIp
-					else{	
+						else{
+							printf("el ORIGEN en la tabla no coincidio con el destino de este caso cruzado..\n");
+							//el ORIGEN no es el destino (cruzados) asi que continuo...
+						}
+					}//if args.arpDstIp == arpSrcIp
+					else{
 						//no es la misma trama, la ip origen no coincide para el mismo host
-						printf("LOG: Inconsistencia IP aqui tambien!!!\n");
-						//break???log solamente?? meter para hacer un alert???
-						//me parece que lo mejor es almacenar y ya..
-						//que otro se encargue de tratar inconsistencias de la tabla
-						//QUE NO SEA LA MISMA TRAMA ES SUFICIENTE PARA QUE LA GUARDE!!
+						printf("LOG: WARN INCONSISTENCIA CRUZADA.: DUPLAS IP MAC NO COINCIDEN PARA LA MISMA MAC EN TABLA VS ESTE CASO (ESTA TRAMA)\n");
+						//PARA COMENTARIOS AL RESPECTO REVISAR SIEMPRE LA REVISION DERECHA (ANTERIOR) Y NO LA CRUZADA (ESTA)
 					}
-				}//if de si comparacion == 0 (CRUZADAS)
+				}//if srcMacEquals. PUEDO ELIMINAR ANIDAMIENTO CON UN SIMPLE FLAG PARA CONTINUAR O SALTAR =)
 				else{//comparo por las dudas que sea caso anomalo ya registrado
-					//nada.. significa que no hubo coincidencia y sigo mirando..
-					printf("LOG: NO HUBO CONSISTENCIA EN ESTA PASADA...\n");
+					printf("LOG: WARNING en algoritmo cruzado: caso anomalo llego a compararse en la tabla: mac origen ambigua.. \n");
 				}
-			}//Si no es NULL la entrada...(solo para potimizar)
-			*/
+			}//del if comparacion == 0
+			else{//este me vino de 10, porque uso el anterior siempre... pero si NO es pregunta y no llego a conclusion,
+				//pruebo tambien el cruzado :)
+				printf("la comparacion CRUZADA dio DIFERENTE entre el caso actual y la entrada de la tabla..continuo con la sgte entrada\n");
+			}
 		}//LAZO FOR
-
 
 //ACA VA EL CODIGO ENCARGADO DE ALMACENAR LA ENTRADA
 
-		//cancelar si el flag de drop esta arriba
+		//cancelar si el flag de drop esta arriba (es decir, si se decidio antes dropear la trama)
 		if(dropFlag!=0){
 			printf("LOG: se cancela el almacenamiento de la trama por flag de DROP\n");
 			return;//finaliza el tratamiento de esta trama...
@@ -423,14 +395,47 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 		for(i=0,savedFlag=0;i<10;i++){//lazo para almacenar datos, con flag en "unsaved" por default
 			printf("___________________________________________________________________________\n");
 			printf("almacenador, pasada %d\n",i);
-			//este for recorre todas las entradas de la tabla, si esta "usable" la bloquea, vuelve a verificar, luego almacena y libera"
-			if(((int) args[0].shmPtr[i].nextState) == (3)){//si esta disponible (para eliminar o para usar...)
-				printf("la entrada %d esta disponible para su uso\n",i);//podria comenzar con las q se de antes que estan en NULL..(optimizar)
+
+			//dentro de este for se recorre todas las entradas de la tabla,
+			// si esta "usable" la bloquea, vuelve a verificar, luego almacena y libera"
+			//si esta disponible (para eliminar o para usar...)
+			//if( 3 <= (((int) args[0].shmPtr[i].nextState <= 4)) ){
+			
+			//como no me anduvo ni la doble condicion ni el or con los || hago un switch y manejo un flag
+			switch(((int) args[0].shmPtr[i].nextState)){
+				case 3:
+					writableFlag=1;
+				break;
+				case 4:
+					writableFlag=1;
+				break;
+
+				default:
+					printf("caso default, no se puede usar la entrada\n");
+				break;
+			}
+			if(writableFlag==1){
+
+				printf("la entrada %d esta disponible para su uso\n",i);
+				//podria haber comenzado con las q se de antes que estan en NULL..(optimizar)
+
 				//INICIA ZONA CRITICA, PIDO EL SEMAFORO
 				sem_wait((sem_t*) & (args[0].shmPtr[i].semaforo));
 				printf("Bloqueada la entrada %d de la tabla\n", i);
-				//compruebo por las dudas de que mientras esperaba el semaforo el anterior "ocupante" haya cambiado la entrada...
-				if(args[0].shmPtr[i].nextState == (3)){//para test, inicializar algunas en 3 otras en 4..sola las pasara a 0
+				//compruebo por las dudas de que mientras esperaba el semaforo el anterior "ocupante" haya cambiado la entrada
+				writableFlag=0;
+				switch(((int) args[0].shmPtr[i].nextState)){
+					case 3:
+						writableFlag=1;
+					break;
+					case 4:
+						writableFlag=1;
+					break;
+					default:
+						printf("caso default, no se puede usar la entrada\n");
+					break;
+				}
+				if(writableFlag==1){
 					printf("entrada bloqueada y libre para uso!! PERSISTIENDO DATOS...\n");
 					args[0].shmPtr[i].ethSrcMac=(char *)malloc (strlen(ethSrcMac));
 					strcpy(args[0].shmPtr[i].ethSrcMac,ethSrcMac);
@@ -444,10 +449,13 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 					strcpy(args[0].shmPtr[i].arpDstIp,arpDstIp);
 					args[0].shmPtr[i].arpSrcIp=(char *)malloc (strlen(arpSrcIp));
 					strcpy(args[0].shmPtr[i].arpSrcIp,arpSrcIp);
-					args[0].shmPtr[i].nextState=0;//en principio lo marco como para checkear... de momento hardcodeado
+					args[0].shmPtr[i].nextState=nextState;//OJO son enteros
 					args[0].shmPtr[i].type=(char *)malloc (strlen(type));
 					strcpy(args[0].shmPtr[i].type,type);
 					printf("ya paso la asignacion por strcpy\n");
+					printf("AHORA DEBERIA EVALUAR doCheckWAck=%d doCheckIpI=%d doCheckSpoofer=%d\n",doCheckWAck,doCheckIpI,doCheckSpoofer);
+
+
 				}
 				else{//en caso fallido.. INFORMAR Y LIBERAR.. LUEGO CONTINUAR
 					//OJO: para cuando se llene puedo hacer que en lugar de un for sea un while y siga y siga hasta flag saved =1..
@@ -455,20 +463,10 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 				}
 				//sleep(5);
 				printf("liberando semaforo...\n");
-/*
-				//desapunto los punteros??'
-				ethSrcMac=NULL;
-				ethDstMac=NULL;
-				arpSrcMac=NULL;
-				arpDstMac=NULL;
-				arpSrcIp=NULL;
-				arpDstIp=NULL;
-*/
-				//LIBERO EL SEMAFORO				
 				sem_post((sem_t*) & (args[0].shmPtr[i].semaforo));
 				//FINALIZA ZONA CRITICA
-				savedFlag=1;
-			}//IF nextstate 3|4
+				savedFlag=1;//levanto el flag para entradas guardada
+			}//IF writableFlag=1
 			if(savedFlag==1){//evaluo el flag que me dice si se guardo la entrada en la tabla..
 				printf("se almacenaron los datos en la entrada %d de la tabla\n",i);
 				break;
@@ -478,7 +476,8 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 				continue;
 			}
 			//el codigo aqui no hace nada debido al continue del else anterior...
-		}//lazo for para almacenar los datos en las entradas
+
+		}//FOR: lazo for para almacenar los datos en las entradas
 		//verifico que paso al final tras completar el for:
 		if(savedFlag==0){//no se guardo en NINGUNA entrada
 			printf("LOG: WARNING: la trama no pudo almacenarse en ninguna entrada de la tabla...\n");
@@ -487,8 +486,6 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 			printf("LOG: se guardo con exito la trama en la tabla\n");
 		}
 		
-
-
 		//UNA VEZ TERMINA DE RECORRER... PODRIA USAR ETIQUETAS DEL SIGUIENTE MODO:
 			//1| MUSTRO MENSAJE DE TABLA LLENA Y SOLICITO AL MANTENEDOR DE TABLA QUE REVISE LA TABLA O ESPERO...
 			//2| VUELVO A LA ETIQUETA DEFINIDA JUSTO ANTES DEL LAZO FOR ;) ASI INTENTO DE NUEVO..
@@ -497,148 +494,10 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 				//QUIZA HASTA ESTA SEA UNA TAREA PARA HILOS :(
 				
 
-		/*
-			printf("se va a comparar : %s con %s\n",( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac ),ethSrcMac );
-			if(  ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac) != NULL){
-				printf("no nulo\n");
-				comparacion=strncmp( ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac), ethSrcMac, (int) strlen(ethSrcMac));
-				printf("valor de la comparacion = %d\n",comparacion);
-				if(comparacion == 0){
-					printf("eran iguales entonces por el strlen\n");
-				}
-				else{
-					printf("eran DISTINTOS por el strlen\n");
-				}
-			}
-			else{
-				//si esta nula la entrada, saltarla y ahorrar tiempo!!
-				continue;//salta con este?
-				printf("era nulo....\n");
-			}
-			if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac==ethSrcMac){
-				printf("este pregunton ya pregunto antes, a ver si es el mismo destino...\n");
-				if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpDstIp==arpDstIp){
-					printf("es el mismo destino, a ver si no esta spoofeada la pregunta...\n");
-					//ahora puedo hacer una busqueda en la tabla..si coincide que la ip es distinta entonces
-					//se que estamos frente a una pregunta spoofeada
-					if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpSrcIp==arpSrcIp){
-						//si entra aca significa que coincidio origen, destino y las IP origen
-						printf("esta entrada ya existia en la tabla, la descartamos...\n");
-						dropFlag=1;//descartar...
-						//incremento el hit de la entrada.
-						//bloquear entrada...
-						sem_wait( & ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).semaforo) );
-						//usar la entrada de la tabla
-						//Si estaba para eliminar, le cambio el nextState
-						if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).nextState==(3||4)){
-							printf("Esta entrada se iba a eliminar...\n");
-							(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).nextState=1;
-						}
-						//aumento el hit
-						(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).hit++;
-							//liberar entrada de la tabla
-						sem_post( & ((((arpDTMWorker_arguments *) arguments)->shmPtr[i]).semaforo) );
-						//ahora corto porque solo queria aumentar el HIT
-						break;
-					}
-					else{
-						printf("se encontro la entrada, pero difieren IP origen, posible pregunta spoofed\n");
-						dropFlag=0;//corresponde.... por mas que venga de antes en 0
-						doCheckSpoofer=1;//sip.. si hay inconsistencia hay algo raro..
-					}
-				}
-			}
-		}
-		//printf("Estado de la entrada n°%d: %d\n", i,(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).hit  );
-			//Comparo las ethSrcMac de la tabla con las MAC que tengo en este hilo
-			printf("mostrando comparacion: %s con %s \n",(((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac,ethSrcMac);
-			if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac==ethSrcMac){
-				printf("Coincidencia de ethSrcMac_en_tabla con ethSrcMac\n");
-				//comprobar si el otro participande del dialogo es el de ahora:
-				if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethDstMac==ethDstMac){
-					printf("coinsidencia de dialogo!! tambien coincidieron las mac destino\n");
-					//comprobar integridad IP:
-					if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpSrcIp==arpSrcIp){
-						printf("IP src OK\n");
-						if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpDstIp==arpDstIp){
-							printf("IP destino OK, entrada REPETIDA EN LA TABLA\n");
-							dropFlag=1;
-						}
-						else{
-							printf("conflicto: La IP destino actual no coincide con la almacenada posible spoofing\n");
-							//marcar de algun modo el conflicto!!! (podria ser el hit???)
-							dropFlag=0;
-						}
-					}
-					else{
-						//IP origen de ahora no coincide con el origen de la entrada almacenada
-						printf("IP origen en discordia con la entrada almacenada\n");
-						//deberia marcarla para revisar, entonces se almacena
-						dropFlag=0;
-					}
-				}
-				else{
-					//no seria la misma trama porque tienen mismo origen pero distinto destino en MAC
-					dropFlag=0;
-				}
-			}
-			else{
-				if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethSrcMac==ethDstMac){
-					printf("Coincidencia de ethDstMac_en_tabla con ethSrcMac\n");
-					//comprobar si el otro participande del dialogo es el de ahora:
-					if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).ethDstMac==ethSrcMac){
-						printf("coinsidencia de dialogo pero cruzado!!\n");
-						//comprobar integridad IP:
-						if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpSrcIp==arpDstIp){
-							//macs iguales aunque cruzadas:
-
-							printf("IP src y dst cruzadas OK\n");
-							if( (((arpDTMWorker_arguments *) arguments)->shmPtr[i]).arpDstIp==arpSrcIp){
-								printf("IP destino OK, entrada REPETIDA EN LA TABLA (CRUZADA)\n");
-								dropFlag=1;
-							}
-							else{
-								printf("conflicto: IP dest. actual no coincide con la almacenada posible spoofing\n");
-								//marcar de algun modo el conflicto!!! (podria ser el hit???)
-								dropFlag=0;
-							}
-						}
-						else{
-							//IP origen de ahora no coincide con el origen de la entrada almacenada
-							printf("IP origen (CRUZADA) en discordia con la entrada almacenada\n");
-							//deberia marcarla para revisar, entonces se almacena
-							dropFlag=0;
-						}
-					}
-					else{
-						//no seria la misma trama porque tienen mismo origen pero distinto destino en MAC
-						dropFlag=0;
-					}
-				}
-			}//else if
-			//ahora si esta dropFlag arriba, entonces corto el lazo y termino descartando la trama
-			if(dropFlag==1){
-				printf("LOG: se desacarta la trama (quiza por coincidir en la tabla)\n");
-				return 0;
-			}		
-		}//lazo FOR
-		//facil, si esta activo el DROP, pues finalizar, sino continuar ejecucion
-		if(dropFlag==1){
-			printf("LOG: se desacarta la trama (quizaa por coincidir en la tabla)\n");
-			return 0;
-		}
-
-
-
-
-*/
-
-
-
-//FINALIZA LA BUSQUEDA DE LUGAR EN LA TABLA
+	//FINALIZA LA BUSQUEDA DE LUGAR EN LA TABLA
 
 		//puedo continuar con el proximo =) finaliza la tarea de la Callback
 		//aumenta el contador de frames
 	
-}
-	}
+	}//ELSE VIAJA ARP
+}//definicion de la funcion
