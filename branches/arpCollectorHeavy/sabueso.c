@@ -117,9 +117,10 @@ int main(int argc, char *argv[]){
 	int fdshm;
 	//sharedMem
 	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla
-	struct arpDialog arpDialoguesTable[10];//hardcodeado, luego deberia parametrizarlo y variabilizarlo
+	int tableSize=10;
+	struct arpDialog arpDialoguesTable[tableSize];//hardcodeado, luego deberia parametrizarlo y variabilizarlo
 	//inicializacion:
-	for(subindexCounterId=0;subindexCounterId<10;subindexCounterId++){//ese 100 es el hardcodeado anterior
+	for(subindexCounterId=0;subindexCounterId<tableSize;subindexCounterId++){//ese 100 es el hardcodeado anterior
 		arpDialoguesTable[subindexCounterId].index=subindexCounterId;
 		arpDialoguesTable[subindexCounterId].ethSrcMac=NULL;
 		arpDialoguesTable[subindexCounterId].ethDstMac=NULL;
@@ -136,6 +137,8 @@ int main(int argc, char *argv[]){
 		//int sem_init(sem_t *sem, int pshared, unsigned int value);
 		sem_init(&(arpDialoguesTable[subindexCounterId].semaforo),1,1);//inicializa semaforos de cada entrada de la tabla
 	}//inicializadas las entradas de la tabla, paso a confeccionar la Memoria Compartida
+
+	//return;//ES PARA MOSTRAR EL PROBLEMA QUE TENGO AQUI.. SERA PORQUE NO ESTOY MALLOCANDO???
 
 	//por debug, inicializo el 43 con el hit = 5;
 
@@ -163,12 +166,12 @@ int main(int argc, char *argv[]){
 	exit(EXIT_FAILURE);
 	}
 	//ojo con ese 100 de abajo.. es el hardcodeado, representa la cantidad de estructuras struct arpDilog que hay en el array arpDialoguesTable
-	if(!(shmPtr=mmap(NULL, sizeof(struct arpDialog)*10, PROT_READ|PROT_WRITE, MAP_SHARED, fdshm, 0))){
+	if(!(shmPtr=mmap(NULL, sizeof(struct arpDialog)*tableSize, PROT_READ|PROT_WRITE, MAP_SHARED, fdshm, 0))){
 		perror("mmap()");
 		exit(EXIT_FAILURE);
 	}
 	//la truncada de suerte!!:
-	ftruncate(fdshm, sizeof(struct arpDialog)*10);
+	ftruncate(fdshm, sizeof(struct arpDialog)*tableSize);
 	close(fdshm);
 
 //------------FIN ZONA DE DEFINICION DE ESTRUCTURAS DE DATOS DEL SABUESO------------------
@@ -340,7 +343,7 @@ int main(int argc, char *argv[]){
 				//Argumentos para la funcion callback
 				arpCCArgs conf[2] = {
 				//	{0, "foo",shmPtr},
-					{1, "Argumentos",shmPtr}
+					{tableSize, "Argumentos",shmPtr}
 				};
 				//le paso los descriptores del PIPE
 				conf[0].fdPipe[0]=fdPipe[0];
@@ -362,8 +365,6 @@ int main(int argc, char *argv[]){
 
 //------------INICIA FORK MULTIHILADO DE SEGUIMIENTO, ROBO DE PUERTO Y ALERTA-----------------------------
 
-//comentado para que no jorobe
-/*
 	switch(fork()){
 		case -1:
 			perror("fork()");
@@ -372,6 +373,61 @@ int main(int argc, char *argv[]){
 			//Proceso arpCollector.c
 			puts("soy el HIJO PORT STEALER...\n");
 
+			//ALGORITMO:
+			//1|Examinar entrada por entrada de la tabla y para cada una:
+				//2|Reviso si es PREGUNTA ARP o RESPUESTA
+					//CASO PREGUNTA:
+						//El origen es quien puede ser spoofeado, asi que lanzo un hilo que:
+							//Pregunte por el DESTINO pero EN NOMBRE DEL ORIGEN (port stealing)
+							//Capturo las tramas (filtradas) sean ARP o ROBADAS =)
+							//Compruebo consistencia de los datos de las tramas obtenidas
+							//SI DETECTO SPOOF: levanto flag de spoof detectado
+							//ELSE: comienza algoritmo retardado de deteccion
+								//SI DETECTO: levanto el flag de spoof detectado
+								//ELSE: flag de spoof abajo, guardo el CONOCIMIENTO
+							//Reviso flags y genero alertas o descarto o marco entradas segun corresponda
+					//CASO RESPUESTA:
+						//El origen es uno de mis hosts (servers) protegidos asi que CONOZCO sus datos CORRECTOS
+							//Compruebo que las tramas obtenidas tengan DATOS CORRECTOS segun base de conocimeinto
+							//SI DETECTO INCONSISTENCIA:
+								//flag de alerta correspondiente
+								//terminar
+							//NO DETECTO INCONSISTENCIA
+								//flag de consistencia OK (o en 0..??)
+								//dejo continuar
+							//Compruebo que el DESTINO sea quien supone esta respuesta que es
+								//Lanzar un hilo que arpee por el DESTINO y compare los datos obtenidos con los de la tabla
+								//SI ES INCONSISTENTE: levanto el flag correspondiente
+								//NO ES INCONSISTENTE: flag abajo
+							//Compruebo FLAGS y tomo decision, marcar, alertar, lo que sea
+											
+						
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
 			//COmienza a preparar la captura...
 			char* dev=NULL;
 			char errbuf[PCAP_ERRBUF_SIZE];
@@ -379,11 +435,6 @@ int main(int argc, char *argv[]){
 			struct bpf_program fp;//aca se guardara el programa compilado de filtrado
 			bpf_u_int32 maskp;// mascara de subred
 			bpf_u_int32 netp;// direccion de red
-			//el IF de abajo no tiene nada que hacer aqui!!! que modo de uso ni que changos!!
-			if (argc != 2){
-				fprintf(stdout,"Modo de Uso %s \"programa de filtrado\"\n",argv[0]);
-				return 0;
-			}
 			dev = pcap_lookupdev(errbuf); //Buscamos un dispositivo del que comenzar la captura
                         printf("\nEcontro como dispositivo %s\n",dev);
                         if (dev == NULL){
@@ -422,12 +473,11 @@ int main(int argc, char *argv[]){
 
 			//bucle: lanzar funcion callback de captura para cada frame capturado:
 			pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,(u_char*) conf);
+*/
 
 			_exit(EXIT_SUCCESS);
 	}//FIN DEL FORK PARA ARPCOLLECTOR
 
-
-*/
 
 	//------------FIN FORK MULTIHILADO DE SEGUIMIENTO, ROBO DE PUERTO Y ALERTA--------------------------------
 

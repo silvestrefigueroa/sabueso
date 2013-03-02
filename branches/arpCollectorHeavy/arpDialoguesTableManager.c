@@ -10,6 +10,8 @@
 #include <semaphore.h>
 #include "arpDialogStruct.h"
 
+//#define TABLE_SIZE (((arpDTMWorker_arguments *) arguments)->shmPtr[i])
+
 
 void* arpDialoguesTableManager(void *arguments){
 
