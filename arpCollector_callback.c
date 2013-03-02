@@ -25,10 +25,12 @@
 //Include de la estructura arpDialog
 #include "arpDialogStruct.h"
 
+#define TABLE_SIZE args[0].tableSize
+
+
 //Callback starts here!!
 void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,const u_char* packet){
 	static int count = 1;
-
 
 	//bufers para las reentrante de ether e inet
 	char ethSrcMacBuf[20];
@@ -235,7 +237,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 
 		//antes de ir a meterlo en la tabla, deberia comprobar que la informacion que estoy metiendo no existe ya de antes!!!
 		//LAZO PARA CHECKEAR SI EXISTE UNA ENTRADA IGUAL O CRUZADA DE ESTE CASO
-		for(i=0;i<10;i++){//ese tamaño de la tabla de memoria deberia ser un sizeof o de alguna manera conocerlo ahora hardcodeado
+		for(i=0;i<TABLE_SIZE;i++){//ese tamaño de la tabla de memoria deberia ser un sizeof o de alguna manera conocerlo ahora hardcodeado
 
 			printf("\nPasada de revision %d\n",i);
 			//debera comparar con todas entradas en la tabla, si coinciden TENGO UN CONOCIMIENTO, si es igual DESCARTAR
@@ -392,7 +394,7 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 		else{
 			printf("LOG: se procede al almacenamiento de la trama....\n");
 		}
-		for(i=0,savedFlag=0;i<10;i++){//lazo para almacenar datos, con flag en "unsaved" por default
+		for(i=0,savedFlag=0;i<TABLE_SIZE;i++){//lazo para almacenar datos, con flag en "unsaved" por default
 			printf("___________________________________________________________________________\n");
 			printf("almacenador, pasada %d\n",i);
 
@@ -481,6 +483,8 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 		//verifico que paso al final tras completar el for:
 		if(savedFlag==0){//no se guardo en NINGUNA entrada
 			printf("LOG: WARNING: la trama no pudo almacenarse en ninguna entrada de la tabla...\n");
+			//Aca podria desencadenar un procedimiento en el que se solicita a un administrador de tabla
+			//que haga un mantenimiento de la misma; La comunicacion podria ser por pipe.
 		}
 		else{
 			printf("LOG: se guardo con exito la trama en la tabla\n");
