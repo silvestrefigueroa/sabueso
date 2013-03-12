@@ -20,6 +20,7 @@
 //#include "parser.h"
 #include "splitter.h"
 #include "arpDialogStruct.h"
+//#include "arpAskerStruct.h"
 #include "arpCollector_callback.h"
 #include "callbackArgs.h"
 
@@ -90,7 +91,11 @@ int main(int argc, char *argv[]){
 
 //------------INICIA ZONA DE DEFINICION DE ESTRUCTURAS DE DATOS DEL SABUESO--------------
 	//vida de los hijos
-	int live=1;
+	int live=1;//Mas abajo se explica, es para no poner un while true.. ademas me permite INTERRUMPIR la ejecucion
+
+
+
+	//INICIA CREACION DE TABLA DE DIALOGOS
 
 	//Crear zona de memoria compartida para alojar la estructura (o.. array de estructuras)
 
@@ -101,10 +106,10 @@ int main(int argc, char *argv[]){
 	//sharedMem
 	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla
 	int tableSize=10;
-	struct arpDialog arpDialoguesTable[tableSize];//hardcodeado, luego deberia parametrizarlo y variabilizarlo
+	struct arpDialog arpDialoguesTable[tableSize];//CONSULTAR: AQUI NO DEBERIA MALLOQUEAR?? COREDUMP SI TABLESIZE ES MUY GRANDE!!
 	//inicializacion:
 	for(subindexCounterId=0;subindexCounterId<tableSize;subindexCounterId++){//ese 100 es el hardcodeado anterior
-		arpDialoguesTable[subindexCounterId].index=subindexCounterId;
+		arpDialoguesTable[subindexCounterId].arpAskerIndex=subindexCounterId;
 		arpDialoguesTable[subindexCounterId].ethSrcMac=NULL;
 		arpDialoguesTable[subindexCounterId].ethDstMac=NULL;
 		arpDialoguesTable[subindexCounterId].arpSrcMac=NULL;
@@ -121,22 +126,7 @@ int main(int argc, char *argv[]){
 		sem_init(&(arpDialoguesTable[subindexCounterId].semaforo),1,1);//inicializa semaforos de cada entrada de la tabla
 	}//inicializadas las entradas de la tabla, paso a confeccionar la Memoria Compartida
 
-	//return;//ES PARA MOSTRAR EL PROBLEMA QUE TENGO AQUI.. SERA PORQUE NO ESTOY MALLOCANDO???
-
-	//por debug, inicializo el 43 con el hit = 5;
-
 	arpDialoguesTable[4].hit=5;
-/*
-	arpDialoguesTable[0].nextState=3;
-	arpDialoguesTable[1].nextState=3;
-	arpDialoguesTable[2].nextState=3;
-	arpDialoguesTable[7].nextState=3;
-	arpDialoguesTable[9].nextState=3;
-*/
-	
-
-	
-
 	
 	//SHAREDMEM arpDialoguesTableManagerArguments.h
 	if(((fdshm=shm_open("/sharedMemPartida", O_RDWR|O_CREAT, 0666))<0)){
@@ -156,6 +146,60 @@ int main(int argc, char *argv[]){
 	//la truncada de suerte!!:
 	ftruncate(fdshm, sizeof(struct arpDialog)*tableSize);
 	close(fdshm);
+
+	//FINALIZA CREACION DE TABLA DE DIALOGOS PARA MEMORIA COMPARTIDA
+
+	//-------------------------------------------------------------------------------------------------------------------------------------------
+
+	//INICIA CREACION DE TABLA DE ASKERS EN MEMORIA COMPARTIDA
+
+	//Crear zona de memoria compartida para alojar la estructura (o.. array de estructuras)
+
+	//puntero a la memoria compartida
+	/*struct*/ arpAsker *arpAskers_shmPtr=NULL;
+	//descriptor de la memoria compartida
+	int arpAskers_fdshm;
+	//sharedMem
+
+//RECICLO	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla 
+
+	int arpAskersTable_tableSize=10;
+	
+	arpAskersTable_tableSize=100;//hardcodeado, pero este numero se calcula a partir de la cantidad de IP usables del rango de MI netmask
+	/*struct*/ arpAsker arpAskersTable[arpAskersTable_tableSize];//CONSULTAR: AQUI NO DEBERIA MALLOQUEAR?? COREDUMP SI TABLESIZE ES MUY GRANDE!!
+	//inicializacion:
+	for(subindexCounterId=0;subindexCounterId<arpAskersTable_tableSize;subindexCounterId++){//ese 100 es el hardcodeado anterior
+		arpAskersTable[subindexCounterId].arpAskerIndex=subindexCounterId;
+		arpAskersTable[subindexCounterId].mac=NULL;
+		arpAskersTable[subindexCounterId].ip=NULL;
+		arpAskersTable[subindexCounterId].status=NULL;
+		arpAskersTable[subindexCounterId].hit=0;
+		//int sem_init(sem_t *sem, int pshared, unsigned int value);
+		sem_init(&(arpAskersTable[subindexCounterId].semaforo),1,1);//inicializa semaforos de cada entrada de la tabla
+	}//inicializadas las entradas de la tabla, paso a confeccionar la Memoria Compartida
+
+	arpAskersTable[6].hit=9;//ejemplo, vamos a ver si anda la tabla.. =)
+	
+	//SHAREDMEM arpAskersTable
+	if(((arpAskers_fdshm=shm_open("/sharedMemAskers", O_RDWR|O_CREAT, 0666))<0)){//CONSULTAR: que hace aca?!?!?!?
+		perror("shm_open()");
+		exit(EXIT_FAILURE);
+	}
+	//lo escribo en blanco
+	if(!(write(arpAskers_fdshm,&arpAskersTable,sizeof(arpAskersTable)))){//podria ser el tamaño de una entrada * tarpAskersTable_ableSize como en el mmap??
+	perror("write()");
+	exit(EXIT_FAILURE);
+	}
+	//ojo con ese 100 de abajo.. es el hardcodeado, representa la cantidad de estructuras struct arpDilog que hay en el array arpDialoguesTable
+	if(!(arpAskers_shmPtr=mmap(NULL, sizeof(arpAsker)*arpAskersTable_tableSize, PROT_READ|PROT_WRITE, MAP_SHARED, arpAskers_fdshm, 0))){
+		perror("mmap()");
+		exit(EXIT_FAILURE);
+	}
+	//la truncada de suerte!!:
+	ftruncate(arpAskers_fdshm, sizeof(arpAsker)*arpAskersTable_tableSize);
+	close(arpAskers_fdshm);
+
+	//FINALIZA LA CREACION DE TABLA DE ASKERS EN MEMORIA COMPARTIDA
 
 //------------FIN ZONA DE DEFINICION DE ESTRUCTURAS DE DATOS DEL SABUESO------------------
 
@@ -218,8 +262,8 @@ int main(int argc, char *argv[]){
 			}
 			//Argumentos para la funcion callback
 			arpCCArgs conf[2] = {
-			//	{0, "foo",shmPtr},
-				{tableSize, "Argumentos",shmPtr}
+			//	{0, "foo",shmPtr,arpAskers_shmPtr},
+				{tableSize, "Argumentos",shmPtr,arpAskers_shmPtr,arpAskersTable_tableSize}
 			};
 			//le paso los descriptores del PIPE
 			conf[0].fdPipe[0]=fdPipe[0];
@@ -294,13 +338,13 @@ int main(int argc, char *argv[]){
 				printf("soy el HIJO PORT STEALER del host: %s\n",(servers2guard[i].serverName));
 
 				//flags:
-				int askingForThisServer=0;//inicializa en "no preguntan por el server"
+//				int askingForThisServer=0;//inicializa en "no preguntan por el server"
 							
 				//ALGORITMO:
 				//1|Examinar entrada por entrada de la tabla y para cada una:
 				live=1;
 				j=0;
-				while(live==1){
+				while(live==1){//podria ser un while true, se utilizo esta variable para tener condicion de corte (aunque puedo usar break...)
 					sleep(20);//descanza 20 segundos despues de cada recorrida completa
 					for(j=0;j<tableSize;j++){
 						//por las dudas me fijo si la entrada en la tabla no es NULL:
@@ -319,7 +363,7 @@ int main(int argc, char *argv[]){
 							switch(arpDialoguesTable[j].type==0){
 								case 0:
 									printf(">>era pregunta...\n");
-									askingForThisServer=1;
+//									askingForThisServer=1;
 								break;
 								case 1:
 									printf(">>supongo que era respuesta...\n");

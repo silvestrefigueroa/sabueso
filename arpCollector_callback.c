@@ -25,7 +25,8 @@
 //Include de la estructura arpDialog
 #include "arpDialogStruct.h"
 
-#define TABLE_SIZE args[0].tableSize
+#define TABLE_SIZE args[0].tableSize//TAMAÑO DE LA TABLA DE DIALOGOS
+#define ARPASKERS_TABLE_SIZE args[0].arpAskers_tableSize//TAMAÑO DE LA TABLA DE ASKERS
 
 
 //Callback starts here!!
@@ -457,6 +458,10 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 					printf("ya paso la asignacion por strcpy\n");
 					printf("AHORA DEBERIA EVALUAR doCheckWAck=%d doCheckIpI=%d doCheckSpoofer=%d\n",doCheckWAck,doCheckIpI,doCheckSpoofer);
 
+					//Luego.. deberia comprobar si el pregunton existe en la tabla de arpAskers..
+						//Si existe tomo el index de esa entrada y lo seteo en el index de esta entrada
+						//Si no existe lo inserto y luego tomo el index para guardarlo en ESTA entrada en el campo arpAskerIndex
+
 
 				}
 				else{//en caso fallido.. INFORMAR Y LIBERAR.. LUEGO CONTINUAR
@@ -500,7 +505,77 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 
 	//FINALIZA LA BUSQUEDA DE LUGAR EN LA TABLA
 
-		//puedo continuar con el proximo =) finaliza la tarea de la Callback
+		//AHORA CHEQUEO SI EL ASKER EXISTE EN LA TABLA DE ASKERS.. 
+
+		
+			//SI EXISTE LE AUMENTO EL HIT
+			//SI NO EXISTE LO AÑADO A LA TABLA
+			//solo en el caso de que haya sido una pregunta...:
+			if(askFlag==0){
+				return;
+			}
+
+
+
+int breakVar=0;
+int askerFounded=0;
+		
+		for(i=0,savedFlag=0;i<ARPASKERS_TABLE_SIZE||breakVar==0;i++){
+			printf("buscando %s en la tabla de askers\n",arpSrcIp);
+
+			//chequear si coincide
+			//1| si la entrada esta en NULL entonces esta vacia, saltar a la siguiente
+			if(args[0].arpAskers_shmPtr[i].ip==NULL){
+				printf("entrada vacia, saltar a la proxima porque estoy comparando nada mas...\n");
+				continue;
+			}
+			else{//si entra aca hay algo en la entrada..compararlo entonces con la arpSrcIp que tengo
+				if(!strncmp(args[0].arpAskers_shmPtr[i].ip,arpSrcIp,strlen(arpSrcIp))){
+					printf("la entrada ya existe en la tabla\n");
+					askerFounded=1;//lo encontre!! levanto flag
+					breakVar=1;//para interrumpir levanto flag!!
+				}
+				else{
+					printf("existia algo en la tabla pero %s no es lo mismo que %s\n",args[0].arpAskers_shmPtr[i].ip,arpSrcIp);
+				}
+			}//else NO esta vacia la entrada
+		}//Lazo for que recorre las entradas de la tabla de arpAskers
+		//Si al terminar este for no se encontro la entrada en la tabla, entonces la almaceno!!!
+		if(askerFounded==0){
+			printf("El asker estaba en la tabla, asi que no lo guardo nada...\n");
+			//continue;//no funciona el continue aqui dentro...
+			//aumentar el HIT??
+			return;
+		}
+		else{
+			printf("no se encontro al asker, asi que tengo que guardarlo\n");
+		}
+		//Recorrer buscando uno VACIO o iniciar algoritmo de insercion cuando la tabla esta llena
+int askerSaved=0;
+		for(i=0,savedFlag=0;i<ARPASKERS_TABLE_SIZE||breakVar==0;i++){
+			printf("buscando una entrada vacia para guardar %s en la tabla de askers\n",arpSrcIp);
+			if(args[0].arpAskers_shmPtr[i].ip==NULL){
+				printf("entrada vacia guardando asker...\n");
+				//Guardar...
+				sem_wait((sem_t*) & (args[0].arpAskers_shmPtr[i].semaforo));
+				args[0].arpAskers_shmPtr[i].ip=(char *)malloc (strlen(arpSrcIp));
+				strcpy(args[0].arpAskers_shmPtr[i].ip,arpSrcIp);
+				sem_post((sem_t*) & (args[0].arpAskers_shmPtr[i].semaforo));
+				printf("almacenado de la entrada de asker completada...\n");//podria compararlo leyendo la entrada y strncmp con arpSrcip...
+				askerSaved=1;//levanto flag de asker almacenado
+			}
+		}//lazo for que ALMACENA el asker si hay entradas vacias
+		if(askerSaved==0){
+			printf("no se pudo almacenar al asker.. quiza la tabla este llena\n");
+			//INICIA ALGORITMO DE ALMACENAMIENTO CON TABLA LLENA...
+			//...
+		}
+		else{
+			printf("Se ingreso al asker en la tabla\n");
+		}
+		//FIN MANEJO DE ASKER TABLE
+
+		//puedo continuar con el proximo frame =) finaliza la tarea de la Callback
 		//aumenta el contador de frames
 	
 	}//ELSE VIAJA ARP
