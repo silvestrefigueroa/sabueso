@@ -88,7 +88,133 @@ int main(int argc, char *argv[]){
 	if(0>=write(1,MSG_START, strlen(MSG_START)))
 		return -1;
 	int i=0;//indice utilizando en los for...
+//------------INICIA ZONA DE CONTROL DE PARAMETROS DE APLICACION-----------------------------------------------//
 
+	//PARAMETROS DE CAPTURA, DE PASO PREAPRA VARIABLES DE CAPTURA PARA EL PRIMER HIJO
+	//COmienza a preparar la captura...
+	char *dev=NULL;
+	char *net=NULL;
+	char *mask=NULL;
+	struct in_addr addr;
+	char errbuf[PCAP_ERRBUF_SIZE];
+	pcap_t* descr;//descriptor de la captura
+	struct bpf_program fp;//aca se guardara el programa compilado de filtrado
+	bpf_u_int32 maskp;// mascara de subred
+	bpf_u_int32 netp;// direccion de red
+	dev = pcap_lookupdev(errbuf); //Buscamos un dispositivo del que comenzar la captura
+	printf("\nEcontro como dispositivo %s\n",dev);
+	if (dev == NULL){
+		fprintf(stderr," %s\n",errbuf); exit(1);
+	}
+	else{
+		printf("Abriendo %s en modo promiscuo\n",dev);
+	}
+	dev = "wlan0";//hardcodeo la wifi en desarrollo, luego la dejare utomatica o por parametro.
+	//obtener la direccion de red y la netmask de la NIC en "dev"
+	if(pcap_lookupnet(dev,&netp,&maskp,errbuf)==-1){
+		printf("ERROR %s\n",errbuf);
+		exit(-1);
+	}
+	addr.s_addr = netp; //traducir direccion de red en algo legible
+	if((net = inet_ntoa(addr))==NULL){
+		perror("inet _ntoa");
+		exit(-1);
+	}
+	printf("Direccion de Red: %s\n",net);
+	addr.s_addr = maskp;
+	mask = inet_ntoa(addr);
+	if((net=inet_ntoa(addr))==NULL){
+		perror("inet _ntoa");
+		exit(-1);
+	}
+	printf("Mascara de Red: %s\n",mask);
+	//comenzar captura y obtener descriptor llamado "descr" del tipo pcatp_t*
+	descr = pcap_open_live(dev,BUFSIZ,1,-1,errbuf); //comenzar captura en modo promiscuo
+	if (descr == NULL){
+		printf("pcap_open_live(): %s\n",errbuf);
+		exit(1);
+	}
+	//ahora compilo el programa de filtrado para hacer un filtro para ARP
+	if(pcap_compile(descr,&fp,"arp",0,netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
+		fprintf(stderr,"Error compilando el filtro\n");
+		exit(1);
+	}
+	//Para APLICAR el filtro compilado:
+	if(pcap_setfilter(descr,&fp)==-1){
+		fprintf(stderr,"Error aplicando el filtro\n");
+		exit(1);
+	}
+	//calculo el tamaño de la table para askers en funcion de la mascara de subred:
+	int maskTooBig=1;
+	int arpAskersTable_tableSize=0;
+	for(i=0;i<1;i++){
+		if(!strncmp(mask,"255.255.255.254",strlen("255.255.255.254"))){
+			printf("en cidr es una /31\n");
+			maskTooBig=0;
+			arpAskersTable_tableSize=2;
+			break;//rompe el bucle
+		}
+		if(!strncmp(mask,"255.255.255.252",strlen("255.255.255.252"))){
+			printf("en cidr es una /30\n");
+			maskTooBig=0;
+			arpAskersTable_tableSize=4;
+			break;//rompe el bucle
+		}
+		if(!strncmp(mask,"255.255.255.248",strlen("255.255.255.248"))){
+			printf("en cidr es una /29\n");
+			arpAskersTable_tableSize=8;
+			maskTooBig=0;
+			break;//rompe el bucle
+		}
+		if(!strncmp(mask,"255.255.255.240",strlen("255.255.255.240"))){
+			printf("en cidr es una /28\n");
+			arpAskersTable_tableSize=16;
+			maskTooBig=0;
+			break;//rompe el bucle
+		}
+		if(!strncmp(mask,"255.255.255.224",strlen("255.255.255.224"))){
+			printf("en cidr es una /27\n");
+			arpAskersTable_tableSize=32;
+			maskTooBig=0;
+			break;//rompe el bucle
+		}
+		if(!strncmp(mask,"255.255.255.192",strlen("255.255.255.192"))){
+			printf("en cidr es una /26\n");
+			arpAskersTable_tableSize=64;
+			maskTooBig=0;
+			break;//rompe el bucle
+		}
+		if(!strncmp(mask,"255.255.255.128",strlen("255.255.255.128"))){
+			printf("en cidr es una /25\n");
+			arpAskersTable_tableSize=128;
+			maskTooBig=0;
+			break;//rompe el bucle
+		}
+		if(!strncmp(mask,"255.255.255.0",strlen("255.255.255.0"))){
+			printf("en cidr es una /24\n");
+			arpAskersTable_tableSize=256;
+			maskTooBig=0;
+			break;//rompe el bucle
+		}
+		if(!strncmp(mask,"255.255.254.0",strlen("255.255.254.0"))){
+			printf("en cidr es una /23\n");
+			arpAskersTable_tableSize=512;
+			maskTooBig=0;
+			break;//rompe el bucle
+		}
+	}
+	if(maskTooBig==1){
+		printf("ERROR: La red es muy grande...intente con una subred mas chica\n");
+		_exit(EXIT_SUCCESS);
+	}
+	--arpAskersTable_tableSize,2;//ajusto el tamaño
+	//FIN PARAMETROS DE CAPTURA
+
+
+
+
+
+//-----------FINALIZA ZONA DE CONTROL DE PARAMETROS DE APLICACION---------------------------------------------//
 //------------INICIA ZONA DE DEFINICION DE ESTRUCTURAS DE DATOS DEL SABUESO--------------
 	//vida de los hijos
 	int live=1;//Mas abajo se explica, es para no poner un while true.. ademas me permite INTERRUMPIR la ejecucion
@@ -105,7 +231,7 @@ int main(int argc, char *argv[]){
 	int fdshm;
 	//sharedMem
 	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla
-	int tableSize=10;
+	int tableSize=(arpAskersTable_tableSize*arpAskersTable_tableSize)/2;//maximo de preguntas ARp permitidas por el tamaño de la red
 	struct arpDialog arpDialoguesTable[tableSize];//CONSULTAR: AQUI NO DEBERIA MALLOQUEAR?? COREDUMP SI TABLESIZE ES MUY GRANDE!!
 	//inicializacion:
 	for(subindexCounterId=0;subindexCounterId<tableSize;subindexCounterId++){//ese 100 es el hardcodeado anterior
@@ -163,7 +289,7 @@ int main(int argc, char *argv[]){
 
 //RECICLO	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla 
 
-	int arpAskersTable_tableSize=10;
+//	int arpAskersTable_tableSize=10; //lo saco del la netmask cidr obtenida al principio
 	
 	arpAskersTable_tableSize=100;//hardcodeado, pero este numero se calcula a partir de la cantidad de IP usables del rango de MI netmask
 	/*struct*/ arpAsker arpAskersTable[arpAskersTable_tableSize];//CONSULTAR: AQUI NO DEBERIA MALLOQUEAR?? COREDUMP SI TABLESIZE ES MUY GRANDE!!
@@ -227,39 +353,9 @@ int main(int argc, char *argv[]){
 			puts("\n-------------------------");
 			puts("soy el HIJO recolector de mensajes ARP iniciando...\n");
 			//COmienza a preparar la captura...
-			char* dev=NULL;
-			char errbuf[PCAP_ERRBUF_SIZE];
-			pcap_t* descr;//descriptor de la captura
-			struct bpf_program fp;//aca se guardara el programa compilado de filtrado
-			bpf_u_int32 maskp;// mascara de subred
-			bpf_u_int32 netp;// direccion de red
-			dev = pcap_lookupdev(errbuf); //Buscamos un dispositivo del que comenzar la captura
-			printf("\nEcontro como dispositivo %s\n",dev);
-			if (dev == NULL){
-				fprintf(stderr," %s\n",errbuf); exit(1);
-			}
-			else{
-				printf("Abriendo %s en modo promiscuo\n",dev);
-			}
-			dev = "wlan0";//hardcodeo la wifi en desarrollo, luego la dejare utomatica o por parametro.
-			//obtener la direccion de red y la netmask de la NIC en "dev"
-			pcap_lookupnet(dev,&netp,&maskp,errbuf);
-			//comenzar captura y obtener descriptor llamado "descr" del tipo pcatp_t*
-			descr = pcap_open_live(dev,BUFSIZ,1,-1,errbuf); //comenzar captura en modo promiscuo
-			if (descr == NULL){
-				printf("pcap_open_live(): %s\n",errbuf);
-				exit(1);
-			}
-			//ahora compilo el programa de filtrado para hacer un filtro para ARP
-			if(pcap_compile(descr,&fp,"arp",0,netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
-				fprintf(stderr,"Error compilando el filtro\n");
-				exit(1);
-			}
-			//Para APLICAR el filtro compilado:
-			if(pcap_setfilter(descr,&fp)==-1){
-				fprintf(stderr,"Error aplicando el filtro\n");
-				exit(1);
-			}
+			dev=NULL;
+			net=NULL;
+			mask=NULL;
 			//Argumentos para la funcion callback
 			arpCCArgs conf[2] = {
 			//	{0, "foo",shmPtr,arpAskers_shmPtr},
@@ -268,6 +364,7 @@ int main(int argc, char *argv[]){
 			//le paso los descriptores del PIPE
 			conf[0].fdPipe[0]=fdPipe[0];
 			conf[0].fdPipe[1]=fdPipe[1];
+			//El bucle de captura lo armo con variables que el padre ya preparo antes cuando hizo el check de la netmask
 			pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,(u_char*) conf);
 			_exit(EXIT_SUCCESS);
 	}//FIN DEL FORK PARA ARPCOLLECTOR
@@ -283,8 +380,7 @@ int main(int argc, char *argv[]){
 
 	//----VOY A HARDCODEAR LOS PARAMETROS DE MOMENTO:
 
-	//cantidad de servers a cuidar:
-	int serversQuantity=4;
+	int serversQuantity=4;//cantidad de servers a cuidar
 
 	//Estructura de datos de argumentos del programa principal
 	typedef struct{ 
