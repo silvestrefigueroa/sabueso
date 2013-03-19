@@ -14,7 +14,7 @@ struct arpDialog{
 	char* arpDstMac;
 	char* arpSrcIp;
 	char* arpDstIp;
-	char* type;
+	int type;
 	int doCheckIpI;
 	int doCheckSpoofer;
 	int doCheckHosts;
