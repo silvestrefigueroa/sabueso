@@ -104,7 +104,9 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		int doCheckWAck=0;
 	//	int doHitIncrement=0;
 		int nextState=0;//por default, almacenarla y ya
-		char* type=NULL;//consultar posibles valores en tabla_de_dialogos.txt [Arquitectura]
+//		char* type=NULL;//consultar posibles valores en tabla_de_dialogos.txt [Arquitectura]
+//		int type=99;//consultar posibles valores en tabla_de_dialogos.txt [Arquitectura]
+
 		int i=0;
 	//	int dstZeroMacFlag=0;
 	//	int dstBrdMacFlag=0;
@@ -145,7 +147,8 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 					doCheckIpI=1;
 					doCheckSpoofer=1;
 					nextState=1;
-					type="PASS";//deberian ser un macro de variable entero y ya..
+//					type="PASS";//deberian ser un macro de variable entero y ya..
+					
 					askFlag=1;//porque supongo es pregunta ARP
 					printf("Finalizada la evaluacion, continua con la carga de datos...\n");
 				}
@@ -153,7 +156,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 					printf("LOG:caso extraño, ethDstMac broadcast y arpDstMac Unicast...anomalo!!\n\n");
 					//podria verificar el match IP-MAC origen, es un caso para WARN no para evaluarlo 
 					//He decidido activar el flag type en WARN y no tratar el problema pero si mostrarlo!!
-					type="WARN";//deberian ser un macro de variable entero y ya..
+//					type="WARN";//deberian ser un macro de variable entero y ya..
 					
 				}
 			}
@@ -172,7 +175,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 					//tratar el error o escapar si OK
 					//WARNING, marcar para comprobar y almacenar.
 					//Escapa del formato de arpspoofing estudiado, me limito a mostrar el WARN, se descarta la trama
-					type="WARN";
+//					type="WARN";
 					nextState=0;
 					dropFlag=1;//descarto los del AP
 				}
@@ -180,7 +183,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 				else{//se trata de MACs destinos AMBIGUOS, es una trama anomala!! a no ser que sea del proxyARP
 					printf("LOG:por strcmp, Trama con destino definido, revisando en profundidad....Posible ProxyARP\n\n");
 					//No es el caso analizado, se descarta la trama pero se indica el WARN
-					type="WARN";
+//					type="WARN";
 					nextState=0;
 					srcMacEquals=2;//por ser un caso anomalo de diferencia..
 				}
@@ -204,7 +207,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 						printf("LOG:[Taxonomia de respuesta o ATAQUE], par[%s]-[%s]\n",ethDstMac,arpDstMac);
 						//marcar para portstelear y GUARDAR el dialogo en la tabla
 						doCheckIpI=1;//siempre primero, es la trivial.si conozco la info real, no noecesito el stealer.
-						type="PASS";
+//						type="PASS";
 						nextState=1;
 						//Normalmente a no ser que sea una respuesta dirigida al sabueso, no veria estas tramas...
 						//es por ello que lo mas seguro es que esta trama sean robadas del porstealing
@@ -215,7 +218,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 							//el origen (sender) esta haciendo algo raro
 						//WARNING-> inconsistencia en las MAC origen
 						printf("LOG:macs origen no coinciden, posible proxyARP o trama anomala\n");
-						type="WARN";
+//						type="WARN";
 						nextState=2;
 				break;
 				default:
@@ -453,8 +456,13 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 					args[0].shmPtr[i].arpSrcIp=(char *)malloc (strlen(arpSrcIp));
 					strcpy(args[0].shmPtr[i].arpSrcIp,arpSrcIp);
 					args[0].shmPtr[i].nextState=nextState;//OJO son enteros
-					args[0].shmPtr[i].type=(char *)malloc (strlen(type));
-					strcpy(args[0].shmPtr[i].type,type);
+//					args[0].shmPtr[i].type=(char *)malloc (strlen(type));
+					if(askFlag==0){
+						args[0].shmPtr[i].type=1;
+					}
+					else{//si es pregunta...la arquitectura 0.6 especifica 0 para pregunta y el flag este es 1 para pregunta..
+						args[0].shmPtr[i].type=0;
+					}
 					printf("ya paso la asignacion por strcpy\n");
 					printf("AHORA DEBERIA EVALUAR doCheckWAck=%d doCheckIpI=%d doCheckSpoofer=%d\n",doCheckWAck,doCheckIpI,doCheckSpoofer);
 

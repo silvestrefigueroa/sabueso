@@ -24,14 +24,15 @@
 #include "arpCollector_callback.h"
 #include "callbackArgs.h"
 
-#include "arpDialoguesTableManager.h"
-#include "arpDialoguesTableManagerArguments.h"
+//#include "arpDialoguesTableManager.h"//se removio de este branche.. tarde pero se removio
+//#include "arpDialoguesTableManagerArguments.h" //y si.. tambien se removio este por supuesto
 //#include "arpDTMWorker_arguments_struct.h"
 
 //MENSAJES ESTATICOS
 #define MSG_START "Comienza aqui el programa principal\n"
 
-
+//MACROS DE ARGS
+#define TABLE_SIZE 100
 
 //Icludes del arpCollector.c
 //#include <unistd.h>
@@ -231,7 +232,8 @@ int main(int argc, char *argv[]){
 	int fdshm;
 	//sharedMem
 	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla
-	int tableSize=(arpAskersTable_tableSize*arpAskersTable_tableSize)/2;//maximo de preguntas ARp permitidas por el tamaño de la red
+//	int tableSize=(arpAskersTable_tableSize*arpAskersTable_tableSize)/2;//maximo de preguntas ARp permitidas por el tamaño de la red
+	int tableSize=TABLE_SIZE;
 	struct arpDialog arpDialoguesTable[tableSize];//CONSULTAR: AQUI NO DEBERIA MALLOQUEAR?? COREDUMP SI TABLESIZE ES MUY GRANDE!!
 	//inicializacion:
 	for(subindexCounterId=0;subindexCounterId<tableSize;subindexCounterId++){//ese 100 es el hardcodeado anterior
@@ -242,7 +244,7 @@ int main(int argc, char *argv[]){
 		arpDialoguesTable[subindexCounterId].arpDstMac=NULL;
 		arpDialoguesTable[subindexCounterId].arpSrcIp=NULL;
 		arpDialoguesTable[subindexCounterId].arpDstIp=NULL;
-		arpDialoguesTable[subindexCounterId].type=NULL;
+		arpDialoguesTable[subindexCounterId].type=99;//0 es pregunta, 1 es respuesta, 99 inicializada
 		arpDialoguesTable[subindexCounterId].doCheckIpI=0;
 		arpDialoguesTable[subindexCounterId].doCheckSpoofer=0;
 		arpDialoguesTable[subindexCounterId].doCheckHosts=0;
@@ -434,7 +436,7 @@ int main(int argc, char *argv[]){
 				printf("soy el HIJO PORT STEALER del host: %s\n",(servers2guard[i].serverName));
 
 				//flags:
-//				int askingForThisServer=0;//inicializa en "no preguntan por el server"
+				int askingForThisServer=0;//inicializa en "no preguntan por el server"
 							
 				//ALGORITMO:
 				//1|Examinar entrada por entrada de la tabla y para cada una:
@@ -449,6 +451,7 @@ int main(int argc, char *argv[]){
 							printf("<<Entrada vacia, continuar con la siguiente\n");
 							continue;
 						}
+						printf("<<Esta entrada no esta vacia!!! ahora va al if de si coincide con el server que cuido...\n");
 						//else...
 						//1.99 Si esta involucrado ESTE server:
 
@@ -459,7 +462,7 @@ int main(int argc, char *argv[]){
 							switch(arpDialoguesTable[j].type==0){
 								case 0:
 									printf(">>era pregunta...\n");
-//									askingForThisServer=1;
+									askingForThisServer=1;
 								break;
 								case 1:
 									printf(">>supongo que era respuesta...\n");
@@ -496,6 +499,25 @@ int main(int argc, char *argv[]){
 										//SI DETECTO: levanto el flag de spoof detectado
 										//ELSE: flag de spoof abajo, guardo el CONOCIMIENTO
 									//Reviso flags y genero alertas o descarto o marco entradas segun corresponda
+
+						if(askingForThisServer==1){
+							printf("Entro a la seccion de <es una pregunta>\n");
+							//preparar
+							//crear filtro
+							//lanzar hilo que capture
+							printf("Lanzar hilo de captura dentro del sptealer\n");
+
+							printf("continuar ejecucion del stealer mientras el hilo esta en background...\n");
+
+							//PREPARAR
+							//ARPEAR
+							//SLEEP??SIGNAL SLEEP??
+							printf("*************************************Arper para port stealing durante 5 segs\n");
+							sleep(20);
+
+
+
+						}
 							//CASO RESPUESTA:
 								//El origen es uno de mis hosts (servers) protegidos asi que CONOZCO sus datos CORRECTOS
 									//Compruebo que las tramas obtenidas tengan DATOS CORRECTOS segun base de conocimeinto
@@ -515,7 +537,8 @@ int main(int argc, char *argv[]){
 					}//lazo for que recorre las entradas de la tabla
 				}//CIERRO EL WHILE LIVE ==1
 				_exit(EXIT_SUCCESS);//del hijo de este ciclo del for
-		}//CIERRO EL SWITCH FORK
+
+		}//CIERRO EL SWITCH FORK (tiene doble identacion del switch case fork
 	}//LAZO FOR PARA LANZAR HIJOS PARA CADA SERVER QUE TENGO QUE MONITOREAR
 
 
