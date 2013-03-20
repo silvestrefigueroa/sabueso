@@ -16,9 +16,9 @@
 
 //MIS PROPIAS CABECERAS
 //#include "sabueso.h"
-#include "arper.h"
+//#include "arper.h" //LO SAQUE POR DESUSO Y PARA LIMPIAR UN POCO DE CODIGO
 //#include "parser.h"
-#include "splitter.h"
+//#include "splitter.h" //LO SAQUE POR DESUSO Y PARA LIMPIAR UN POCO DE CODIGO
 #include "arpDialogStruct.h"
 //#include "arpAskerStruct.h"
 #include "arpCollector_callback.h"
@@ -32,7 +32,7 @@
 #define MSG_START "Comienza aqui el programa principal\n"
 
 //MACROS DE ARGS
-#define TABLE_SIZE 100
+#define TABLE_SIZE 4
 
 //Icludes del arpCollector.c
 //#include <unistd.h>
@@ -212,7 +212,8 @@ int main(int argc, char *argv[]){
 	//FIN PARAMETROS DE CAPTURA
 
 
-
+	//ajuste por depuracion:
+	arpAskersTable_tableSize=10;
 
 
 //-----------FINALIZA ZONA DE CONTROL DE PARAMETROS DE APLICACION---------------------------------------------//
@@ -382,7 +383,7 @@ int main(int argc, char *argv[]){
 
 	//----VOY A HARDCODEAR LOS PARAMETROS DE MOMENTO:
 
-	int serversQuantity=4;//cantidad de servers a cuidar
+	int serversQuantity=5;//cantidad de servers a cuidar
 
 	//Estructura de datos de argumentos del programa principal
 	typedef struct{ 
@@ -424,6 +425,13 @@ int main(int argc, char *argv[]){
 	servers2guard[3].serviceType=0;
 	servers2guard[3].serverName="dd-wrt";
 
+	servers2guard[4].mac="00:21:5c:33:09:a5";
+	servers2guard[4].ip="192.168.1.101";
+	servers2guard[4].serviceType=0;
+	servers2guard[4].serverName="myself";
+
+
+
 	int j=0;//otro subindice
 	for(i=0;i<serversQuantity;i++){
 		//------------INICIA FORK MULTIHILADO DE SEGUIMIENTO, ROBO DE PUERTO Y ALERTA-----------------------------
@@ -432,6 +440,7 @@ int main(int argc, char *argv[]){
 				perror("fork()");
 				_exit(EXIT_FAILURE);
 			case 0:
+				sleep(20);
 				//Proceso arpCollector.c
 				printf("soy el HIJO PORT STEALER del host: %s\n",(servers2guard[i].serverName));
 
@@ -443,23 +452,28 @@ int main(int argc, char *argv[]){
 				live=1;
 				j=0;
 				while(live==1){//podria ser un while true, se utilizo esta variable para tener condicion de corte (aunque puedo usar break...)
-					sleep(20);//descanza 20 segundos despues de cada recorrida completa
+//					sleep(20);//descanza 20 segundos despues de cada recorrida completa
 					for(j=0;j<tableSize;j++){
 						//por las dudas me fijo si la entrada en la tabla no es NULL:
-						if(arpDialoguesTable[j].arpDstIp==NULL){
+						if(shmPtr[j].arpDstIp==NULL){
 
 							printf("<<Entrada vacia, continuar con la siguiente\n");
 							continue;
 						}
-						printf("<<Esta entrada no esta vacia!!! ahora va al if de si coincide con el server que cuido...\n");
+						else{
+							printf("<<Esta entrada no esta vacia!!! ahora va al if de si coincide con el server que cuido...\n");
+							printf("comparando i: %s con shmPtr: %s \n",servers2guard[i].ip,shmPtr[j].arpDstIp);
+							continue;
+						}
 						//else...
 						//1.99 Si esta involucrado ESTE server:
 
 						//si es destino
-						if(!strcmp(servers2guard[i].ip,arpDialoguesTable[j].arpDstIp)){//si la ip por la q se pregunta es del server i
+						printf("comparando i: %s con shmPtr: %s \n",servers2guard[i].ip,shmPtr[j].arpDstIp);
+						if(!strcmp(servers2guard[i].ip,shmPtr[j].arpDstIp)){//si la ip por la q se pregunta es del server i
 							printf(">>>Esta entrada de la tabla esta destinada al server %s\n",(servers2guard[i].serverName));
 							//evaluo si es pregunta o respuesta
-							switch(arpDialoguesTable[j].type==0){
+							switch(shmPtr[j].type==0){
 								case 0:
 									printf(">>era pregunta...\n");
 									askingForThisServer=1;
@@ -475,11 +489,12 @@ int main(int argc, char *argv[]){
 
 						}//server i es destino
 						else{//si server i no es el destino sera el origen?
-							if(!strcmp(servers2guard[i].ip,arpDialoguesTable[j].arpDstIp)){
+							if(!strcmp(servers2guard[i].ip,shmPtr[j].arpDstIp)){
 								printf(">>>Esta entrada fue ORIGINADA por el server %s\n",(servers2guard[i].serverName));
 								//tratar este segmento del codigo luego..
 							}
 							else{//no esta involucrado el server i
+								printf(">>>OK no estaba vacia pero no involucraba al server %s\n",servers2guard[i].ip);
 								continue;
 							}
 						}//else para que el server i sea el origen
