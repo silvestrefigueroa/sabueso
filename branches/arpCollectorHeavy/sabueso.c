@@ -70,7 +70,14 @@ void sigint_handler(int s){
 	//ahora hago unlink para la SharedMem
 
 	//if((shm_unlink("/sharedMemPartida"))<0){
-	int retorno = shm_unlink("/sharedMemPartida");
+	int retorno = shm_unlink("/sharedMemDialogos");
+	printf("retorno %d\n",retorno);
+	if (retorno < 0 ) {
+		perror("shm_unlink()");
+		exit(EXIT_FAILURE);
+
+	}
+	retorno = shm_unlink("/sharedMemAskers");
 	printf("retorno %d\n",retorno);
 	if (retorno < 0 ) {
 		perror("shm_unlink()");
@@ -258,7 +265,7 @@ int main(int argc, char *argv[]){
 	arpDialoguesTable[4].hit=5;
 	
 	//SHAREDMEM arpDialoguesTableManagerArguments.h
-	if(((fdshm=shm_open("/sharedMemPartida", O_RDWR|O_CREAT, 0666))<0)){
+	if(((fdshm=shm_open("/sharedMemDialogos", O_RDWR|O_CREAT, 0666))<0)){
 		perror("shm_open()");
 		exit(EXIT_FAILURE);
 	}
@@ -345,7 +352,6 @@ int main(int argc, char *argv[]){
 //------------FIN DEFINICION DE ELEMENTOS DE IPC, CONCURRENCIA Y EXCLUSION----------------
 
 
-
 //---------------INICIA FORK PARA RECOLECCION DE ARP EN EL BROADCAST O MODULO ARPCOLLECTOR-----------------------------
 	switch(fork()){
 		case -1:
@@ -355,6 +361,39 @@ int main(int argc, char *argv[]){
 			//Proceso arpCollector.c
 			puts("\n-------------------------");
 			puts("soy el HIJO recolector de mensajes ARP iniciando...\n");
+/*			
+			//Preparo memoria compartida
+			fdshm=shm_open("/sharedMemDialogos", O_RDWR,O_CREAT, 0666);
+			//Lo mapeo en ESTE proceso y recojo el puntero devuelto
+			shmPtr=mmap(NULL, 1, PROT_READ|PROT_WRITE, MAP_SHARED, fdshm, 0);
+			close(fdshm);
+*/
+
+	//SHAREDMEM arpDialoguesTableManagerArguments.h
+	if(((fdshm=shm_open("/sharedMemDialogos", O_RDWR|O_CREAT, 0666))<0)){
+		perror("shm_open()");
+		exit(EXIT_FAILURE);
+	}
+/*
+	//lo escribo en blanco
+	if(!(write(fdshm,&arpDialoguesTable,sizeof(arpDialoguesTable)))){
+	perror("write()");
+	exit(EXIT_FAILURE);
+	}
+*/
+	//ojo con ese 100 de abajo.. es el hardcodeado, representa la cantidad de estructuras struct arpDilog que hay en el array arpDialoguesTable
+	if(!(shmPtr=mmap(NULL, sizeof(struct arpDialog)*tableSize, PROT_READ|PROT_WRITE, MAP_SHARED, fdshm, 0))){
+		perror("mmap()");
+		exit(EXIT_FAILURE);
+	}
+	//la truncada de suerte!!:
+	ftruncate(fdshm, sizeof(struct arpDialog)*tableSize);
+	close(fdshm);
+
+
+
+
+	
 			//COmienza a preparar la captura...
 			dev=NULL;
 			net=NULL;
@@ -433,6 +472,13 @@ int main(int argc, char *argv[]){
 
 
 	int j=0;//otro subindice
+
+	int c=0;
+
+
+	serversQuantity=1;
+
+
 	for(i=0;i<serversQuantity;i++){
 		//------------INICIA FORK MULTIHILADO DE SEGUIMIENTO, ROBO DE PUERTO Y ALERTA-----------------------------
 		switch(fork()){
@@ -440,9 +486,44 @@ int main(int argc, char *argv[]){
 				perror("fork()");
 				_exit(EXIT_FAILURE);
 			case 0:
-				sleep(20);
-				//Proceso arpCollector.c
+				sleep(5);
 				printf("soy el HIJO PORT STEALER del host: %s\n",(servers2guard[i].serverName));
+				j=0;
+
+//----------------------------------------
+				//ACONDICIONAR SHAREDMEM DE DIALOGOS EN ESTE HIJO
+/*
+				if(((fdshm=shm_open("/sharedMemDialogos", O_RDWR|O_CREAT, 0666))<0)){
+					perror("shm_open()");
+					exit(EXIT_FAILURE);
+				}
+				if(!(shmPtr=mmap(NULL, sizeof(struct arpDialog)*tableSize, PROT_READ|PROT_WRITE, MAP_SHARED, fdshm, 0))){
+					perror("mmap()");
+					exit(EXIT_FAILURE);
+				}
+				//la truncada de suerte!!:
+				ftruncate(fdshm, sizeof(struct arpDialog)*tableSize);
+				close(fdshm);
+*/
+
+				while(1==1){
+					sleep(10);
+					
+					printf("mostrando memoria compartida desde el port stealer pasada %d\n",j);
+					for(c=0;c<tableSize;c++){
+						printf("entrada %d, arpSrcIp: %s arpDstIp %s \n",c,shmPtr[c].arpSrcIp,shmPtr[c].arpDstIp);
+						write(1,"arpSrcIp \n",strlen("arpSrcIp "));
+						write(1,(char *)(shmPtr[c].arpSrcIp),4);
+
+					}
+					j++;
+				}
+
+
+
+
+//------------------------------------------
+/*
 
 				//flags:
 				int askingForThisServer=0;//inicializa en "no preguntan por el server"
@@ -551,6 +632,7 @@ int main(int argc, char *argv[]){
 													
 					}//lazo for que recorre las entradas de la tabla
 				}//CIERRO EL WHILE LIVE ==1
+*/
 				_exit(EXIT_SUCCESS);//del hijo de este ciclo del for
 
 		}//CIERRO EL SWITCH FORK (tiene doble identacion del switch case fork

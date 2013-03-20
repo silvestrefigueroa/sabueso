@@ -657,4 +657,5 @@ int askerSaved=0;
 		//aumenta el contador de frames
 	
 	}//ELSE VIAJA ARP
+fflush(stdout);
 }//definicion de la funcion
