@@ -443,6 +443,7 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 				}
 				if(writableFlag==1){
 					printf("entrada bloqueada y libre para uso!! PERSISTIENDO DATOS...\n");
+					/*
 					args[0].shmPtr[i].ethSrcMac=(char *)malloc (strlen(ethSrcMac));
 					strcpy(args[0].shmPtr[i].ethSrcMac,ethSrcMac);
 					args[0].shmPtr[i].ethDstMac=(char *)malloc (strlen(ethDstMac));
@@ -455,8 +456,36 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 					strcpy(args[0].shmPtr[i].arpDstIp,arpDstIp);
 					args[0].shmPtr[i].arpSrcIp=(char *)malloc (strlen(arpSrcIp));
 					strcpy(args[0].shmPtr[i].arpSrcIp,arpSrcIp);
+					*/
+					char *cadena=NULL;
+					switch(i){
+						case 0:
+							cadena="primer";
+						break;
+						case 1:
+							cadena="segundo";
+						break;
+						case 2:
+							cadena="tercero";
+						break;
+						default:
+							cadena="mayor a tres...";
+						break;
+					}
+		
+
+
+					args[0].shmPtr[i].ethSrcMac=ethSrcMac;
+					args[0].shmPtr[i].ethDstMac=ethDstMac;
+					args[0].shmPtr[i].arpSrcMac=arpSrcMac;
+					args[0].shmPtr[i].arpDstMac=arpDstMac;
+					args[0].shmPtr[i].arpDstIp=arpDstIp;
+
+					printf("arpSrcIp: %s\n",arpSrcIp);
+					args[0].shmPtr[i].arpSrcIp=cadena;
+					printf("tabla: %s, arpSrcIp: %s\n",args[0].shmPtr[i].arpSrcIp,arpSrcIp);
+
 					args[0].shmPtr[i].nextState=nextState;//OJO son enteros
-//					args[0].shmPtr[i].type=(char *)malloc (strlen(type));
 					if(askFlag==0){
 						args[0].shmPtr[i].type=1;
 					}
@@ -574,7 +603,6 @@ int askerSaved=0;
 			}//else NO esta vacia la entrada
 		}//Lazo for que recorre las entradas de la tabla de arpAskers
 		//Si al terminar este for no se encontro la entrada en la tabla, entonces la almaceno!!!
-
 		if(askerFounded!=0){
 			printf("El asker estaba en la tabla, asi que no lo guardo nada...\n");
 			//continue;//no funciona el continue aqui dentro...
@@ -596,10 +624,16 @@ int askerSaved=0;
 					printf("entrada %d esta vacia, guardando asker...\n",i);
 					//Guardar...
 					sem_wait((sem_t*) & (args[0].arpAskers_shmPtr[i].semaforo));
+					/*
 					args[0].arpAskers_shmPtr[i].ip=(char *)malloc (strlen(arpSrcIp));
 					strcpy(args[0].arpAskers_shmPtr[i].ip,arpSrcIp);
 					args[0].arpAskers_shmPtr[i].mac=(char *)malloc (strlen(arpSrcMac));
 					strcpy(args[0].arpAskers_shmPtr[i].mac,arpSrcMac);
+					*/
+				
+					args[0].arpAskers_shmPtr[i].ip=arpSrcIp;
+					args[0].arpAskers_shmPtr[i].mac=arpSrcMac;
+
 					//no voy a usar el index, prefiero chekear bien por si se da el caso de reemplazo de asker y yo todabia tengo
 					//dialogos en la tabla para chekear, en ese caso deberia descartar ESOS dialogos y dejar los nuevos y por supuesto
 					//generar la alerta correspondiente!!
@@ -620,12 +654,20 @@ int askerSaved=0;
 					printf("entrada %d contiene al asker que quiero reemplazar...\n",i);
 					//PARA PISAR, LIBERO EL CONTENIDO DE LA TABLA Y LUEGO MALLOQUEO CON EL NUEVO VALOR.
 					sem_wait((sem_t*) & (args[0].arpAskers_shmPtr[i].semaforo));
+					/*
 					free(args[0].arpAskers_shmPtr[i].ip);
 					free(args[0].arpAskers_shmPtr[i].mac);
 					args[0].arpAskers_shmPtr[i].ip=(char *)malloc (strlen(arpSrcIp));
 					strcpy(args[0].arpAskers_shmPtr[i].ip,arpSrcIp);
 					args[0].arpAskers_shmPtr[i].mac=(char *)malloc (strlen(arpSrcMac));
 					strcpy(args[0].arpAskers_shmPtr[i].mac,arpSrcMac);
+					*/
+					args[0].arpAskers_shmPtr[i].ip=NULL;
+					args[0].arpAskers_shmPtr[i].mac=NULL;
+					args[0].arpAskers_shmPtr[i].ip=arpSrcIp;
+					args[0].arpAskers_shmPtr[i].mac=arpSrcMac;
+
+
 					//no voy a usar el index, prefiero chekear bien por si se da el caso de reemplazo de asker y yo todabia tengo
 					//dialogos en la tabla para chekear, en ese caso deberia descartar ESOS dialogos y dejar los nuevos y por supuesto
 					//generar la alerta correspondiente!!
