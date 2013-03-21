@@ -242,6 +242,8 @@ int main(int argc, char *argv[]){
 	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla
 //	int tableSize=(arpAskersTable_tableSize*arpAskersTable_tableSize)/2;//maximo de preguntas ARp permitidas por el tamaño de la red
 	int tableSize=TABLE_SIZE;
+	//malloqueo para el puntero de la shm
+	shmPtr = (struct arpDialog *)malloc(sizeof(struct arpDialog)*TABLE_SIZE);
 	struct arpDialog arpDialoguesTable[tableSize];//CONSULTAR: AQUI NO DEBERIA MALLOQUEAR?? COREDUMP SI TABLESIZE ES MUY GRANDE!!
 	//inicializacion:
 	for(subindexCounterId=0;subindexCounterId<tableSize;subindexCounterId++){//ese 100 es el hardcodeado anterior
@@ -293,6 +295,7 @@ int main(int argc, char *argv[]){
 
 	//puntero a la memoria compartida
 	/*struct*/ arpAsker *arpAskers_shmPtr=NULL;
+
 	//descriptor de la memoria compartida
 	int arpAskers_fdshm;
 	//sharedMem
@@ -302,6 +305,9 @@ int main(int argc, char *argv[]){
 //	int arpAskersTable_tableSize=10; //lo saco del la netmask cidr obtenida al principio
 	
 	arpAskersTable_tableSize=100;//hardcodeado, pero este numero se calcula a partir de la cantidad de IP usables del rango de MI netmask
+	//malloqueo para el puntero de la shm
+	arpAskers_shmPtr = (arpAsker *)malloc(sizeof(arpAsker)*arpAskersTable_tableSize);
+
 	/*struct*/ arpAsker arpAskersTable[arpAskersTable_tableSize];//CONSULTAR: AQUI NO DEBERIA MALLOQUEAR?? COREDUMP SI TABLESIZE ES MUY GRANDE!!
 	//inicializacion:
 	for(subindexCounterId=0;subindexCounterId<arpAskersTable_tableSize;subindexCounterId++){//ese 100 es el hardcodeado anterior
@@ -361,38 +367,6 @@ int main(int argc, char *argv[]){
 			//Proceso arpCollector.c
 			puts("\n-------------------------");
 			puts("soy el HIJO recolector de mensajes ARP iniciando...\n");
-/*			
-			//Preparo memoria compartida
-			fdshm=shm_open("/sharedMemDialogos", O_RDWR,O_CREAT, 0666);
-			//Lo mapeo en ESTE proceso y recojo el puntero devuelto
-			shmPtr=mmap(NULL, 1, PROT_READ|PROT_WRITE, MAP_SHARED, fdshm, 0);
-			close(fdshm);
-*/
-
-	//SHAREDMEM arpDialoguesTableManagerArguments.h
-	if(((fdshm=shm_open("/sharedMemDialogos", O_RDWR|O_CREAT, 0666))<0)){
-		perror("shm_open()");
-		exit(EXIT_FAILURE);
-	}
-/*
-	//lo escribo en blanco
-	if(!(write(fdshm,&arpDialoguesTable,sizeof(arpDialoguesTable)))){
-	perror("write()");
-	exit(EXIT_FAILURE);
-	}
-*/
-	//ojo con ese 100 de abajo.. es el hardcodeado, representa la cantidad de estructuras struct arpDilog que hay en el array arpDialoguesTable
-	if(!(shmPtr=mmap(NULL, sizeof(struct arpDialog)*tableSize, PROT_READ|PROT_WRITE, MAP_SHARED, fdshm, 0))){
-		perror("mmap()");
-		exit(EXIT_FAILURE);
-	}
-	//la truncada de suerte!!:
-	ftruncate(fdshm, sizeof(struct arpDialog)*tableSize);
-	close(fdshm);
-
-
-
-
 	
 			//COmienza a preparar la captura...
 			dev=NULL;
@@ -470,13 +444,30 @@ int main(int argc, char *argv[]){
 	servers2guard[4].serverName="myself";
 
 
-
 	int j=0;//otro subindice
 
 	int c=0;
 
-
 	serversQuantity=1;
+
+
+				while(1==1){
+					sleep(1);
+					
+					printf("mostrando memoria compartida desde el port stealer pasada %d\n",j);
+					for(c=0;c<tableSize;c++){
+						printf("entrada %d, arpSrcIp: %s \n",c,(char*)shmPtr[c].arpSrcIp);
+/*
+						write(1,"arpSrcIp \n",strlen("arpSrcIp "));
+						write(1,(char *)(shmPtr[c].arpSrcIp),4);
+						write(1,"\n",strlen("\n"));
+*/
+
+					}
+					j++;
+				}
+sleep(100000);
+
 
 
 	for(i=0;i<serversQuantity;i++){
@@ -512,8 +503,8 @@ int main(int argc, char *argv[]){
 					printf("mostrando memoria compartida desde el port stealer pasada %d\n",j);
 					for(c=0;c<tableSize;c++){
 						printf("entrada %d, arpSrcIp: %s arpDstIp %s \n",c,shmPtr[c].arpSrcIp,shmPtr[c].arpDstIp);
-						write(1,"arpSrcIp \n",strlen("arpSrcIp "));
-						write(1,(char *)(shmPtr[c].arpSrcIp),4);
+//						write(1,"arpSrcIp \n",strlen("arpSrcIp "));
+//						write(1,(char *)(shmPtr[c].arpSrcIp),4);
 
 					}
 					j++;
