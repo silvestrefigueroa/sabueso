@@ -34,12 +34,12 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 	static int count = 1;
 
 	//bufers para las reentrante de ether e inet
-	char ethSrcMacBuf[20];
-	char ethDstMacBuf[20];
-	char arpSrcMacBuf[20];
-	char arpDstMacBuf[20];
-	char arpSrcIpBuf[20];
-	char arpDstIpBuf[20];
+	char ethSrcMacBuf[20]={};
+	char ethDstMacBuf[20]={};
+	char arpSrcMacBuf[20]={};
+	char arpDstMacBuf[20]={};
+	char arpSrcIpBuf[20]={};
+	char arpDstIpBuf[20]={};
 	
 	//los punteritos comodos ajaja
 	char* ethSrcMac=NULL;
@@ -48,6 +48,9 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 	char* arpDstMac=NULL;
 	char* arpSrcIp=NULL;
 	char* arpDstIp=NULL;
+
+
+
 //	fflush(stdout);
 	
 	//si.. muy lindo el contador.. pero me gustaria que:
@@ -82,7 +85,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		fprintf(stdout,"ARP: IP DESTINO: %s\n",inet_ntoa(*(struct in_addr *) arpPtr->arp_tpa));
 
 		//ahora utilizo las reentrantes:(los puse casteados a char* porque el compilador chillaba porq tenia const char*!!!!
-		arpSrcIp=(char *)inet_ntop(AF_INET,arpPtr->arp_spa, arpSrcIpBuf, sizeof arpSrcIpBuf );
+		arpSrcIp=(char *)inet_ntop(AF_INET,arpPtr->arp_spa, arpSrcIpBuf, /*INET_ADDRSTRLEN*/ sizeof arpSrcIpBuf );
 		arpDstIp=(char *)inet_ntop(AF_INET,arpPtr->arp_tpa, arpDstIpBuf, sizeof arpDstIpBuf );
 
 	
@@ -474,24 +477,28 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 					}
 		
 
-
+/*
 					args[0].shmPtr[i].ethSrcMac=ethSrcMac;
 					args[0].shmPtr[i].ethDstMac=ethDstMac;
 					args[0].shmPtr[i].arpSrcMac=arpSrcMac;
 					args[0].shmPtr[i].arpDstMac=arpDstMac;
 					args[0].shmPtr[i].arpDstIp=arpDstIp;
-
-					printf("arpSrcIp: %s\n",arpSrcIp);
-					args[0].shmPtr[i].arpSrcIp=cadena;
-					printf("tabla: %s, arpSrcIp: %s\n",args[0].shmPtr[i].arpSrcIp,arpSrcIp);
-
+*/
+					printf("**************antes de la asignacion tengo arpSrcIp: %s cadena: %s\n",arpSrcIp,cadena);
+					strncpy(args[0].shmPtr[i].arpSrcIp,arpSrcIp,strlen(arpSrcIp));
+//					printf("luego de la asignacion tengo arpSrcIp=(%s) con un largo de %d \n",arpSrcIp,(int)strlen(arpSrcIp));
+//					printf("despues tambien tengo en la tabla: %s, arpSrcIp: %s ...\n",args[0].shmPtr[i].arpSrcIp,arpSrcIp);
+//					printf("largo en tabla: %d\n",(int)strlen(args[0].shmPtr[i].arpSrcIp));
+//sleep(1000);										
 					args[0].shmPtr[i].nextState=nextState;//OJO son enteros
 					if(askFlag==0){
 						args[0].shmPtr[i].type=1;
 					}
+
 					else{//si es pregunta...la arquitectura 0.6 especifica 0 para pregunta y el flag este es 1 para pregunta..
 						args[0].shmPtr[i].type=0;
 					}
+
 					printf("ya paso la asignacion por strcpy\n");
 					printf("AHORA DEBERIA EVALUAR doCheckWAck=%d doCheckIpI=%d doCheckSpoofer=%d\n",doCheckWAck,doCheckIpI,doCheckSpoofer);
 

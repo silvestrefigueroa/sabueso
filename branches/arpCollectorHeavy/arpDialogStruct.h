@@ -12,7 +12,7 @@ struct arpDialog{
 	char* ethDstMac;
 	char* arpSrcMac;
 	char* arpDstMac;
-	char* arpSrcIp;
+	char arpSrcIp[40];
 	char* arpDstIp;
 	int type;
 	int doCheckIpI;

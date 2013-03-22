@@ -226,7 +226,7 @@ int main(int argc, char *argv[]){
 //-----------FINALIZA ZONA DE CONTROL DE PARAMETROS DE APLICACION---------------------------------------------//
 //------------INICIA ZONA DE DEFINICION DE ESTRUCTURAS DE DATOS DEL SABUESO--------------
 	//vida de los hijos
-	int live=1;//Mas abajo se explica, es para no poner un while true.. ademas me permite INTERRUMPIR la ejecucion
+//	int live=1;//Mas abajo se explica, es para no poner un while true.. ademas me permite INTERRUMPIR la ejecucion
 
 
 
@@ -252,7 +252,7 @@ int main(int argc, char *argv[]){
 		arpDialoguesTable[subindexCounterId].ethDstMac=NULL;
 		arpDialoguesTable[subindexCounterId].arpSrcMac=NULL;
 		arpDialoguesTable[subindexCounterId].arpDstMac=NULL;
-		arpDialoguesTable[subindexCounterId].arpSrcIp=NULL;
+		memset(arpDialoguesTable[subindexCounterId].arpSrcIp,0,40);
 		arpDialoguesTable[subindexCounterId].arpDstIp=NULL;
 		arpDialoguesTable[subindexCounterId].type=99;//0 es pregunta, 1 es respuesta, 99 inicializada
 		arpDialoguesTable[subindexCounterId].doCheckIpI=0;
@@ -456,7 +456,7 @@ int main(int argc, char *argv[]){
 					
 					printf("mostrando memoria compartida desde el port stealer pasada %d\n",j);
 					for(c=0;c<tableSize;c++){
-						printf("entrada %d, arpSrcIp: %s \n",c,(char*)shmPtr[c].arpSrcIp);
+						printf("entrada %d, arpSrcIp: %s \n",c,shmPtr[c].arpSrcIp);
 /*
 						write(1,"arpSrcIp \n",strlen("arpSrcIp "));
 						write(1,(char *)(shmPtr[c].arpSrcIp),4);
@@ -502,7 +502,7 @@ sleep(100000);
 					
 					printf("mostrando memoria compartida desde el port stealer pasada %d\n",j);
 					for(c=0;c<tableSize;c++){
-						printf("entrada %d, arpSrcIp: %s arpDstIp %s \n",c,shmPtr[c].arpSrcIp,shmPtr[c].arpDstIp);
+						printf("entrada %d, arpSrcIp: %s largo %d \n",c,shmPtr[c].arpSrcIp,(int)strlen(shmPtr[c].arpDstIp));
 //						write(1,"arpSrcIp \n",strlen("arpSrcIp "));
 //						write(1,(char *)(shmPtr[c].arpSrcIp),4);
 
