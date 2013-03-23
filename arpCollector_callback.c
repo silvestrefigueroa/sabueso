@@ -264,8 +264,10 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
 
 			printf("estoy frente a una pregunta o respuesta ARP\n");
-			printf("se va a comparar: %s con %s\n", ethSrcMac, (char*)args[0].shmPtr[i].ethSrcMac);
-			if(args[0].shmPtr[i].ethSrcMac == NULL){
+			printf("se va a comparar: %s con %s\n", ethSrcMac, args[0].shmPtr[i].ethSrcMac);
+//estoy aquiiii no se como comparar.. ahora se me jodio el null por la inicializacion!!!	
+
+if(!strncpy(args[0].shmPtr[i].ethSrcMac,"0000000000000000000000000000000000000000",40)){
 				printf("\nEntrada de la tabla %d VACIA\n",i);
 				printf("______________________________________________________________\n");
 				continue;//salto para optimizar, sigue comparando con el proximo subindice i
@@ -485,7 +487,18 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 					args[0].shmPtr[i].arpDstIp=arpDstIp;
 */
 					printf("**************antes de la asignacion tengo arpSrcIp: %s cadena: %s\n",arpSrcIp,cadena);
+
+					strncpy(args[0].shmPtr[i].ethSrcMac,ethSrcMac,strlen(ethSrcMac));
+					strncpy(args[0].shmPtr[i].ethDstMac,ethDstMac,strlen(ethDstMac));
+					strncpy(args[0].shmPtr[i].arpSrcMac,arpSrcMac,strlen(arpSrcMac));
+					strncpy(args[0].shmPtr[i].arpDstMac,arpDstMac,strlen(arpDstMac));
 					strncpy(args[0].shmPtr[i].arpSrcIp,arpSrcIp,strlen(arpSrcIp));
+					strncpy(args[0].shmPtr[i].arpDstIp,arpDstIp,strlen(arpDstIp));
+
+
+
+
+
 //					printf("luego de la asignacion tengo arpSrcIp=(%s) con un largo de %d \n",arpSrcIp,(int)strlen(arpSrcIp));
 //					printf("despues tambien tengo en la tabla: %s, arpSrcIp: %s ...\n",args[0].shmPtr[i].arpSrcIp,arpSrcIp);
 //					printf("largo en tabla: %d\n",(int)strlen(args[0].shmPtr[i].arpSrcIp));
