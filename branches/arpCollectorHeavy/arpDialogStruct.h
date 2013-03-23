@@ -8,12 +8,12 @@
 struct arpDialog{
 	int arpAskerIndex;//el numero de entrada en tabla arpAsker que contiene al arpSrcMac de esta entrada
 	sem_t semaforo;
-	char* ethSrcMac;
-	char* ethDstMac;
-	char* arpSrcMac;
-	char* arpDstMac;
+	char ethSrcMac[40];
+	char ethDstMac[40];
+	char arpSrcMac[40];
+	char arpDstMac[40];
 	char arpSrcIp[40];
-	char* arpDstIp;
+	char arpDstIp[40];
 	int type;
 	int doCheckIpI;
 	int doCheckSpoofer;

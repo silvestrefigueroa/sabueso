@@ -248,12 +248,12 @@ int main(int argc, char *argv[]){
 	//inicializacion:
 	for(subindexCounterId=0;subindexCounterId<tableSize;subindexCounterId++){//ese 100 es el hardcodeado anterior
 		arpDialoguesTable[subindexCounterId].arpAskerIndex=subindexCounterId;
-		arpDialoguesTable[subindexCounterId].ethSrcMac=NULL;
-		arpDialoguesTable[subindexCounterId].ethDstMac=NULL;
-		arpDialoguesTable[subindexCounterId].arpSrcMac=NULL;
-		arpDialoguesTable[subindexCounterId].arpDstMac=NULL;
+		memset(arpDialoguesTable[subindexCounterId].ethSrcMac,0,40);
+		memset(arpDialoguesTable[subindexCounterId].ethDstMac,0,40);
+		memset(arpDialoguesTable[subindexCounterId].arpSrcMac,0,40);
+		memset(arpDialoguesTable[subindexCounterId].arpDstMac,0,40);
 		memset(arpDialoguesTable[subindexCounterId].arpSrcIp,0,40);
-		arpDialoguesTable[subindexCounterId].arpDstIp=NULL;
+		memset(arpDialoguesTable[subindexCounterId].arpDstIp,0,40);
 		arpDialoguesTable[subindexCounterId].type=99;//0 es pregunta, 1 es respuesta, 99 inicializada
 		arpDialoguesTable[subindexCounterId].doCheckIpI=0;
 		arpDialoguesTable[subindexCounterId].doCheckSpoofer=0;
