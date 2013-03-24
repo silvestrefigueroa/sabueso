@@ -130,7 +130,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 			printf("LOG:ethSrcMac=arpSrcMac     OK\n");
 			srcMacEquals=1;//aunque por default coinciden
 		}
-		printf("------sigue-----\n");
+		//Las comparaciones para determinar si es una pregunta pueden omitirse si consulto el tipo de msj arp de la estructura provista por pcap...de
 		if(strcmp(ethDstMac,arpDstMac)){
 			printf("LOG: las mac destino son DISTINTAS por strcmp\n");
 			//codigo para cuando son distintas aqui...
@@ -264,35 +264,62 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
 
 			printf("estoy frente a una pregunta o respuesta ARP\n");
-			printf("se va a comparar: %s con %s\n", ethSrcMac, args[0].shmPtr[i].ethSrcMac);
 //estoy aquiiii no se como comparar.. ahora se me jodio el null por la inicializacion!!!	
 
-if(!strncpy(args[0].shmPtr[i].ethSrcMac,"0000000000000000000000000000000000000000",40)){
+			if(args[0].shmPtr[i].type==99){
 				printf("\nEntrada de la tabla %d VACIA\n",i);
 				printf("______________________________________________________________\n");
 				continue;//salto para optimizar, sigue comparando con el proximo subindice i
 			}
+			printf("se va a comparo: %s con %s\n", ethSrcMac, args[0].shmPtr[i].ethSrcMac);
 			//no uso else por el continue anterior.. asi que sigo aca else if ethsrcmac==NULL....
 			printf("continuo aca no mas...\n");
 			printf("la entrada %d no esta vacia..\n",i);
-			comparacion=strncmp(args[0].shmPtr[i].ethSrcMac,ethSrcMac,(int) strlen(ethSrcMac));
+			printf("comparar: %s con %s \n",args[0].shmPtr[i].ethSrcMac,ethSrcMac);
+			//PARCHE para el strncmp
+			if(strlen(args[0].shmPtr[i].ethSrcMac)==strlen(ethSrcMac)){//si tienen el mismo largo me fijo si son la misma cadena..
+				comparacion=strncmp(args[0].shmPtr[i].ethSrcMac,ethSrcMac,(int) strlen(ethSrcMac));
+			}
+			else{//no tienen el mismo largo
+				printf("el ethSrcMac de la tabla no tiene el mismo largo que el ethSrcMac\n");
+				comparacion=1;
+			}//FIN PARCHE
 			printf("valor de la comparacion = %d\n",comparacion);//0 iguales else distintos
 			if(comparacion==0){//SI COINCIDIERON
 				printf("resulto que eran iguales el de la entrada y este\n");
 				if(srcMacEquals==1){//si las mac origen coinciden en la trama actual
 					printf("se de antes que las mac origen coinciden en eth y arp\n");
 					//comparo la IP origen
+					//parche de consultar MISMO largo para saber si son iguales antes de strNcmp
+					if(strlen(args[0].shmPtr[i].arpSrcIp)!=strlen(arpSrcIp)){
+							printf("no coinciden las Ip origen: %s contra %s \n",args[0].shmPtr[i].arpSrcIp,arpSrcIp);
+							dropFlag=0;//no descarte la trama...
+							continue;
+					}
+
 					if(!strncmp(args[0].shmPtr[i].arpSrcIp,arpSrcIp,(int) strlen(arpSrcIp))){
 						printf("la ip origen arp coincide en la tabla y en este caso\n");
 						//comparo el destino de la trama con el de la tabla;
+						//parche de consultar MISMO largo para saber si son iguales antes de strNcmp
+						if(strlen(args[0].shmPtr[i].arpDstMac)!=strlen(arpDstMac)){
+                                                                printf("no coinciden las Mac destino: %s contra %s \n",args[0].shmPtr[i].arpDstMac,arpDstMac);
+                                                                dropFlag=0;//no descarte la trama...
+                                                                continue;
+                                                }
 						if(!strncmp(args[0].shmPtr[i].arpDstMac,arpDstMac,(int) strlen(arpDstMac))){
 							printf("tenemos la misma mac destino en ARP en tabla y en este caso..\n");
+							//antes de comparar las IP me fijo si de largo son iugales (problema con .1 y .11 )
+							if(strlen(args[0].shmPtr[i].arpDstIp)!=strlen(arpDstIp)){
+								printf("no coinciden las IP: %s contra %s \n",args[0].shmPtr[i].arpDstIp,arpDstIp);
+								dropFlag=0;//no descarte la trama...
+								continue;
+							}
 							//misma mac destino, comparo la ip destino y listo
 							if(!strncmp(args[0].shmPtr[i].arpDstIp,arpDstIp,(int) strlen(arpDstIp))){
 								printf("tambien tenemos la misma IP destino...\n");
 								//misma IP destino, si llego aca DESCARTOOO!!!
 								printf("LOG: Coincidencia en la tabla, descartar trama\n");
-								dropFlag=1;
+								dropFlag=1;//descartar trama
 								break;//rompo el lazo
 							}
 							else{
@@ -338,27 +365,53 @@ if(!strncpy(args[0].shmPtr[i].ethSrcMac,"000000000000000000000000000000000000000
 
 			printf("estoy frente a una respuesta ARP CRUZADA\n");
 			printf("se va a comparar: %s con %s\n", ethSrcMac, (char*)args[0].shmPtr[i].ethDstMac);//a ver si el actual emisor fue ante receptor..y asi cruzada..
-			if(args[0].shmPtr[i].ethSrcMac == NULL){
+//			if(args[0].shmPtr[i].ethSrcMac == NULL){ //esta era para ver si estaba vacia, ahora asumo vaciadez si esta INICIALIZADA con el type
+			if(args[0].shmPtr[i].type == 99){//inicializada sin usar...(recordar cambiar el type cuando use la entrada!!!
 				printf("\nEntrada cruzada de la tabla %d VACIA\n",i);
 				printf("______________________________________________________________\n");
 				continue;//salto para optimizar, sigue comparando con el proximo subindice i
 			}
 			//no uso else por el continue anterior.. asi que sigo aca else if ethsrcmac==NULL....
-			printf("continuo cruzado aca no mas...\n");
+			printf("continuo CRUZADO aca no mas...\n");
 			printf("la entrada %d no esta vacia..\n",i);
-			comparacion=strncmp(args[0].shmPtr[i].ethDstMac,ethSrcMac,(int) strlen(ethSrcMac));
+			//parche por inclusion en el if
+                        if((int)strlen(args[0].shmPtr[i].arpDstMac)!=(int)strlen(ethSrcMac)){//distinto largo.. saltar..
+				printf("cruzados con distinto largo en las ethMAC: %d y %d\n",(int)strlen(args[0].shmPtr[i].arpDstMac),(int)strlen(ethSrcMac));
+				comparacion=1;
+                        }
+			else{//tenian distinto largo.. fueron distintas al fin y al cabo..
+				printf("Cruzados del mismo largo.. comparando si son iguales...\n");
+				comparacion=strncmp(args[0].shmPtr[i].ethDstMac,ethSrcMac,(int) strlen(ethSrcMac));//da 0 si son the same!!
+			}
 			printf("valor de la comparacion cruzada = %d\n",comparacion);//0 iguales else distintos
 			if(comparacion==0){//SI COINCIDIERON
 				printf("resulto que eran iguales pero cruzados el de la entrada y este\n");
 /*puedo evitar anidamiento aqui*/	if(srcMacEquals==1){//si las mac origen coinciden en la trama actual
 					printf("se de antes que las mac origen coinciden en eth y arp\n");
 					//comparo la IP origen cruzada con la destino de la tabla
+					//parche para comparar largo.. si tienen distinto largo breakear
+					if(strlen(args[0].shmPtr[i].arpDstIp)!=strlen(arpSrcIp)){
+						printf("la arpDstIp y arpSrcIp (cruzado) tienen distinto largo\n");
+						dropFlag=0;
+						continue;
+					}
+					//else...(tienen el mismo largo...) FIN PARCHE
 					if(!strncmp(args[0].shmPtr[i].arpDstIp,arpSrcIp,(int) strlen(arpSrcIp))){
 						printf("la ip origen arp cruzada coincide en la tabla y en este caso\n");
 						//comparo el destino de la trama con el ORIGEN de la tabla porque esta cruzada
+						//parche para comparar largo.. si tienen distinto largo breakear
+                                        	if(strlen(args[0].shmPtr[i].arpSrcMac)!=strlen(arpDstMac)){
+							printf("la arpSrcMac y arpDstMac (cruzado) tienen distinto largo\n");
+							dropFlag=0;
+							continue;
+						}//else...(tienen el mismo largo...) FIN PARCHE
 						if(!strncmp(args[0].shmPtr[i].arpSrcMac,arpDstMac,(int) strlen(arpDstMac))){
 							printf("tenemos la misma mac ORIGEN en ARP en tabla y en este caso..\n");
 							//misma mac ORIGEN, comparo la ip ORIGEN en tabla con el destino de este caso y listo
+							if(strlen(args[0].shmPtr[i].arpSrcIp)!=strlen(arpDstIp)){
+								printf("la arpSrcIp y arpDstIp (cruzado) tienen distinto largo\n");
+								dropFlag=0;                                                              
+								continue;                                                           					                                                }//else...(tienen el mismo largo...) FIN PARCHE
 							if(!strncmp(args[0].shmPtr[i].arpSrcIp,arpDstIp,(int) strlen(arpDstIp))){
 								printf("tambien tenemos la misma IP origen cruzado...\n");
 								//misma IP origen en la tabla coincide con el destino de este caso.llego aca DESCARTOOO!!!

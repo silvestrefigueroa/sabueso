@@ -456,7 +456,13 @@ int main(int argc, char *argv[]){
 					
 					printf("mostrando memoria compartida desde el port stealer pasada %d\n",j);
 					for(c=0;c<tableSize;c++){
-						printf("entrada %d, arpSrcIp: %s \n",c,shmPtr[c].arpSrcIp);
+						printf("entrada %d  |%s  ",c,shmPtr[c].ethSrcMac);
+						printf("|%s  ",shmPtr[c].ethDstMac);
+						printf("|%s  ",shmPtr[c].arpSrcMac);
+						printf("|%s  ",shmPtr[c].arpSrcMac);
+						printf("|%s  ",shmPtr[c].arpSrcIp);
+						printf("|%s \n",shmPtr[c].arpDstIp);
+
 /*
 						write(1,"arpSrcIp \n",strlen("arpSrcIp "));
 						write(1,(char *)(shmPtr[c].arpSrcIp),4);
