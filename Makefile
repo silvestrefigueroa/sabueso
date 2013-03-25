@@ -6,3 +6,4 @@ clean:
 	rm -fv *.o
 	rm -fv sabueso
 	rm -fv *~
+	rm salee
