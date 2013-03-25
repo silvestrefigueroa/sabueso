@@ -6,8 +6,8 @@
 typedef struct{
 	sem_t semaforo;
 	int arpAskerIndex;
-	char* mac;
-	char* ip;
-	char* status; //podria utilizarlo para indicar que esta en monitoreo actualmente o bien para indicar incidencia onda que esta en WARN
+	char mac[40];
+	char ip[40];
+	int status; //podria utilizarlo para indicar que esta en monitoreo actualmente o bien para indicar incidencia onda que esta en WARN
 	int hit;
 }arpAsker;

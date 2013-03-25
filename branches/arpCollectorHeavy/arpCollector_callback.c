@@ -501,20 +501,6 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 				}
 				if(writableFlag==1){
 					printf("entrada bloqueada y libre para uso!! PERSISTIENDO DATOS...\n");
-					/*
-					args[0].shmPtr[i].ethSrcMac=(char *)malloc (strlen(ethSrcMac));
-					strcpy(args[0].shmPtr[i].ethSrcMac,ethSrcMac);
-					args[0].shmPtr[i].ethDstMac=(char *)malloc (strlen(ethDstMac));
-					strcpy(args[0].shmPtr[i].ethDstMac,ethDstMac);
-					args[0].shmPtr[i].arpSrcMac=(char *)malloc (strlen(arpSrcMac));
-					strcpy(args[0].shmPtr[i].arpSrcMac,arpSrcMac);
-					args[0].shmPtr[i].arpDstMac=(char *)malloc (strlen(arpDstMac));
-					strcpy(args[0].shmPtr[i].arpDstMac,arpDstMac);
-					args[0].shmPtr[i].arpDstIp=(char *)malloc (strlen(arpDstIp));
-					strcpy(args[0].shmPtr[i].arpDstIp,arpDstIp);
-					args[0].shmPtr[i].arpSrcIp=(char *)malloc (strlen(arpSrcIp));
-					strcpy(args[0].shmPtr[i].arpSrcIp,arpSrcIp);
-					*/
 					char *cadena=NULL;
 					switch(i){
 						case 0:
@@ -530,15 +516,7 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 							cadena="mayor a tres...";
 						break;
 					}
-		
 
-/*
-					args[0].shmPtr[i].ethSrcMac=ethSrcMac;
-					args[0].shmPtr[i].ethDstMac=ethDstMac;
-					args[0].shmPtr[i].arpSrcMac=arpSrcMac;
-					args[0].shmPtr[i].arpDstMac=arpDstMac;
-					args[0].shmPtr[i].arpDstIp=arpDstIp;
-*/
 					printf("**************antes de la asignacion tengo arpSrcIp: %s cadena: %s\n",arpSrcIp,cadena);
 
 					strncpy(args[0].shmPtr[i].ethSrcMac,ethSrcMac,strlen(ethSrcMac));
@@ -548,14 +526,6 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 					strncpy(args[0].shmPtr[i].arpSrcIp,arpSrcIp,strlen(arpSrcIp));
 					strncpy(args[0].shmPtr[i].arpDstIp,arpDstIp,strlen(arpDstIp));
 
-
-
-
-
-//					printf("luego de la asignacion tengo arpSrcIp=(%s) con un largo de %d \n",arpSrcIp,(int)strlen(arpSrcIp));
-//					printf("despues tambien tengo en la tabla: %s, arpSrcIp: %s ...\n",args[0].shmPtr[i].arpSrcIp,arpSrcIp);
-//					printf("largo en tabla: %d\n",(int)strlen(args[0].shmPtr[i].arpSrcIp));
-//sleep(1000);										
 					args[0].shmPtr[i].nextState=nextState;//OJO son enteros
 					if(askFlag==0){
 						args[0].shmPtr[i].type=1;
@@ -625,55 +595,65 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 				printf("Como no era una pregunta, termina el callback sin guardar askers\n");
 				return;
 			}
-
+			//Sino... continua para guardar el Asker...
 
 
 int askerFounded=0;
 int askerReplace=0;
 int askerSaved=0;
+int askerReplaceIndex=0;//subindice de la entrada donde se encontro el asker a reemplazar (evita recorrer todo de nuevo)
 		
 		for(i=0,savedFlag=0;i<ARPASKERS_TABLE_SIZE;i++){
 			printf("buscando %s en la tabla de askers\n",arpSrcIp);
 
 			//chequear si coincide
 			//1| si la entrada esta en NULL entonces esta vacia, saltar a la siguiente
-			if(args[0].arpAskers_shmPtr[i].ip==NULL){
+			if(args[0].arpAskers_shmPtr[i].status==99){//status 99 es inicializado asi que es el "null" en este caso..
 				printf("entrada vacia, saltar a la proxima porque estoy comparando nada mas...\n");
-				continue;
+				continue;//continue salta al proximo ciclo.. break rompe el lazo y return la instancia..
 			}
 			else{//si entra aca hay algo en la entrada..compararlo entonces con la arpSrcIp que tengo
-				printf("comparando aqui por no ser null: %s contra %s \n", args[0].arpAskers_shmPtr[i].ip,arpSrcIp);
+				printf("comparando: %s contra %s por no estar vacia la entrada\n", args[0].arpAskers_shmPtr[i].ip,arpSrcIp);
 				//OJO que tengo que ver que tengan el mismo strlen para asegurarme de que puedo hacer la comparacion strncmp
 				//sino, por ejemplo si comparo 1.1.1.111 con 1.1.1.1 con strlen(1.1.1.1) me van a dar iguales!!!
-				if(strlen(arpSrcIp) == strlen(args[0].arpAskers_shmPtr[i].ip)){
-					printf("tienen el mismo largo, pueden ser iguales, asi que las comparo...\n");
-				}
-				else{
+				if(strlen(arpSrcIp)!=strlen(args[0].arpAskers_shmPtr[i].ip)){
 					printf("tienen diferente largo.. asi que son diferentes.. no comparo nada sin distitnas y punto\n");
-					continue;
+					continue;//saltar a la proxima entrada de asker.. proximo ciclo de ESTE for
 				}
+				//Else continua ejecutando aqui porque no hizo el continue del IF =^.^=
+				printf("tienen el mismo largo, pueden ser iguales, asi que las comparo...\n");
+				//como se que si sigo aqui es porque tienen el MISMO largo, entonces comparo por strNcmp...
 				if(!strncmp(args[0].arpAskers_shmPtr[i].ip,arpSrcIp,strlen(arpSrcIp))){
 					printf("la entrada ya existe en la tabla...comprobar MAC\n");
-					printf("compare %s con %s \n",args[0].arpAskers_shmPtr[i].mac,arpSrcMac);
-					if(!strncmp(args[0].arpAskers_shmPtr[i].mac,arpSrcMac,strlen(arpSrcMac))){
-						printf("definitivamente la entrada ya existe.. romper bucle\n");
-						askerFounded=1;//lo encontre!! levanto flag
+					printf("compare %s con %s y me dieron IGUALES...\n",args[0].arpAskers_shmPtr[i].mac,arpSrcMac);
+					printf("comparando ahora %s con %s\n",args[0].arpAskers_shmPtr[i].mac,arpSrcMac);
+					if((int)strlen(args[0].arpAskers_shmPtr[i].mac)!=(int)strlen(arpSrcMac)){
+						printf("mac asker con MACS de distinto largo");
+						printf("Estoy frente a un caso de reemplazo de entrada de asker...\n");
+						askerReplace=1;//para que lo reemplaze
+						askerReplaceIndex=i;//guardo el indice donde debo pisar el asker
 						break;
 					}
-					else{//si entra en este else es porque la MAC fue distinta a pesar de ser misma IP
-						printf("Tenemos o bien un nuevo host reemplazando a uno viejo o bien un caso de ip duplicado en %d\n",i);
-						//levanto flag para reemplazar al asker
-						askerReplace=1;
-//NO VA ACA!						printf("LOG: host reemplazado en tabla asker, posible caso de IP duplicada en la red\n");
-						//ACA podria escribir directamente en el pipe hacia el PADRE para informar el WARN
-						//o escribir en alguna tabla de WARNINGS
-						break;//corto el lazo for porque ya encontre coincidencia!!
-					}
+					else{//si tienen el mismo largo comparo a ver si son la MISMA
+						if(!strncmp(args[0].arpAskers_shmPtr[i].mac,arpSrcMac,strlen(arpSrcMac))){
+							printf("definitivamente la entrada ya existe.. romper bucle\n");
+							askerFounded=1;//lo encontre!! levanto flag
+							break;
+						}
+						else{//si entra en este else es porque la MAC fue distinta a pesar de ser misma IP
+							printf("Tenemos nuevo host reemplazando a uno viejo o bien un caso de ip duplicado en [%d]\n",i);
+							//levanto flag para reemplazar al asker
+							askerReplace=1;
+							//ACA podria escribir directamente en el pipe hacia el PADRE para informar el WARN
+							//o escribir en alguna tabla de WARNINGS
+							break;//corto el lazo for porque ya encontre coincidencia!!
+						}
+					}//else para cuando tienen el mismo largo las MAC de askers
 				}//cierre del if de comparacion de ip en tabla asker y frame actual
 				else{//si cae aca es porque la entrada no estaba vacia pero tampoco coincidio con la trama actual
-					printf("existia algo en la tabla pero %s no es lo mismo que %s\n",args[0].arpAskers_shmPtr[i].ip,arpSrcIp);
-				}
-			}//else NO esta vacia la entrada
+					printf("askerIP tienen el mismo largo pero %s no es lo mismo que %s\n",args[0].arpAskers_shmPtr[i].ip,arpSrcIp);
+				}//no era la IP que busco para el asker
+			}//else NO esta inicializada nada mas (como vacia seria...)
 		}//Lazo for que recorre las entradas de la tabla de arpAskers
 		//Si al terminar este for no se encontro la entrada en la tabla, entonces la almaceno!!!
 		if(askerFounded!=0){
@@ -689,29 +669,23 @@ int askerSaved=0;
 		//ahora bien segun sea un reemplazo o bien un ADD de asker, sigo procedimientos diferentes
 		if(askerReplace==0){//solo ADD
 		
-			//Recorrer buscando uno VACIO o iniciar algoritmo de insercion cuando la tabla esta llena
+			//Recorrer buscando uno VACIO o iniciar algoritmo de insercion cuando la tabla esta llena (vacio ES inicializado, status:99)
 			askerSaved=0;//flag que luego si pasa a 1 indicara que se almaceno la entrada en la tabla
 			for(i=0,savedFlag=0;i<ARPASKERS_TABLE_SIZE;i++){
 				printf("buscando una entrada vacia para guardar %s en la tabla de askers\n",arpSrcIp);
-				if(args[0].arpAskers_shmPtr[i].ip==NULL){
+//				if(args[0].arpAskers_shmPtr[i].ip==NULL){
+				if(args[0].arpAskers_shmPtr[i].status==99){//inicializada (es la adaptacion de char*=NULL a char[]=99)
 					printf("entrada %d esta vacia, guardando asker...\n",i);
 					//Guardar...
 					sem_wait((sem_t*) & (args[0].arpAskers_shmPtr[i].semaforo));
-					/*
-					args[0].arpAskers_shmPtr[i].ip=(char *)malloc (strlen(arpSrcIp));
-					strcpy(args[0].arpAskers_shmPtr[i].ip,arpSrcIp);
-					args[0].arpAskers_shmPtr[i].mac=(char *)malloc (strlen(arpSrcMac));
-					strcpy(args[0].arpAskers_shmPtr[i].mac,arpSrcMac);
-					*/
-				
-					args[0].arpAskers_shmPtr[i].ip=arpSrcIp;
-					args[0].arpAskers_shmPtr[i].mac=arpSrcMac;
+			
+					strncpy(args[0].arpAskers_shmPtr[i].ip,arpSrcIp,strlen(arpSrcIp));
+					strncpy(args[0].arpAskers_shmPtr[i].mac,arpSrcMac,strlen(arpSrcMac));
+					args[0].arpAskers_shmPtr[i].status=1;//este status indica q se guardo un asker;lo diferencia del inicializado (99)
 
-					//no voy a usar el index, prefiero chekear bien por si se da el caso de reemplazo de asker y yo todabia tengo
-					//dialogos en la tabla para chekear, en ese caso deberia descartar ESOS dialogos y dejar los nuevos y por supuesto
-					//generar la alerta correspondiente!!
 					sem_post((sem_t*) & (args[0].arpAskers_shmPtr[i].semaforo));
-					printf("almacenado de la entrada de asker completada...\n");
+
+					printf("LOG: almacenado de la entrada de asker completada...\n");
 					//podria compararlo si se almaceno leyendo la entrada y strncmp con arpSrcip...
 					askerSaved=1;//levanto flag de asker almacenado
 					break;//porque si ya lo guarde ya esta.. no quiero continuar en el lazo for
@@ -719,39 +693,22 @@ int askerSaved=0;
 			}//lazo for que ALMACENA el asker si hay entradas vacias
 		}//si era solo un ADD
 		else{//significa que tengo que reemplazar una entrada...puede ser por estar llena la tabla o por conflicto de IP por eso el WARN
-			//Recorrer buscando el que coincida con la IP y PISARLO
 			askerSaved=0;
-			for(i=0,savedFlag=0;i<ARPASKERS_TABLE_SIZE;i++){
-				printf("buscando al asker %s para pisarlo...\n",arpSrcIp);
-				if(args[0].arpAskers_shmPtr[i].ip!=NULL){//si la entrada en la tabla tiene algo...(no me interesa si esta vacia...la salto)
-					printf("entrada %d contiene al asker que quiero reemplazar...\n",i);
-					//PARA PISAR, LIBERO EL CONTENIDO DE LA TABLA Y LUEGO MALLOQUEO CON EL NUEVO VALOR.
-					sem_wait((sem_t*) & (args[0].arpAskers_shmPtr[i].semaforo));
-					/*
-					free(args[0].arpAskers_shmPtr[i].ip);
-					free(args[0].arpAskers_shmPtr[i].mac);
-					args[0].arpAskers_shmPtr[i].ip=(char *)malloc (strlen(arpSrcIp));
-					strcpy(args[0].arpAskers_shmPtr[i].ip,arpSrcIp);
-					args[0].arpAskers_shmPtr[i].mac=(char *)malloc (strlen(arpSrcMac));
-					strcpy(args[0].arpAskers_shmPtr[i].mac,arpSrcMac);
-					*/
-					args[0].arpAskers_shmPtr[i].ip=NULL;
-					args[0].arpAskers_shmPtr[i].mac=NULL;
-					args[0].arpAskers_shmPtr[i].ip=arpSrcIp;
-					args[0].arpAskers_shmPtr[i].mac=arpSrcMac;
+			printf("entrada %d contiene al asker que quiero reemplazar...\n",askerReplaceIndex);
+			//PERFECTO ACTUALIZO LA TABLA.. PERO OJO PORQUE DEBERIA TAMBIEN QUITAR LAS ENTRADAS EN LA TABLA DE DIALOGOS!!
+			sem_wait((sem_t*) & (args[0].arpAskers_shmPtr[askerReplaceIndex].semaforo));
 
+			memset(args[0].arpAskers_shmPtr[askerReplaceIndex].ip,0,40);//limpio
+			memset(args[0].arpAskers_shmPtr[askerReplaceIndex].mac,0,40);//limpio
+			strncpy(args[0].arpAskers_shmPtr[askerReplaceIndex].ip,arpSrcIp,strlen(arpSrcIp));
+			strncpy(args[0].arpAskers_shmPtr[askerReplaceIndex].mac,arpSrcMac,strlen(arpSrcMac));
+			args[0].arpAskers_shmPtr[askerReplaceIndex].status=2;//status 2 es porque fue un replace (en general mientras mas grande mas replace)
 
-					//no voy a usar el index, prefiero chekear bien por si se da el caso de reemplazo de asker y yo todabia tengo
-					//dialogos en la tabla para chekear, en ese caso deberia descartar ESOS dialogos y dejar los nuevos y por supuesto
-					//generar la alerta correspondiente!!
-					sem_post((sem_t*) & (args[0].arpAskers_shmPtr[i].semaforo));
-					printf("PISADO de la entrada %d de asker table completada...\n",i);
-					//podria compararlo si se almaceno leyendo la entrada y strncmp con arpSrcip...
-					askerSaved=1;//levanto flag de asker almacenado
-					break;//porque si ya lo guarde ya esta.. no quiero continuar en el lazo for
-				}
-			}//lazo for	
-		}//cierro el else de askerReplace==0
+			sem_post((sem_t*) & (args[0].arpAskers_shmPtr[askerReplaceIndex].semaforo));
+
+			printf("PISADO de la entrada %d de asker table completada...\n",askerReplaceIndex);
+			askerSaved=1;//levanto flag de asker almacenado
+		}//cierro el else de if(askerReplace==0)
 
 		if(askerSaved==0){
 			printf("no se pudo almacenar al asker.. quiza la tabla este llena\n");

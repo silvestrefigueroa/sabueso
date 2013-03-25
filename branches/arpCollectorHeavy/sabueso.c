@@ -312,9 +312,9 @@ int main(int argc, char *argv[]){
 	//inicializacion:
 	for(subindexCounterId=0;subindexCounterId<arpAskersTable_tableSize;subindexCounterId++){//ese 100 es el hardcodeado anterior
 		arpAskersTable[subindexCounterId].arpAskerIndex=subindexCounterId;
-		arpAskersTable[subindexCounterId].mac=NULL;
-		arpAskersTable[subindexCounterId].ip=NULL;
-		arpAskersTable[subindexCounterId].status=NULL;
+		memset(arpAskersTable[subindexCounterId].mac,0,40);
+		memset(arpAskersTable[subindexCounterId].ip,0,40);
+		arpAskersTable[subindexCounterId].status=99;
 		arpAskersTable[subindexCounterId].hit=0;
 		//int sem_init(sem_t *sem, int pshared, unsigned int value);
 		sem_init(&(arpAskersTable[subindexCounterId].semaforo),1,1);//inicializa semaforos de cada entrada de la tabla
@@ -462,19 +462,10 @@ int main(int argc, char *argv[]){
 						printf("|%s  ",shmPtr[c].arpSrcMac);
 						printf("|%s  ",shmPtr[c].arpSrcIp);
 						printf("|%s \n",shmPtr[c].arpDstIp);
-
-/*
-						write(1,"arpSrcIp \n",strlen("arpSrcIp "));
-						write(1,(char *)(shmPtr[c].arpSrcIp),4);
-						write(1,"\n",strlen("\n"));
-*/
-
 					}
 					j++;
 				}
 sleep(100000);
-
-
 
 	for(i=0;i<serversQuantity;i++){
 		//------------INICIA FORK MULTIHILADO DE SEGUIMIENTO, ROBO DE PUERTO Y ALERTA-----------------------------
