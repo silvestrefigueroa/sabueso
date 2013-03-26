@@ -447,10 +447,38 @@ int main(int argc, char *argv[]){
 	int j=0;//otro subindice
 
 	int c=0;
+	int live=0;
+	serversQuantity=5;
+/*
+	while(1==1){
+		sleep(1);
+		
+		printf("mostrando memoria compartida desde el port stealer pasada %d\n",j);
+		for(c=0;c<tableSize;c++){
+			printf("entrada %d  |%s  ",c,shmPtr[c].ethSrcMac);
+			printf("|%s  ",shmPtr[c].ethDstMac);
+			printf("|%s  ",shmPtr[c].arpSrcMac);
+			printf("|%s  ",shmPtr[c].arpSrcMac);
+			printf("|%s  ",shmPtr[c].arpSrcIp);
+			printf("|%s \n",shmPtr[c].arpDstIp);
+		}
+		j++;
+	}
+*/
 
-	serversQuantity=1;
 
-
+	for(i=0;i<serversQuantity;i++){
+		//------------INICIA FORK MULTIHILADO DE SEGUIMIENTO, ROBO DE PUERTO Y ALERTA-----------------------------
+		switch(fork()){
+			case -1:
+				perror("fork()");
+				_exit(EXIT_FAILURE);
+			case 0:
+				sleep(5);
+				printf("soy el HIJO PORT STEALER del host: %s\n",(servers2guard[i].serverName));
+				j=0;
+				c=0;
+//----------------------------------------
 				while(1==1){
 					sleep(1);
 					
@@ -464,55 +492,11 @@ int main(int argc, char *argv[]){
 						printf("|%s \n",shmPtr[c].arpDstIp);
 					}
 					j++;
+					break;
 				}
-sleep(100000);
-
-	for(i=0;i<serversQuantity;i++){
-		//------------INICIA FORK MULTIHILADO DE SEGUIMIENTO, ROBO DE PUERTO Y ALERTA-----------------------------
-		switch(fork()){
-			case -1:
-				perror("fork()");
-				_exit(EXIT_FAILURE);
-			case 0:
-				sleep(5);
-				printf("soy el HIJO PORT STEALER del host: %s\n",(servers2guard[i].serverName));
-				j=0;
-
-//----------------------------------------
-				//ACONDICIONAR SHAREDMEM DE DIALOGOS EN ESTE HIJO
-/*
-				if(((fdshm=shm_open("/sharedMemDialogos", O_RDWR|O_CREAT, 0666))<0)){
-					perror("shm_open()");
-					exit(EXIT_FAILURE);
-				}
-				if(!(shmPtr=mmap(NULL, sizeof(struct arpDialog)*tableSize, PROT_READ|PROT_WRITE, MAP_SHARED, fdshm, 0))){
-					perror("mmap()");
-					exit(EXIT_FAILURE);
-				}
-				//la truncada de suerte!!:
-				ftruncate(fdshm, sizeof(struct arpDialog)*tableSize);
-				close(fdshm);
-*/
-
-				while(1==1){
-					sleep(10);
-					
-					printf("mostrando memoria compartida desde el port stealer pasada %d\n",j);
-					for(c=0;c<tableSize;c++){
-						printf("entrada %d, arpSrcIp: %s largo %d \n",c,shmPtr[c].arpSrcIp,(int)strlen(shmPtr[c].arpDstIp));
-//						write(1,"arpSrcIp \n",strlen("arpSrcIp "));
-//						write(1,(char *)(shmPtr[c].arpSrcIp),4);
-
-					}
-					j++;
-				}
-
-
-
-
 //------------------------------------------
-/*
 
+				printf("continuando con el portstealer\n");
 				//flags:
 				int askingForThisServer=0;//inicializa en "no preguntan por el server"
 							
@@ -521,55 +505,70 @@ sleep(100000);
 				live=1;
 				j=0;
 				while(live==1){//podria ser un while true, se utilizo esta variable para tener condicion de corte (aunque puedo usar break...)
-//					sleep(20);//descanza 20 segundos despues de cada recorrida completa
+					sleep(5);//descanza 20 segundos despues de cada recorrida completa
+					printf("<<<< vuelta aquiiiii\n");
 					for(j=0;j<tableSize;j++){
+						printf("dentro del for con j=%d\n",j);
 						//por las dudas me fijo si la entrada en la tabla no es NULL:
-						if(shmPtr[j].arpDstIp==NULL){
-
-							printf("<<Entrada vacia, continuar con la siguiente\n");
+						printf("el nextState = %d\n",shmPtr[j].nextState);
+						if(shmPtr[j].nextState==99){//si es una entrada recien inicializada que lo salte
+							//printf("<<Entrada vacia, continuar con la siguiente\n");
 							continue;
 						}
-						else{
+						
+						else{//si no esta "vacia" (inicializada en realiadad.."
 							printf("<<Esta entrada no esta vacia!!! ahora va al if de si coincide con el server que cuido...\n");
-							printf("comparando i: %s con shmPtr: %s \n",servers2guard[i].ip,shmPtr[j].arpDstIp);
-							continue;
+							printf("<<comparando i: %s con shmPtr: %s \n",servers2guard[i].ip,shmPtr[j].arpDstIp);
 						}
 						//else...
 						//1.99 Si esta involucrado ESTE server:
 
 						//si es destino
 						printf("comparando i: %s con shmPtr: %s \n",servers2guard[i].ip,shmPtr[j].arpDstIp);
-						if(!strcmp(servers2guard[i].ip,shmPtr[j].arpDstIp)){//si la ip por la q se pregunta es del server i
-							printf(">>>Esta entrada de la tabla esta destinada al server %s\n",(servers2guard[i].serverName));
-							//evaluo si es pregunta o respuesta
-							switch(shmPtr[j].type==0){
-								case 0:
-									printf(">>era pregunta...\n");
-									askingForThisServer=1;
-								break;
-								case 1:
-									printf(">>supongo que era respuesta...\n");
-								break;
-								default:
-									printf(">>anomalia en la entrada de la tabla\n");
-									continue;
-								break;
-							}//switch tipo de trama en la j entrada de la tabla
-
-						}//server i es destino
+						//PARCHE por largo..
+						if(strlen(servers2guard[i].ip)==strlen(shmPtr[j].arpDstIp)){//distinta logica, mismo metodo (strlen)
+							printf(">> PST: tienen el mismo largo!! asi que evaluo si son iguales o no...\n");
+							if(!strncmp(servers2guard[i].ip,shmPtr[j].arpDstIp,strlen(shmPtr[j].arpDstIp))){//ip es del server i
+								printf(">>>PST: Esta entrada esta destinada al server %s\n",(servers2guard[i].serverName));
+								//evaluo si es pregunta o respuesta
+								switch(shmPtr[j].type==0){
+									case 0:
+										printf(">>era pregunta...\n");
+										askingForThisServer=1;
+									break;
+									case 1:
+										printf(">>supongo que era respuesta...\n");
+									break;
+									default:
+										printf(">>anomalia en la entrada de la tabla\n");
+										continue;
+									break;
+								}//switch tipo de trama en la j entrada de la tabla
+							}//server i es destino
+							else{
+								printf("<<< al final no eran iguales XD\n");
+							}
+						}//if tienen el mismo largo
 						else{//si server i no es el destino sera el origen?
-							if(!strcmp(servers2guard[i].ip,shmPtr[j].arpDstIp)){
+							printf("<<cruzando...\n");
+							if(strlen(servers2guard[i].ip)!=strlen(shmPtr[j].arpDstIp)){
+								printf(">>>tampoco fue que el destino era el origen...\n");
+								continue;
+							}
+							//else.. continuar aqui...
+							if(!strncmp(servers2guard[i].ip,shmPtr[j].arpDstIp,strlen(shmPtr[j].arpDstIp))){
 								printf(">>>Esta entrada fue ORIGINADA por el server %s\n",(servers2guard[i].serverName));
+								sleep(10);
 								//tratar este segmento del codigo luego..
 							}
 							else{//no esta involucrado el server i
 								printf(">>>OK no estaba vacia pero no involucraba al server %s\n",servers2guard[i].ip);
 								continue;
 							}
-						}//else para que el server i sea el origen
+						}//else para que el server i sea el origen (Cruzado)
 
 						//2|Reviso si es PREGUNTA ARP o RESPUESTA
-						
+						printf("bueno justo aqui tengo que empezar a tratar segun sea pregunta o respuesta...\n");
 						//preguntan por el server (caso analizado)
 
 						
@@ -620,7 +619,7 @@ sleep(100000);
 													
 					}//lazo for que recorre las entradas de la tabla
 				}//CIERRO EL WHILE LIVE ==1
-*/
+
 				_exit(EXIT_SUCCESS);//del hijo de este ciclo del for
 
 		}//CIERRO EL SWITCH FORK (tiene doble identacion del switch case fork
