@@ -534,7 +534,7 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 					else{//si es pregunta...la arquitectura 0.6 especifica 0 para pregunta y el flag este es 1 para pregunta..
 						args[0].shmPtr[i].type=0;
 					}
-
+					args[0].shmPtr[i].nextState=nextState;
 					printf("ya paso la asignacion por strcpy\n");
 					printf("AHORA DEBERIA EVALUAR doCheckWAck=%d doCheckIpI=%d doCheckSpoofer=%d\n",doCheckWAck,doCheckIpI,doCheckSpoofer);
 
