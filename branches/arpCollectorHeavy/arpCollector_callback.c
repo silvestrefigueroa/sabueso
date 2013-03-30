@@ -107,9 +107,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 		int doCheckWAck=0;
 	//	int doHitIncrement=0;
 		int nextState=0;//por default, almacenarla y ya
-//		char* type=NULL;//consultar posibles valores en tabla_de_dialogos.txt [Arquitectura]
-//		int type=99;//consultar posibles valores en tabla_de_dialogos.txt [Arquitectura]
-
+		int type=99;//consultar posibles valores en tabla_de_dialogos.txt [Arquitectura] (lo uso para saber si esta inicializada, vacia)
 		int i=0;
 	//	int dstZeroMacFlag=0;
 	//	int dstBrdMacFlag=0;
@@ -150,9 +148,8 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 					doCheckIpI=1;
 					doCheckSpoofer=1;
 					nextState=1;
-//					type="PASS";//deberian ser un macro de variable entero y ya..
-					
-					askFlag=1;//porque supongo es pregunta ARP
+					askFlag=1;//porque supongo es pregunta ARP (se usa en el programa como flag)
+					type=0;//campo que indica que se trata de una pregunta (se usa en la trama no en el programa como flag)
 					printf("Finalizada la evaluacion, continua con la carga de datos...\n");
 				}
 				else{//Si entra aqui, es porque fue al broadcast, pero el ARP tiene un destino FIJO, es muy extraño!!
@@ -210,9 +207,9 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 						printf("LOG:[Taxonomia de respuesta o ATAQUE], par[%s]-[%s]\n",ethDstMac,arpDstMac);
 						//marcar para portstelear y GUARDAR el dialogo en la tabla
 						doCheckIpI=1;//siempre primero, es la trivial.si conozco la info real, no noecesito el stealer.
-//						type="PASS";
+						type=1;//Campo que indica en la trama si se trata de una respuesta arp
 						nextState=1;
-						//Normalmente a no ser que sea una respuesta dirigida al sabueso, no veria estas tramas...
+						//Normalmente a no ser que sea una respuesta dirigida al sabueso, no veria estas tramas...(si..con el portstl)
 						//es por ello que lo mas seguro es que esta trama sean robadas del porstealing
 				break;
 				case 0:
@@ -254,7 +251,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 				printf("-------------------------------------------------mostrar HIT: %d\n", args[0].shmPtr[i].hit);
 			}
 
-			//PARA COMPRAR EN LA TABLA TENGO 2 CASOS, O BIEN ES PREGUNTA O BIEN ES RESPUESTA
+			//PARA COMPRAR EN LA TABLA TENGO 1 de 2 CASOS, O BIEN ES PREGUNTA O BIEN ES RESPUESTA
 				//SI ES PREGUNTA ES UNIVOCA
 				//SI ES RESPUESTA LA INFORMACION PUEDE SER IDENTICA O ESPECAJA (CRUZADA)
 
@@ -264,14 +261,15 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
 
 			printf("estoy frente a una pregunta o respuesta ARP\n");
-//estoy aquiiii no se como comparar.. ahora se me jodio el null por la inicializacion!!!	
+			//estoy aquiiii no se como comparar.. ahora se me jodio el null por la inicializacion!! (no pasa nada. uso el type ;)
 
 			if(args[0].shmPtr[i].type==99){
 				printf("\nEntrada de la tabla %d VACIA\n",i);
 				printf("______________________________________________________________\n");
 				continue;//salto para optimizar, sigue comparando con el proximo subindice i
 			}
-			printf("se va a comparo: %s con %s\n", ethSrcMac, args[0].shmPtr[i].ethSrcMac);
+			//SI no estaba recien inicializada, compara valores para ver si es el mismo...
+			printf("se va a compararrrrrr: %s con %s\n", ethSrcMac, args[0].shmPtr[i].ethSrcMac);
 			//no uso else por el continue anterior.. asi que sigo aca else if ethsrcmac==NULL....
 			printf("continuo aca no mas...\n");
 			printf("la entrada %d no esta vacia..\n",i);
@@ -280,7 +278,7 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 			if(strlen(args[0].shmPtr[i].ethSrcMac)==strlen(ethSrcMac)){//si tienen el mismo largo me fijo si son la misma cadena..
 				comparacion=strncmp(args[0].shmPtr[i].ethSrcMac,ethSrcMac,(int) strlen(ethSrcMac));
 			}
-			else{//no tienen el mismo largo
+			else{//no tienen el mismo largo (ya no son iguales ni a palos)
 				printf("el ethSrcMac de la tabla no tiene el mismo largo que el ethSrcMac\n");
 				comparacion=1;
 			}//FIN PARCHE
@@ -296,7 +294,7 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 							dropFlag=0;//no descarte la trama...
 							continue;
 					}
-
+					//si tienen el mismo largo consulto si son iguales...
 					if(!strncmp(args[0].shmPtr[i].arpSrcIp,arpSrcIp,(int) strlen(arpSrcIp))){
 						printf("la ip origen arp coincide en la tabla y en este caso\n");
 						//comparo el destino de la trama con el de la tabla;
@@ -529,10 +527,13 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 					args[0].shmPtr[i].nextState=nextState;//OJO son enteros
 					if(askFlag==0){
 						args[0].shmPtr[i].type=1;
+						printf("se seteoo type=1 y el type era %d\n",type);
+						
 					}
 
 					else{//si es pregunta...la arquitectura 0.6 especifica 0 para pregunta y el flag este es 1 para pregunta..
 						args[0].shmPtr[i].type=0;
+						printf("se seteoo type=0 y el type era %d\n",type);
 					}
 					args[0].shmPtr[i].nextState=nextState;
 					printf("ya paso la asignacion por strcpy\n");
@@ -576,7 +577,7 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 		}
 		
 		//UNA VEZ TERMINA DE RECORRER... PODRIA USAR ETIQUETAS DEL SIGUIENTE MODO:
-			//1| MUSTRO MENSAJE DE TABLA LLENA Y SOLICITO AL MANTENEDOR DE TABLA QUE REVISE LA TABLA O ESPERO...
+			//1| MUESTRO MENSAJE DE TABLA LLENA Y SOLICITO AL MANTENEDOR DE TABLA QUE REVISE LA TABLA O ESPERO...
 			//2| VUELVO A LA ETIQUETA DEFINIDA JUSTO ANTES DEL LAZO FOR ;) ASI INTENTO DE NUEVO..
 			//3| DEFINIR UN NUMERO DE REINTENTOS.. SI SE LLEGA A ESE NUMERO, ENTONCES BREAKEAR Y MOSTRAR EL ERROR
 			//OJO: NO SE SI LOS OTROS FRAMES CAPTURADOS SE VERAN AFECTADOS A LA HORA DE ALMACENAR ESTOS DATOS.. :(
@@ -702,8 +703,9 @@ int askerReplaceIndex=0;//subindice de la entrada donde se encontro el asker a r
 			memset(args[0].arpAskers_shmPtr[askerReplaceIndex].mac,0,40);//limpio
 			strncpy(args[0].arpAskers_shmPtr[askerReplaceIndex].ip,arpSrcIp,strlen(arpSrcIp));
 			strncpy(args[0].arpAskers_shmPtr[askerReplaceIndex].mac,arpSrcMac,strlen(arpSrcMac));
-			args[0].arpAskers_shmPtr[askerReplaceIndex].status=2;//status 2 es porque fue un replace (en general mientras mas grande mas replace)
-
+			args[0].arpAskers_shmPtr[askerReplaceIndex].status=2;//status 2 es porque fue un replace (en general mientras mas grande mas replace?)
+			//para que el comentario anterior fuera posible deberia hacer status++ peeero siempre evaluando que no alcance al 99
+			//ya que el 99 es el valor de inicializacion que utilizo para estos campos de referencia.
 			sem_post((sem_t*) & (args[0].arpAskers_shmPtr[askerReplaceIndex].semaforo));
 
 			printf("PISADO de la entrada %d de asker table completada...\n",askerReplaceIndex);
