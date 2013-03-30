@@ -505,20 +505,44 @@ int main(int argc, char *argv[]){
 				live=1;
 				j=0;
 				while(live==1){//podria ser un while true, se utilizo esta variable para tener condicion de corte (aunque puedo usar break...)
-					sleep(5);//descanza 20 segundos despues de cada recorrida completa
+					sleep(5);//descanza 5 segundos antes de cada recorrida completa
 					printf("<<<< vuelta aquiiiii\n");
 					for(j=0;j<tableSize;j++){
 						printf("dentro del for con j=%d\n",j);
 						//por las dudas me fijo si la entrada en la tabla no es NULL:
 						printf("el nextState = %d\n",shmPtr[j].nextState);
-						if(shmPtr[j].nextState==99){//si es una entrada recien inicializada que lo salte
-							//printf("<<Entrada vacia, continuar con la siguiente\n");
+
+
+
+
+
+
+
+
+
+
+ESTOY AQUI PARA CONTINUAR
+
+
+
+
+
+
+
+//						if(shmPtr[j].nextState==99){//si es una entrada recien inicializada que lo salte
+						if(shmPtr[j].type==99){//recien inicializada
+							printf("<<Entrada vacia, continuar con la siguiente\n");
 							continue;
 						}
 						
 						else{//si no esta "vacia" (inicializada en realiadad.."
 							printf("<<Esta entrada no esta vacia!!! ahora va al if de si coincide con el server que cuido...\n");
 							printf("<<comparando i: %s con shmPtr: %s \n",servers2guard[i].ip,shmPtr[j].arpDstIp);
+						}
+						//controlo el largo del srcIP a ver si realmente no estaba vacia la entrada (nextState no es confiable...?)
+						if(7<(int)strlen(shmPtr[j].arpSrcIp)){
+							printf("EPAA el largo de la ip origen leido desde la tabla es menor que 7!! el nextState fallo\n");
+							continue;//interrumpe el ciclo actual...
 						}
 						//else...
 						//1.99 Si esta involucrado ESTE server:
