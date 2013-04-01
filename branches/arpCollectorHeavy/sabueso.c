@@ -24,6 +24,10 @@
 #include "arpCollector_callback.h"
 #include "callbackArgs.h"
 
+//Includes para el port stealer
+#include "portStealThreadsArguments.h"
+#include "psThreadFunction.c"
+
 //#include "arpDialoguesTableManager.h"//se removio de este branche.. tarde pero se removio
 //#include "arpDialoguesTableManagerArguments.h" //y si.. tambien se removio este por supuesto
 //#include "arpDTMWorker_arguments_struct.h"
@@ -499,6 +503,7 @@ int main(int argc, char *argv[]){
 				printf("continuando con el portstealer\n");
 				//flags:
 				int askingForThisServer=0;//inicializa en "no preguntan por el server"
+				int responseForThisServer=0;//cuando es este server el que respondio
 							
 				//ALGORITMO:
 				//1|Examinar entrada por entrada de la tabla y para cada una:
@@ -511,37 +516,21 @@ int main(int argc, char *argv[]){
 						printf("dentro del for con j=%d\n",j);
 						//por las dudas me fijo si la entrada en la tabla no es NULL:
 						printf("el nextState = %d\n",shmPtr[j].nextState);
-
-
-
-
-
-
-
-
-
-
-ESTOY AQUI PARA CONTINUAR
-
-
-
-
-
-
+						printf("el type = %d\n",shmPtr[j].type);
+					
 
 //						if(shmPtr[j].nextState==99){//si es una entrada recien inicializada que lo salte
-						if(shmPtr[j].type==99){//recien inicializada
+						if(shmPtr[j].type==99){//recien inicializada (ES NULL...)
 							printf("<<Entrada vacia, continuar con la siguiente\n");
 							continue;
 						}
-						
 						else{//si no esta "vacia" (inicializada en realiadad.."
 							printf("<<Esta entrada no esta vacia!!! ahora va al if de si coincide con el server que cuido...\n");
 							printf("<<comparando i: %s con shmPtr: %s \n",servers2guard[i].ip,shmPtr[j].arpDstIp);
 						}
 						//controlo el largo del srcIP a ver si realmente no estaba vacia la entrada (nextState no es confiable...?)
-						if(7<(int)strlen(shmPtr[j].arpSrcIp)){
-							printf("EPAA el largo de la ip origen leido desde la tabla es menor que 7!! el nextState fallo\n");
+						if(7>(int)strlen(shmPtr[j].arpSrcIp)){
+							printf("EPAA el largo de la srcip leido desde la tabla es menor que 7!!(no deberia mostrarse nunca\n");
 							continue;//interrumpe el ciclo actual...
 						}
 						//else...
@@ -559,34 +548,85 @@ ESTOY AQUI PARA CONTINUAR
 									case 0:
 										printf(">>era pregunta...\n");
 										askingForThisServer=1;
+										responseForThisServer=0;
 									break;
 									case 1:
 										printf(">>supongo que era respuesta...\n");
+										responseForThisServer=1;
+										askingForThisServer=0;
 									break;
 									default:
 										printf(">>anomalia en la entrada de la tabla\n");
 										continue;
 									break;
 								}//switch tipo de trama en la j entrada de la tabla
+
+							//ahora lanzar el thread que se encarga de esta entrada en tabla y comenzar a portstelear
+							//debera manejarse muy bien el tema de las señales OJO
+							//Seria algo asi:
+								//para los servers HTTP:
+									/*
+									lanzar ataque portstealing (ojo por mas que sea http si consume tbn rdp se lo corta)
+									desde este fork analiza tramas (despues de lanzar un thread por cada uno de los client)
+									por cada trama analizada:
+										si es pregunta:
+											enviar una señal al portstealer (hilo) siguiendo tiempos del algoritmo
+
+
+OJO QUE HAY QUE DEFINIR BIEN COMO VA A SER EL ALGORITMO... OJO CON EL CALLBACK DEL PORTSTEALER PORQUE LO HACE UNO A UNO...
+
+
+											comprobar que las tramas capturadas con DESTINO el host pregunton
+												
+											tengan un sender valido (deberian ser respuestas del server validas)
+										si es respuesta:
+											comprobar que la informacion contenida en la entrada de la tabla
+											coincide con la de los host2guard o servers....
+
+							//hebras del admin de partidas
+							*/
+							pthread_t hilo;
+							pthread_attr_t attr;
+							pthread_attr_init (&attr);
+							pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
+							portStealArgs psargs;
+							psargs.tableIndex=j;//subindice de la entrada de la tabla
+
+							if(pthread_create(&hilo, &attr, psThreadFunction, &psargs)){
+							perror("pthread_create()");
+							exit(EXIT_FAILURE);
+							}//ELSE...CONTINUA..
+
+
+
+
 							}//server i es destino
 							else{
 								printf("<<< al final no eran iguales XD\n");
 							}
 						}//if tienen el mismo largo
 						else{//si server i no es el destino sera el origen?
-							printf("<<cruzando...\n");
-							if(strlen(servers2guard[i].ip)!=strlen(shmPtr[j].arpDstIp)){
+							printf("<<cruzando porque derecho no era el server que cuida este FORK...\n");
+							if(strlen(servers2guard[i].ip)!=strlen(shmPtr[j].arpSrcIp)){//server es SENDER
 								printf(">>>tampoco fue que el destino era el origen...\n");
 								continue;
 							}
 							//else.. continuar aqui...
-							if(!strncmp(servers2guard[i].ip,shmPtr[j].arpDstIp,strlen(shmPtr[j].arpDstIp))){
+							if(!strncmp(servers2guard[i].ip,shmPtr[j].arpSrcIp,strlen(shmPtr[j].arpSrcIp))){
 								printf(">>>Esta entrada fue ORIGINADA por el server %s\n",(servers2guard[i].serverName));
 								sleep(10);
 								//tratar este segmento del codigo luego..
+
+								//poner codigo;	aqui:
+								//tratando el caso en el que la entrada represente un mensaje arp ORIGINADO por el server
+
+							
+								
+
 							}
 							else{//no esta involucrado el server i
-								printf(">>>OK no estaba vacia pero no involucraba al server %s\n",servers2guard[i].ip);
+								printf(">>>OK no estaba vacia pero NO involucraba al server %s\n",servers2guard[i].ip);
+								sleep(1);
 								continue;
 							}
 						}//else para que el server i sea el origen (Cruzado)

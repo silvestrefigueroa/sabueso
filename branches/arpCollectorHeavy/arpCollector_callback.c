@@ -34,6 +34,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 	static int count = 1;
 
 	//bufers para las reentrante de ether e inet
+//DEBERIA UTILIZAR MEMTEST PARA INICILIZARLAS!!
 	char ethSrcMacBuf[20]={};
 	char ethDstMacBuf[20]={};
 	char arpSrcMacBuf[20]={};
