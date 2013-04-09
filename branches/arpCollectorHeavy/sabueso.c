@@ -400,7 +400,7 @@ int main(int argc, char *argv[]){
 
 	//----VOY A HARDCODEAR LOS PARAMETROS DE MOMENTO:
 
-	int serversQuantity=5;//cantidad de servers a cuidar
+	int serversQuantity=1;//cantidad de servers a cuidar
 
 	//Estructura de datos de argumentos del programa principal
 	typedef struct{ 
@@ -421,10 +421,10 @@ int main(int argc, char *argv[]){
 	}
 	//invento hosts
 
-	servers2guard[0].mac="aa:bb:cc:dd:ee:f";
-	servers2guard[0].ip="192.168.1.121";
-	servers2guard[0].serviceType=0;
-	servers2guard[0].serverName="server-121";
+	servers2guard[2].mac="aa:bb:cc:dd:ee:f";
+	servers2guard[2].ip="192.168.1.121";
+	servers2guard[2].serviceType=0;
+	servers2guard[2].serverName="server-121";
 	
 
 	servers2guard[1].mac="12:43:56:a:a:2";
@@ -432,10 +432,10 @@ int main(int argc, char *argv[]){
 	servers2guard[1].serviceType=0;
 	servers2guard[1].serverName="server-126";
 
-	servers2guard[2].mac="5c:d9:98:2c:0f:b6";
-	servers2guard[2].ip="192.168.1.101";
-	servers2guard[2].serviceType=0;
-	servers2guard[2].serverName="thinkpad-101";
+	servers2guard[0].mac="5c:d9:98:2c:0f:bb";
+	servers2guard[0].ip="192.168.1.19";
+	servers2guard[0].serviceType=0;
+	servers2guard[0].serverName="otroooo-19";
 
 	servers2guard[3].mac="5c:d9:98:2c:f:b6";//seria 5c:d9:98:2c:0f:b6
 	servers2guard[3].ip="192.168.1.1";
@@ -443,9 +443,9 @@ int main(int argc, char *argv[]){
 	servers2guard[3].serverName="dd-wrt";
 
 	servers2guard[4].mac="00:21:5c:33:09:a5";
-	servers2guard[4].ip="192.168.1.101";
+	servers2guard[4].ip="192.168.1.107";
 	servers2guard[4].serviceType=0;
-	servers2guard[4].serverName="myself";
+	servers2guard[4].serverName="Thinkpad-107-myself";
 
 
 	int j=0;//otro subindice
@@ -479,7 +479,7 @@ int main(int argc, char *argv[]){
 				_exit(EXIT_FAILURE);
 			case 0:
 				sleep(5);
-				printf("soy el HIJO PORT STEALER del host: %s\n",(servers2guard[i].serverName));
+				printf("soy el HIJO PORT STEALER del server: %s\n",(servers2guard[i].serverName));
 				j=0;
 				c=0;
 //----------------------------------------
@@ -522,23 +522,25 @@ int main(int argc, char *argv[]){
 //						if(shmPtr[j].nextState==99){//si es una entrada recien inicializada que lo salte
 						if(shmPtr[j].type==99){//recien inicializada (ES NULL...)
 							printf("<<Entrada vacia, continuar con la siguiente\n");
-							continue;
+							continue;//salta a la proxima entrada de la tabla
 						}
 						else{//si no esta "vacia" (inicializada en realiadad.."
 							printf("<<Esta entrada no esta vacia!!! ahora va al if de si coincide con el server que cuido...\n");
 							printf("<<comparando i: %s con shmPtr: %s \n",servers2guard[i].ip,shmPtr[j].arpDstIp);
 						}
+						//continua aca porque no cayo en el if de si estaba inicializada
+
 						//controlo el largo del srcIP a ver si realmente no estaba vacia la entrada (nextState no es confiable...?)
 						if(7>(int)strlen(shmPtr[j].arpSrcIp)){
 							printf("EPAA el largo de la srcip leido desde la tabla es menor que 7!!(no deberia mostrarse nunca\n");
 							continue;//interrumpe el ciclo actual...
 						}
-						//else...
+						//else...seguir aqui =)
 						//1.99 Si esta involucrado ESTE server:
 
 						//si es destino
 						printf("comparando i: %s con shmPtr: %s \n",servers2guard[i].ip,shmPtr[j].arpDstIp);
-						//PARCHE por largo..
+						//PARCHE por largo..(antes de strncmp me fijo si tienen el mismo largo.. sino son distintas de una..
 						if(strlen(servers2guard[i].ip)==strlen(shmPtr[j].arpDstIp)){//distinta logica, mismo metodo (strlen)
 							printf(">> PST: tienen el mismo largo!! asi que evaluo si son iguales o no...\n");
 							if(!strncmp(servers2guard[i].ip,shmPtr[j].arpDstIp,strlen(shmPtr[j].arpDstIp))){//ip es del server i
@@ -547,12 +549,12 @@ int main(int argc, char *argv[]){
 								switch(shmPtr[j].type==0){
 									case 0:
 										printf(">>era pregunta...\n");
-										askingForThisServer=1;
-										responseForThisServer=0;
+										askingForThisServer=1;//preguntan por este server (este fork) SI
+										responseForThisServer=0;//respuesta hacia este server NO
 									break;
 									case 1:
-										printf(">>supongo que era respuesta...\n");
-										responseForThisServer=1;
+										printf(">>supongo que era respuesta...revisar este caso!!!!!!!!!!!!!!!\n");
+										responseForThisServer=1;//alguien le respondio a este server????
 										askingForThisServer=0;
 									break;
 									default:
@@ -585,6 +587,100 @@ OJO QUE HAY QUE DEFINIR BIEN COMO VA A SER EL ALGORITMO... OJO CON EL CALLBACK D
 
 							//hebras del admin de partidas
 							*/
+
+							
+							//lanzamiento del hilo port stealer
+							//bloquear el asker
+								//para ello lo busco en la tabla de askers
+
+							int askerToLockFounded=0;//flag para saber si se podra bloquear el asker...sino lo encuentor no puedo!
+							int a=0;//subindice de recorrido de askers
+
+							for(a=0;a<arpAskersTable_tableSize;a++){
+								//si el largo coincide comparo:
+								printf("<comparar largo de asker=%s y entrada=%s\n",arpAskers_shmPtr[a].ip,shmPtr[j].arpSrcIp);
+								if(strlen(arpAskers_shmPtr[a].ip)!=strlen(shmPtr[j].arpSrcIp)){
+									printf("<comparacion de largo de asker antes de bloquear fallo...\n");
+									continue;//continue con el siguiente asker...
+								}
+								//si continua aqui...
+								//comparo por strncmp
+								if(!strncmp(arpAskers_shmPtr[a].ip,shmPtr[j].arpSrcIp,strlen(shmPtr[j].arpSrcIp))){
+									printf("<comparacion dio igual =)\n");
+									askerToLockFounded=1;//flag arriba! puedo lockearlo porque lo encontre en "a"
+									//lo bloqueo y me aseguro de que sigue alli:
+									sem_wait((sem_t*) & arpAskers_shmPtr[a].semaforo);
+									//lo vuelvo a COMPARAR
+									askerToLockFounded=0;
+									if(strlen(arpAskers_shmPtr[a].ip)!=strlen(shmPtr[j].arpSrcIp)){
+										printf("<segunda comparacion de largo de asker antes de bloquear fallo...\n");
+										//unlockeo
+										sem_post((sem_t*) & arpAskers_shmPtr[a].semaforo);
+										askerToLockFounded=0;//no lo encontro al final
+										break;//finaliza el for sin conseguir al asker...
+									}
+									//si continua aqui...
+									//comparo por strncmp
+									if(!strncmp(arpAskers_shmPtr[a].ip,shmPtr[j].arpSrcIp,strlen(shmPtr[j].arpSrcIp))){
+										printf("<segundo strncmp del asker coincide =)\n");
+										askerToLockFounded=1;//lo usa un if luego para ejecutar el algoritmo =)
+										break;//no sigo buscado.. me voy derecho al algoritmo =)
+									}
+									else{
+										printf("<no coincidio en la segunda comparacion del asker.libero y cancelo\n");
+										sem_post((sem_t*) & arpAskers_shmPtr[a].semaforo);
+										askerToLockFounded=0;
+										break;//no sigo buscando.. ya fue..
+									}
+								}//if del primer strncmp de asker
+								else{//mismo largo, distinto asker...
+									printf("<mismo largo pero el asker no era este\n");
+									continue;//siga con el proximo asker
+								}
+							}//lazo for que busca lockear al asker...(para que nadie mas le robe el puerto!!)
+
+							if(askerToLockFounded==0){//evaluar si sigo con el algoritmo o salto al proximo pregunton...
+								printf("<Fracaso el intento de encontrar el asker para lockearlo y portstelear,saltar!\n");
+								continue;
+							}
+							else{
+								printf("continuar con el algoritmo de portstealing por encontrar al asker en a=%d\n",a);
+								
+							}
+
+						
+							//ahora si actuo en funcion de que tengo el lockeo correctamente
+							//lanzar el hilo que hace capturas en funcion del asker y este server
+								//hace loop pcap capture, detecta y alerta MitM, avisa para corte!
+
+							//lanzar portstealer thread y dejarlo a espera de la señal
+								//espera la señal para ejecutar cierta rutina (arping port stealing)
+								//pude recibir señal de kill desde el lanzador (fork port stealer)
+
+							//leer si el hilo tuvo exito en el portstealing (variable compartida o señal)
+								//esto anterior podria ser una señal y ya
+
+							//segun lo leido, enviar señales al portstealer en funcion del algoritmo
+							//estas señales se enviaran de modo tal que se cumplan:
+								//el respeto de tiempo maximo de portstealing de 5 segundos
+								//se cubra la ventana de posibilidades de exito
+								//se ajuste al menor tiempo posible de reintentos (optimizacion)
+							//luego se consultara la variable global (o el thread enviara una señal)
+
+
+							//realizar el envio de señales en funcion del tiempo transcurrido
+
+							//Lanzar captura callback
+
+							//AL FINAL:::liberar:
+							sem_post((sem_t*) & arpAskers_shmPtr[a].semaforo);
+							printf("<liberado el semaforo del asker portsteleado\n");
+
+
+
+
+
+	
 							pthread_t hilo;
 							pthread_attr_t attr;
 							pthread_attr_init (&attr);
@@ -604,7 +700,12 @@ OJO QUE HAY QUE DEFINIR BIEN COMO VA A SER EL ALGORITMO... OJO CON EL CALLBACK D
 							else{
 								printf("<<< al final no eran iguales XD\n");
 							}
-						}//if tienen el mismo largo
+						}//if tienen el mismo largo WTF!?!?!?!? no es de mismo largo es si son iguales!!!??
+
+
+
+
+
 						else{//si server i no es el destino sera el origen?
 							printf("<<cruzando porque derecho no era el server que cuida este FORK...\n");
 							if(strlen(servers2guard[i].ip)!=strlen(shmPtr[j].arpSrcIp)){//server es SENDER
