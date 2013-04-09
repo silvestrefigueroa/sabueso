@@ -627,7 +627,7 @@ int askerReplaceIndex=0;//subindice de la entrada donde se encontro el asker a r
 				//como se que si sigo aqui es porque tienen el MISMO largo, entonces comparo por strNcmp...
 				if(!strncmp(args[0].arpAskers_shmPtr[i].ip,arpSrcIp,strlen(arpSrcIp))){
 					printf("la entrada ya existe en la tabla...comprobar MAC\n");
-					printf("compare %s con %s y me dieron IGUALES...\n",args[0].arpAskers_shmPtr[i].mac,arpSrcMac);
+					printf("compare %s con %s y me dieron IGUALES...\n",args[0].arpAskers_shmPtr[i].ip,arpSrcIp);
 					printf("comparando ahora %s con %s\n",args[0].arpAskers_shmPtr[i].mac,arpSrcMac);
 					if((int)strlen(args[0].arpAskers_shmPtr[i].mac)!=(int)strlen(arpSrcMac)){
 						printf("mac asker con MACS de distinto largo");
