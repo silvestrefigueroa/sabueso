@@ -541,248 +541,271 @@ int main(int argc, char *argv[]){
 						//si es destino
 						printf("comparando i: %s con shmPtr: %s \n",servers2guard[i].ip,shmPtr[j].arpDstIp);
 						//PARCHE por largo..(antes de strncmp me fijo si tienen el mismo largo.. sino son distintas de una..
-						if(strlen(servers2guard[i].ip)==strlen(shmPtr[j].arpDstIp)){//distinta logica, mismo metodo (strlen)
-							printf(">> PST: tienen el mismo largo!! asi que evaluo si son iguales o no...\n");
-							if(!strncmp(servers2guard[i].ip,shmPtr[j].arpDstIp,strlen(shmPtr[j].arpDstIp))){//ip es del server i
-								printf(">>>PST: Esta entrada esta destinada al server %s\n",(servers2guard[i].serverName));
-								//evaluo si es pregunta o respuesta
-								switch(shmPtr[j].type==0){
-									case 0:
-										printf(">>era pregunta...\n");
-										askingForThisServer=1;//preguntan por este server (este fork) SI
-										responseForThisServer=0;//respuesta hacia este server NO
-									break;
-									case 1:
-										printf(">>supongo que era respuesta...revisar este caso!!!!!!!!!!!!!!!\n");
-										responseForThisServer=1;//alguien le respondio a este server????
-										askingForThisServer=0;
-									break;
-									default:
-										printf(">>anomalia en la entrada de la tabla\n");
-										continue;
-									break;
-								}//switch tipo de trama en la j entrada de la tabla
+						if(strlen(servers2guard[i].ip)!=strlen(shmPtr[j].arpDstIp)){//distinta logica, mismo metodo (strlen)
+							printf(">> PST: NO tienen el mismo largo!! continue a la siguiente entrada...\n");
+							continue;//que no siga la ejecucion con esta entrada y pase derecho a la proxima
+						}
+						//Si sigo aca es porque tenian el mismo largo
+						printf(">> PST: SI tienen el mismo largo, ahora evaluo si son iguales (es decir, si es de este server)\n");
+						
+						if(!strncmp(servers2guard[i].ip,shmPtr[j].arpDstIp,strlen(shmPtr[j].arpDstIp))){//ip es del server i
+							printf(">>>PST: Esta entrada esta destinada al server %s\n",(servers2guard[i].serverName));
+							//evaluo si es pregunta o respuesta
+							switch(shmPtr[j].type==0){
+								case 0:
+									printf(">>era pregunta...\n");
+									askingForThisServer=1;//preguntan por este server (este fork) SI
+									responseForThisServer=0;//respuesta hacia este server NO
+								break;
+								case 1:
+									printf(">>supongo que era respuesta...revisar este caso!!!!!!!!!!!!!!!\n");
+									responseForThisServer=1;//alguien le respondio a este server????
+									askingForThisServer=0;
+								break;
+								default:
+									printf(">>anomalia en la entrada de la tabla\n");
+									continue;
+								break;
+							}//switch tipo de trama en la j entrada de la tabla
 
-							//ahora lanzar el thread que se encarga de esta entrada en tabla y comenzar a portstelear
-							//debera manejarse muy bien el tema de las señales OJO
-							//Seria algo asi:
-								//para los servers HTTP:
-									/*
-									lanzar ataque portstealing (ojo por mas que sea http si consume tbn rdp se lo corta)
-									desde este fork analiza tramas (despues de lanzar un thread por cada uno de los client)
-									por cada trama analizada:
-										si es pregunta:
-											enviar una señal al portstealer (hilo) siguiendo tiempos del algoritmo
-
-
-OJO QUE HAY QUE DEFINIR BIEN COMO VA A SER EL ALGORITMO... OJO CON EL CALLBACK DEL PORTSTEALER PORQUE LO HACE UNO A UNO...
+						}//IF la entrada es realmente para este server
+						else{
+							printf(">>>PST: Esta entrada NO es para este server, salte a la siguiente\n");
+							continue;//Para que siga con la proxima entrada en la tabla
+						}
+						//SI no entro al else.. continua la ejecucion dado que la entrada era para el server
 
 
-											comprobar que las tramas capturadas con DESTINO el host pregunton
-												
-											tengan un sender valido (deberian ser respuestas del server validas)
-										si es respuesta:
-											comprobar que la informacion contenida en la entrada de la tabla
-											coincide con la de los host2guard o servers....
+						//ahora lanzar el thread que se encarga de esta entrada en tabla y comenzar a portstelear
+						//debera manejarse muy bien el tema de las señales OJO
+						//Seria algo asi:
+							//para los servers HTTP:
+								/*
+								lanzar ataque portstealing (ojo por mas que sea http si consume tbn rdp se lo corta)
+								desde este fork analiza tramas (despues de lanzar un thread por cada uno de los client)
+								por cada trama analizada:
+									si es pregunta:
+										enviar una señal al portstealer (hilo) siguiendo tiempos del algoritmo
 
-							//hebras del admin de partidas
-							*/
+										comprobar que las tramas capturadas con DESTINO el host pregunton
+											
+										tengan un sender valido (deberian ser respuestas del server validas)
+									si es respuesta:
+										comprobar que la informacion contenida en la entrada de la tabla
+										coincide con la de los host2guard o servers....
 
-							
-							//lanzamiento del hilo port stealer
-							//bloquear el asker
-								//para ello lo busco en la tabla de askers
+						//hebras del admin de partidas
+						*/
 
-							int askerToLockFounded=0;//flag para saber si se podra bloquear el asker...sino lo encuentor no puedo!
-							int a=0;//subindice de recorrido de askers
+						
+						//lanzamiento del hilo port stealer
+						//bloquear el asker
+							//para ello lo busco en la tabla de askers
 
-							for(a=0;a<arpAskersTable_tableSize;a++){
-								//si el largo coincide comparo:
-								printf("<comparar largo de asker=%s y entrada=%s\n",arpAskers_shmPtr[a].ip,shmPtr[j].arpSrcIp);
+						int askerToLockFounded=0;//flag para saber si se podra bloquear el asker...sino lo encuentor no puedo!
+						int a=0;//subindice de recorrido de askers
+
+						for(a=0;a<arpAskersTable_tableSize;a++){
+							//si el largo coincide comparo:
+							printf("<comparar largo de asker=%s y entrada=%s\n",arpAskers_shmPtr[a].ip,shmPtr[j].arpSrcIp);
+							if(strlen(arpAskers_shmPtr[a].ip)!=strlen(shmPtr[j].arpSrcIp)){
+								printf("<comparacion de largo de asker antes de bloquear fallo...\n");
+								continue;//continue con el siguiente asker...
+							}
+							//si continua aqui...
+							//comparo por strncmp
+							if(!strncmp(arpAskers_shmPtr[a].ip,shmPtr[j].arpSrcIp,strlen(shmPtr[j].arpSrcIp))){
+								printf("<comparacion dio igual =)\n");
+								askerToLockFounded=1;//flag arriba! puedo lockearlo porque lo encontre en "a"
+								//lo bloqueo y me aseguro de que sigue alli:
+								sem_wait((sem_t*) & arpAskers_shmPtr[a].semaforo);
+								//lo vuelvo a COMPARAR
+								askerToLockFounded=0;
 								if(strlen(arpAskers_shmPtr[a].ip)!=strlen(shmPtr[j].arpSrcIp)){
-									printf("<comparacion de largo de asker antes de bloquear fallo...\n");
-									continue;//continue con el siguiente asker...
+									printf("<segunda comparacion de largo de asker antes de bloquear fallo...\n");
+									//unlockeo
+									sem_post((sem_t*) & arpAskers_shmPtr[a].semaforo);
+									askerToLockFounded=0;//no lo encontro al final
+									break;//finaliza el for sin conseguir al asker...
 								}
 								//si continua aqui...
 								//comparo por strncmp
 								if(!strncmp(arpAskers_shmPtr[a].ip,shmPtr[j].arpSrcIp,strlen(shmPtr[j].arpSrcIp))){
-									printf("<comparacion dio igual =)\n");
-									askerToLockFounded=1;//flag arriba! puedo lockearlo porque lo encontre en "a"
-									//lo bloqueo y me aseguro de que sigue alli:
-									sem_wait((sem_t*) & arpAskers_shmPtr[a].semaforo);
-									//lo vuelvo a COMPARAR
-									askerToLockFounded=0;
-									if(strlen(arpAskers_shmPtr[a].ip)!=strlen(shmPtr[j].arpSrcIp)){
-										printf("<segunda comparacion de largo de asker antes de bloquear fallo...\n");
-										//unlockeo
-										sem_post((sem_t*) & arpAskers_shmPtr[a].semaforo);
-										askerToLockFounded=0;//no lo encontro al final
-										break;//finaliza el for sin conseguir al asker...
-									}
-									//si continua aqui...
-									//comparo por strncmp
-									if(!strncmp(arpAskers_shmPtr[a].ip,shmPtr[j].arpSrcIp,strlen(shmPtr[j].arpSrcIp))){
-										printf("<segundo strncmp del asker coincide =)\n");
-										askerToLockFounded=1;//lo usa un if luego para ejecutar el algoritmo =)
-										break;//no sigo buscado.. me voy derecho al algoritmo =)
-									}
-									else{
-										printf("<no coincidio en la segunda comparacion del asker.libero y cancelo\n");
-										sem_post((sem_t*) & arpAskers_shmPtr[a].semaforo);
-										askerToLockFounded=0;
-										break;//no sigo buscando.. ya fue..
-									}
-								}//if del primer strncmp de asker
-								else{//mismo largo, distinto asker...
-									printf("<mismo largo pero el asker no era este\n");
-									continue;//siga con el proximo asker
+									printf("<segundo strncmp del asker coincide =)\n");
+									askerToLockFounded=1;//lo usa un if luego para ejecutar el algoritmo =)
+									break;//no sigo buscado.. me voy derecho al algoritmo =)
 								}
-							}//lazo for que busca lockear al asker...(para que nadie mas le robe el puerto!!)
-
-							if(askerToLockFounded==0){//evaluar si sigo con el algoritmo o salto al proximo pregunton...
-								printf("<Fracaso el intento de encontrar el asker para lockearlo y portstelear,saltar!\n");
-								continue;
+								else{
+									printf("<no coincidio en la segunda comparacion del asker.libero y cancelo\n");
+									sem_post((sem_t*) & arpAskers_shmPtr[a].semaforo);
+									askerToLockFounded=0;
+									break;//no sigo buscando.. ya fue..
+								}
+							}//if del primer strncmp de asker
+							else{//mismo largo, distinto asker...
+								printf("<mismo largo pero el asker no era este\n");
+								continue;//siga con el proximo asker
 							}
-							else{
-								printf("continuar con el algoritmo de portstealing por encontrar al asker en a=%d\n",a);
-								
-							}
+						}//lazo for que busca lockear al asker...(para que nadie mas le robe el puerto!!)
 
-						
-							//ahora si actuo en funcion de que tengo el lockeo correctamente
-							//lanzar el hilo que hace capturas en funcion del asker y este server
-								//hace loop pcap capture, detecta y alerta MitM, avisa para corte!
 
-							//lanzar portstealer thread y dejarlo a espera de la señal
-								//espera la señal para ejecutar cierta rutina (arping port stealing)
-								//pude recibir señal de kill desde el lanzador (fork port stealer)
+
+
+						if(askerToLockFounded==0){//evaluar si sigo con el algoritmo o salto al proximo pregunton...
+							printf("<Fracaso el intento de encontrar el asker para lockearlo y portstelear,saltar!\n");
+							continue;
+						}
+						else{
+							printf("continuar con el algoritmo de portstealing por encontrar al asker en a=%d\n",a);
+							
+						}
+						//CONTINUAR CON EL ALGORITMO
+
+					
+						//ahora si actuo en funcion de que tengo el lockeo correctamente
+						//lanzar el hilo que hace capturas en funcion del asker y este server
+							//hace loop pcap capture, detecta y alerta MitM, avisa para corte!
+
+						//HILO que evalua capturas------------------------------------------------
+						/*
+						pthread_t hilo;
+						pthread_attr_t attr;
+						pthread_attr_init (&attr);
+						pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
+						portStealArgs psargs;
+						psargs.tableIndex=j;//subindice de la entrada de la tabla
+
+						if(pthread_create(&hilo, &attr, psThreadFunction, &psargs)){
+						perror("pthread_create()");
+						exit(EXIT_FAILURE);
+						}//ELSE...CONTINUA..
+						*/
+
+
+						//END HILO que evalua capturas--------------------------------------------
+
+
+
+
+						//lanzar portstealer thread y dejarlo a espera de la señal
+							//espera la señal para ejecutar cierta rutina (arping port stealing)
+							//pude recibir señal de kill desde el lanzador (fork port stealer)
+
+
+
+
+
+						//HILO PORTSTEALER--------------------------------------------------------
+
+						/*
+						pthread_t hilo;
+						pthread_attr_t attr;
+						pthread_attr_init (&attr);
+						pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
+						portStealArgs psargs;
+						psargs.tableIndex=j;//subindice de la entrada de la tabla
+
+						if(pthread_create(&hilo, &attr, psThreadFunction, &psargs)){
+						perror("pthread_create()");
+						exit(EXIT_FAILURE);
+						}//ELSE...CONTINUA..
+						*/
+
+						//END HILO PORTSTEALER-----------------------------------------------------
+
+
+
+
+
+						//LOOP:
 
 							//leer si el hilo tuvo exito en el portstealing (variable compartida o señal)
 								//esto anterior podria ser una señal y ya
 
+
 							//segun lo leido, enviar señales al portstealer en funcion del algoritmo
-							//estas señales se enviaran de modo tal que se cumplan:
-								//el respeto de tiempo maximo de portstealing de 5 segundos
-								//se cubra la ventana de posibilidades de exito
-								//se ajuste al menor tiempo posible de reintentos (optimizacion)
-							//luego se consultara la variable global (o el thread enviara una señal)
+								//estas señales se enviaran de modo tal que se cumplan:
+									//el respeto de tiempo maximo de portstealing de 5 segundos
+									//se cubra la ventana de posibilidades de exito
+									//se ajuste al menor tiempo posible de reintentos (optimizacion)
 
+							//Evaluar condicion de corte
+								//CORTAR:
+									//Enviar las señales correspondientes a ambos hilos
+								//CONTINUAR:
+									//continue loop;
 
-							//realizar el envio de señales en funcion del tiempo transcurrido
-
-							//Lanzar captura callback
-
-							//AL FINAL:::liberar:
-							sem_post((sem_t*) & arpAskers_shmPtr[a].semaforo);
-							printf("<liberado el semaforo del asker portsteleado\n");
-
-
-
-
-
+						//END LOOP
 	
-							pthread_t hilo;
-							pthread_attr_t attr;
-							pthread_attr_init (&attr);
-							pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
-							portStealArgs psargs;
-							psargs.tableIndex=j;//subindice de la entrada de la tabla
-
-							if(pthread_create(&hilo, &attr, psThreadFunction, &psargs)){
-							perror("pthread_create()");
-							exit(EXIT_FAILURE);
-							}//ELSE...CONTINUA..
 
 
+						//AL FINAL:::liberar:
+						sem_post((sem_t*) & arpAskers_shmPtr[a].semaforo);
+						printf("<liberado el semaforo del asker portsteleado\n");
+
+					}//CIERRO EL FOR QUE RECORRE LA TABLA PRINCIPAL DE DIALOGOS, AQUI SIGUE DENTRO DEL LOOP WHILE(LIVE==1)
+					//CONTINUANDO EN EL WHILE LIVE==1...
 
 
-							}//server i es destino
-							else{
-								printf("<<< al final no eran iguales XD\n");
-							}
-						}//if tienen el mismo largo WTF!?!?!?!? no es de mismo largo es si son iguales!!!??
+					//2|Reviso si es PREGUNTA ARP o RESPUESTA
+					printf("bueno justo aqui tengo que empezar a tratar segun sea pregunta o respuesta...\n");
+					//preguntan por el server (caso analizado)
 
+					
+						//CASO PREGUNTA:
+							//El origen es quien puede ser spoofeado, asi que lanzo un hilo que:
+								//Pregunte por el DESTINO pero EN NOMBRE DEL ORIGEN (port stealing)
+								//Capturo las tramas (filtradas) sean ARP o ROBADAS =)
+								//Compruebo consistencia de los datos de las tramas obtenidas
+								//SI DETECTO SPOOF: levanto flag de spoof detectado
+								//ELSE: comienza algoritmo retardado de deteccion
+									//SI DETECTO: levanto el flag de spoof detectado
+									//ELSE: flag de spoof abajo, guardo el CONOCIMIENTO
+								//Reviso flags y genero alertas o descarto o marco entradas segun corresponda
 
+					if(askingForThisServer==1){
+						printf("Entro a la seccion de <es una pregunta>\n");
+						//preparar
+						//crear filtro
+						//lanzar hilo que capture
+						printf("Lanzar hilo de captura dentro del sptealer\n");
 
+						printf("continuar ejecucion del stealer mientras el hilo esta en background...\n");
 
-
-						else{//si server i no es el destino sera el origen?
-							printf("<<cruzando porque derecho no era el server que cuida este FORK...\n");
-							if(strlen(servers2guard[i].ip)!=strlen(shmPtr[j].arpSrcIp)){//server es SENDER
-								printf(">>>tampoco fue que el destino era el origen...\n");
-								continue;
-							}
-							//else.. continuar aqui...
-							if(!strncmp(servers2guard[i].ip,shmPtr[j].arpSrcIp,strlen(shmPtr[j].arpSrcIp))){
-								printf(">>>Esta entrada fue ORIGINADA por el server %s\n",(servers2guard[i].serverName));
-								sleep(10);
-								//tratar este segmento del codigo luego..
-
-								//poner codigo;	aqui:
-								//tratando el caso en el que la entrada represente un mensaje arp ORIGINADO por el server
-
-							
-								
-
-							}
-							else{//no esta involucrado el server i
-								printf(">>>OK no estaba vacia pero NO involucraba al server %s\n",servers2guard[i].ip);
-								sleep(1);
-								continue;
-							}
-						}//else para que el server i sea el origen (Cruzado)
-
-						//2|Reviso si es PREGUNTA ARP o RESPUESTA
-						printf("bueno justo aqui tengo que empezar a tratar segun sea pregunta o respuesta...\n");
-						//preguntan por el server (caso analizado)
-
-						
-							//CASO PREGUNTA:
-								//El origen es quien puede ser spoofeado, asi que lanzo un hilo que:
-									//Pregunte por el DESTINO pero EN NOMBRE DEL ORIGEN (port stealing)
-									//Capturo las tramas (filtradas) sean ARP o ROBADAS =)
-									//Compruebo consistencia de los datos de las tramas obtenidas
-									//SI DETECTO SPOOF: levanto flag de spoof detectado
-									//ELSE: comienza algoritmo retardado de deteccion
-										//SI DETECTO: levanto el flag de spoof detectado
-										//ELSE: flag de spoof abajo, guardo el CONOCIMIENTO
-									//Reviso flags y genero alertas o descarto o marco entradas segun corresponda
-
-						if(askingForThisServer==1){
-							printf("Entro a la seccion de <es una pregunta>\n");
-							//preparar
-							//crear filtro
-							//lanzar hilo que capture
-							printf("Lanzar hilo de captura dentro del sptealer\n");
-
-							printf("continuar ejecucion del stealer mientras el hilo esta en background...\n");
-
-							//PREPARAR
-							//ARPEAR
-							//SLEEP??SIGNAL SLEEP??
-							printf("*************************************Arper para port stealing durante 5 segs\n");
-							sleep(20);
+						//PREPARAR
+						//ARPEAR
+						//SLEEP??SIGNAL SLEEP??
+						printf("*************************************Arper para port stealing durante 5 segs\n");
+						sleep(20);
 
 
 
-						}
+					}
+					else{
+						printf("no fue pregunta... sera respuesta??\n");
+						if(responseForThisServer==1){
+							printf("fue respuesta efectivamente...\n");
 							//CASO RESPUESTA:
-								//El origen es uno de mis hosts (servers) protegidos asi que CONOZCO sus datos CORRECTOS
-									//Compruebo que las tramas obtenidas tengan DATOS CORRECTOS segun base de conocimeinto
-									//SI DETECTO INCONSISTENCIA:
-										//flag de alerta correspondiente
-										//terminar
-									//NO DETECTO INCONSISTENCIA
-										//flag de consistencia OK (o en 0..??)
-										//dejo continuar
-									//Compruebo que el DESTINO sea quien supone esta respuesta que es
-										//Lanzar un hilo que arpee por el DESTINO
-											// y compare los datos obtenidos con los de la tabla
-										//SI ES INCONSISTENTE: levanto el flag correspondiente
-										//NO ES INCONSISTENTE: flag abajo
-									//Compruebo FLAGS y tomo decision, marcar, alertar, lo que sea
-													
-					}//lazo for que recorre las entradas de la tabla
+							//El origen es uno de mis hosts (servers) protegidos asi que CONOZCO sus datos CORRECTOS
+								//Compruebo que las tramas obtenidas tengan DATOS CORRECTOS segun base de conocimeinto
+								//SI DETECTO INCONSISTENCIA:
+									//flag de alerta correspondiente
+									//terminar
+								//NO DETECTO INCONSISTENCIA
+									//flag de consistencia OK (o en 0..??)
+									//dejo continuar
+								//Compruebo que el DESTINO sea quien supone esta respuesta que es
+									//Lanzar un hilo que arpee por el DESTINO
+										// y compare los datos obtenidos con los de la tabla
+									//SI ES INCONSISTENTE: levanto el flag correspondiente
+									//NO ES INCONSISTENTE: flag abajo
+								//Compruebo FLAGS y tomo decision, marcar, alertar, lo que sea
+						}//if verificando si fue respuesta cuando estoy en el else del if de si fue pregunta
+
+						else{//raro.. ni pregunta ni respuesta
+							printf("rarisimo.. ni pregunta ni respuesta\n");
+						}
+					}//else al que se entra si askingForThisServer!=1
 				}//CIERRO EL WHILE LIVE ==1
 
 				_exit(EXIT_SUCCESS);//del hijo de este ciclo del for
