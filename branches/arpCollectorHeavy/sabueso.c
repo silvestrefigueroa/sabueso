@@ -400,7 +400,7 @@ int main(int argc, char *argv[]){
 
 	//----VOY A HARDCODEAR LOS PARAMETROS DE MOMENTO:
 
-	int serversQuantity=1;//cantidad de servers a cuidar
+	int serversQuantity=5;//cantidad de servers a cuidar
 
 	//Estructura de datos de argumentos del programa principal
 	typedef struct{ 
@@ -432,27 +432,27 @@ int main(int argc, char *argv[]){
 	servers2guard[1].serviceType=0;
 	servers2guard[1].serverName="server-126";
 
-	servers2guard[0].mac="5c:d9:98:2c:0f:bb";
-	servers2guard[0].ip="192.168.1.19";
-	servers2guard[0].serviceType=0;
-	servers2guard[0].serverName="otroooo-19";
-
-	servers2guard[3].mac="5c:d9:98:2c:f:b6";//seria 5c:d9:98:2c:0f:b6
-	servers2guard[3].ip="192.168.1.1";
-	servers2guard[3].serviceType=0;
-	servers2guard[3].serverName="dd-wrt";
-
-	servers2guard[4].mac="00:21:5c:33:09:a5";
-	servers2guard[4].ip="192.168.1.107";
+	servers2guard[4].mac="5c:d9:98:2c:0f:bb";
+	servers2guard[4].ip="192.168.1.19";
 	servers2guard[4].serviceType=0;
-	servers2guard[4].serverName="Thinkpad-107-myself";
+	servers2guard[4].serverName="otroooo-19";
+
+	servers2guard[0].mac="5c:d9:98:2c:f:b6";//seria 5c:d9:98:2c:0f:b6
+	servers2guard[0].ip="192.168.1.1";
+	servers2guard[0].serviceType=0;
+	servers2guard[0].serverName="dd-wrt";
+
+	servers2guard[3].mac="00:21:5c:33:09:a5";
+	servers2guard[3].ip="192.168.1.100";
+	servers2guard[3].serviceType=0;
+	servers2guard[3].serverName="Thinkpad-100-myself";
 
 
 	int j=0;//otro subindice
 
 	int c=0;
 	int live=0;
-	serversQuantity=5;
+	serversQuantity=1;
 /*
 	while(1==1){
 		sleep(1);
@@ -509,6 +509,7 @@ int main(int argc, char *argv[]){
 				//1|Examinar entrada por entrada de la tabla y para cada una:
 				live=1;
 				j=0;
+				int forlife=0;
 				while(live==1){//podria ser un while true, se utilizo esta variable para tener condicion de corte (aunque puedo usar break...)
 					sleep(5);//descanza 5 segundos antes de cada recorrida completa
 					printf("<<<< vuelta aquiiiii\n");
@@ -517,7 +518,12 @@ int main(int argc, char *argv[]){
 						//por las dudas me fijo si la entrada en la tabla no es NULL:
 						printf("el nextState = %d\n",shmPtr[j].nextState);
 						printf("el type = %d\n",shmPtr[j].type);
-					
+						//SI LA TRAMA ESTA MARCADA DIFERENTE A 1 ENTONCES LA PASO POR ALTO
+						if(shmPtr[j].nextState!=1){
+							printf("La entrada NO estaba marcada para checkear (%d) salto a la proxima\n",shmPtr[j].nextState);
+							continue;//salto a la proxima entrada de la tabla
+						}
+						//else... continua la ejecucion de codigo normalmente..
 
 //						if(shmPtr[j].nextState==99){//si es una entrada recien inicializada que lo salte
 						if(shmPtr[j].type==99){//recien inicializada (ES NULL...)
@@ -549,7 +555,7 @@ int main(int argc, char *argv[]){
 						printf(">> PST: SI tienen el mismo largo, ahora evaluo si son iguales (es decir, si es de este server)\n");
 						
 						if(!strncmp(servers2guard[i].ip,shmPtr[j].arpDstIp,strlen(shmPtr[j].arpDstIp))){//ip es del server i
-							printf(">>>PST: Esta entrada esta destinada al server %s\n",(servers2guard[i].serverName));
+							printf(">>>PST: (eran iguales) Entrada esta destinada al server %s\n",(servers2guard[i].serverName));
 							//evaluo si es pregunta o respuesta
 							switch(shmPtr[j].type==0){
 								case 0:
@@ -558,7 +564,9 @@ int main(int argc, char *argv[]){
 									responseForThisServer=0;//respuesta hacia este server NO
 								break;
 								case 1:
-									printf(">>supongo que era respuesta...revisar este caso!!!!!!!!!!!!!!!\n");
+									printf(">>supongo que era respuesta...revisar este caso luego (SALTAR por ahora)\n");
+									//de momento continua a la siguiente
+									continue;
 									responseForThisServer=1;//alguien le respondio a este server????
 									askingForThisServer=0;
 								break;
@@ -648,7 +656,7 @@ int main(int argc, char *argv[]){
 							//hace loop pcap capture, detecta y alerta MitM, avisa para corte!
 
 						//HILO que evalua capturas------------------------------------------------
-						
+						printf("<>bueno aqui debajo lanzamos el hilo %d para que haga las capturas del portstealer\n",j);	
 						pthread_t hilo_psCapture;//hilo de captura del portstealer
 						pthread_attr_t attr_psCapture;
 						pthread_attr_init (&attr_psCapture);
@@ -661,7 +669,7 @@ int main(int argc, char *argv[]){
 						exit(EXIT_FAILURE);
 						}//Si NO falla...CONTINUA..
 
-						
+						printf("<>lanzado el hilo capturador de portstealer\n");
 						
 
 
@@ -728,16 +736,22 @@ int main(int argc, char *argv[]){
 
 
 						//UNA VEZ COMPROBADO ESTE ASKER, DEBERIA LIMPIAR DE LA TABLA TODOS LOS CASOS PARA ESTE ASKER
+							//DE ESTE MODO LA TABLA NO SE LLENA SIEMPRE DE LO MISMO
+							//TAMPOCO SUCEDE QUE SE REPITE EL PORTSTEALING EN VANO (MISMO SERVER Y MISMO CLIENTE)
+
 						//	Y ESTE SERVER ;) (PARA OTROS SERVERS SE ENCARGAN OTROS HIJOS DEL LOOP)
 
 						//LAZO FOR QUE RECORRE BUSCANDO COINCIDENCIAS Y ELIMINA LAS QUE SON ORIGEN EL ASKER DESTINO EL SERVER
 						// LAS QUE SON INVERSAS TAMBIEN DEBERIA PORQUE NO LAS ESTOY TRATANDO DE MOMENTO.
 
+
+						printf("finalizado el algoritmo, prosigo con la siguiente tabla, la vida de este for=%d\n",forlife);
+						forlife++;
+
+						//MARCAR TRAMA ACTUAL EN LA TABLA PARA QUE SE REUTILICE (CHEQUEADA, NO LA MIRE MAS Y USELA CUANDO QUIERA :)
+						shmPtr[j].nextState=3;//Marco la tabla para descartar (la puede usar la callback del arpCollector)
+
 						
-
-
-
-
 					}//CIERRO EL FOR QUE RECORRE LA TABLA PRINCIPAL DE DIALOGOS, AQUI SIGUE DENTRO DEL LOOP WHILE(LIVE==1)
 					//CONTINUANDO EN EL WHILE LIVE==1...
 
@@ -801,6 +815,7 @@ int main(int argc, char *argv[]){
 							printf("rarisimo.. ni pregunta ni respuesta\n");
 						}
 					}//else al que se entra si askingForThisServer!=1
+					printf("Descanzare 5 segs y de nuevo lanzo el for...\n");
 				}//CIERRO EL WHILE LIVE ==1
 
 				_exit(EXIT_SUCCESS);//del hijo de este ciclo del for
