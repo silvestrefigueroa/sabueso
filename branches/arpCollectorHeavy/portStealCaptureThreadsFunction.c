@@ -1,9 +1,15 @@
 #include <stdlib.h>
+#include "portStealCaptureThreadsArguments.h"
 
 #define ASKER "192.168.1.100"
 #define SERVER2GUARD "192.168.1.1"
 
-void *portStealCaptureThreadsFunction(){
+
+//MACROS PARA NOMBRE DE TIPO MUY LARGOS
+#define DESCR "(((portStealCaptureThreadsArguments *)   argumentos)->descr"
+#define FP "((portStealCaptureThreadsArguments *)   argumentos)->fp"
+#define NETP "((portStealCaptureThreadsArguments *)   argumentos)->netp"
+void *portStealCaptureThreadsFunction(void *argumentos){
 	printf("******************************************************************************funcion del hilo psCapturer\n");
 
 
@@ -31,9 +37,7 @@ void *portStealCaptureThreadsFunction(){
 	printf(":::::::::::::::::::::::::::::::::::FILTRO: %s\n",filtro);
 	sleep(2);
 
-	
-/*
-        if(pcap_compile(descr,&fp,"arp",0,netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
+        if(pcap_compile(DESCR,&FP,"arp",0,NETP)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
                 fprintf(stderr,"Error compilando el filtro\n");
                 exit(1);
         }
@@ -42,6 +46,9 @@ void *portStealCaptureThreadsFunction(){
                 fprintf(stderr,"Error aplicando el filtro\n");
                 exit(1);
         }
+
+
+
 //Proceso de captura:
                         puts("\n-------------------------");
                         puts("HILO recolector de tramas ROBADAS...\n");
@@ -63,7 +70,7 @@ void *portStealCaptureThreadsFunction(){
                         _exit(EXIT_SUCCESS);
 	
 
-*/
+
 
 
 
