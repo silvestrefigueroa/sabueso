@@ -25,7 +25,7 @@
 #include "callbackArgs.h"
 
 //Includes para el port stealer
-#include "portStealCaptureThreadsArguments.h"
+//#include "portStealCaptureThreadsArguments.h"
 #include "portStealCaptureThreadsFunction.c"
 
 //#include "arpDialoguesTableManager.h"//se removio de este branche.. tarde pero se removio
@@ -661,7 +661,7 @@ int main(int argc, char *argv[]){
 						pthread_attr_t attr_psCapture;
 						pthread_attr_init (&attr_psCapture);
 						pthread_attr_setdetachstate (&attr_psCapture, PTHREAD_CREATE_JOINABLE);
-						portStealCaptureThreadsArgs args_psCapture;//estructura de argumentos para la funcion del hilo psCapture
+						portStealCaptureThreadsArguments args_psCapture;//estructura de argumentos para la funcion del hilo psCapture
 						args_psCapture.tableIndex=j;//subindice de la entrada de la tabla
 
 						if(pthread_create(&hilo_psCapture, &attr_psCapture, portStealCaptureThreadsFunction, &args_psCapture)){

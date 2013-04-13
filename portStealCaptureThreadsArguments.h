@@ -3,5 +3,7 @@
 //Define here the port stealer capturer thread function Arguments.
 typedef struct {
         int tableIndex;
+	pcap_t* descr;//descriptor de la captura
+        struct bpf_program fp;//aca se guardara el programa compilado de filtrado
 	//otros atributos de la estructura
-}portStealCaptureThreadsArgs;//arpCollectorCallbackArguments
+}portStealCaptureThreadsArguments;//arpCollectorCallbackArguments
