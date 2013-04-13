@@ -25,8 +25,8 @@
 #include "callbackArgs.h"
 
 //Includes para el port stealer
-#include "portStealThreadsArguments.h"
-#include "psThreadFunction.c"
+#include "portStealCaptureThreadsArguments.h"
+#include "portStealCaptureThreadsFunction.c"
 
 //#include "arpDialoguesTableManager.h"//se removio de este branche.. tarde pero se removio
 //#include "arpDialoguesTableManagerArguments.h" //y si.. tambien se removio este por supuesto
@@ -575,29 +575,6 @@ int main(int argc, char *argv[]){
 						}
 						//SI no entro al else.. continua la ejecucion dado que la entrada era para el server
 
-
-						//ahora lanzar el thread que se encarga de esta entrada en tabla y comenzar a portstelear
-						//debera manejarse muy bien el tema de las señales OJO
-						//Seria algo asi:
-							//para los servers HTTP:
-								/*
-								lanzar ataque portstealing (ojo por mas que sea http si consume tbn rdp se lo corta)
-								desde este fork analiza tramas (despues de lanzar un thread por cada uno de los client)
-								por cada trama analizada:
-									si es pregunta:
-										enviar una señal al portstealer (hilo) siguiendo tiempos del algoritmo
-
-										comprobar que las tramas capturadas con DESTINO el host pregunton
-											
-										tengan un sender valido (deberian ser respuestas del server validas)
-									si es respuesta:
-										comprobar que la informacion contenida en la entrada de la tabla
-										coincide con la de los host2guard o servers....
-
-						//hebras del admin de partidas
-						*/
-
-						
 						//lanzamiento del hilo port stealer
 						//bloquear el asker
 							//para ello lo busco en la tabla de askers
@@ -659,7 +636,11 @@ int main(int argc, char *argv[]){
 							printf("continuar con el algoritmo de portstealing por encontrar al asker en a=%d\n",a);
 							
 						}
-						//CONTINUAR CON EL ALGORITMO
+
+
+
+		
+						//CONTINUAR CON EL ALGORITMO (implementacion de PoC de la Tesis)
 
 					
 						//ahora si actuo en funcion de que tengo el lockeo correctamente
@@ -667,19 +648,21 @@ int main(int argc, char *argv[]){
 							//hace loop pcap capture, detecta y alerta MitM, avisa para corte!
 
 						//HILO que evalua capturas------------------------------------------------
-						/*
-						pthread_t hilo;
-						pthread_attr_t attr;
-						pthread_attr_init (&attr);
-						pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
-						portStealArgs psargs;
-						psargs.tableIndex=j;//subindice de la entrada de la tabla
+						
+						pthread_t hilo_psCapture;//hilo de captura del portstealer
+						pthread_attr_t attr_psCapture;
+						pthread_attr_init (&attr_psCapture);
+						pthread_attr_setdetachstate (&attr_psCapture, PTHREAD_CREATE_JOINABLE);
+						portStealCaptureThreadsArgs args_psCapture;//estructura de argumentos para la funcion del hilo psCapture
+						args_psCapture.tableIndex=j;//subindice de la entrada de la tabla
 
-						if(pthread_create(&hilo, &attr, psThreadFunction, &psargs)){
+						if(pthread_create(&hilo_psCapture, &attr_psCapture, portStealCaptureThreadsFunction, &args_psCapture)){
 						perror("pthread_create()");
 						exit(EXIT_FAILURE);
-						}//ELSE...CONTINUA..
-						*/
+						}//Si NO falla...CONTINUA..
+
+						
+						
 
 
 						//END HILO que evalua capturas--------------------------------------------
@@ -742,6 +725,18 @@ int main(int argc, char *argv[]){
 						//AL FINAL:::liberar:
 						sem_post((sem_t*) & arpAskers_shmPtr[a].semaforo);
 						printf("<liberado el semaforo del asker portsteleado\n");
+
+
+						//UNA VEZ COMPROBADO ESTE ASKER, DEBERIA LIMPIAR DE LA TABLA TODOS LOS CASOS PARA ESTE ASKER
+						//	Y ESTE SERVER ;) (PARA OTROS SERVERS SE ENCARGAN OTROS HIJOS DEL LOOP)
+
+						//LAZO FOR QUE RECORRE BUSCANDO COINCIDENCIAS Y ELIMINA LAS QUE SON ORIGEN EL ASKER DESTINO EL SERVER
+						// LAS QUE SON INVERSAS TAMBIEN DEBERIA PORQUE NO LAS ESTOY TRATANDO DE MOMENTO.
+
+						
+
+
+
 
 					}//CIERRO EL FOR QUE RECORRE LA TABLA PRINCIPAL DE DIALOGOS, AQUI SIGUE DENTRO DEL LOOP WHILE(LIVE==1)
 					//CONTINUANDO EN EL WHILE LIVE==1...
