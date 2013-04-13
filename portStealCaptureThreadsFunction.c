@@ -6,7 +6,7 @@
 
 
 //MACROS PARA NOMBRE DE TIPO MUY LARGOS
-#define DESCR "(((portStealCaptureThreadsArguments *)   argumentos)->descr"
+#define DESCR "((portStealCaptureThreadsArguments *)   argumentos)->descr"
 #define FP "((portStealCaptureThreadsArguments *)   argumentos)->fp"
 #define NETP "((portStealCaptureThreadsArguments *)   argumentos)->netp"
 void *portStealCaptureThreadsFunction(void *argumentos){
@@ -37,7 +37,9 @@ void *portStealCaptureThreadsFunction(void *argumentos){
 	printf(":::::::::::::::::::::::::::::::::::FILTRO: %s\n",filtro);
 	sleep(2);
 
-        if(pcap_compile(DESCR,&FP,"arp",0,NETP)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
+        if(pcap_compile(((portStealCaptureThreadsArguments *)   argumentos)->descr,&((portStealCaptureThreadsArguments *)   argumentos)->fp,"arp",0,((portStealCaptureThreadsArguments *)   argumentos)->netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
+
+
                 fprintf(stderr,"Error compilando el filtro\n");
                 exit(1);
         }

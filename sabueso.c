@@ -663,6 +663,7 @@ int main(int argc, char *argv[]){
 						pthread_attr_setdetachstate (&attr_psCapture, PTHREAD_CREATE_JOINABLE);
 						portStealCaptureThreadsArguments args_psCapture;//estructura de argumentos para la funcion del hilo psCapture
 						args_psCapture.tableIndex=j;//subindice de la entrada de la tabla
+						args_psCapture.descr=descr;
 
 						if(pthread_create(&hilo_psCapture, &attr_psCapture, portStealCaptureThreadsFunction, &args_psCapture)){
 						perror("pthread_create()");
