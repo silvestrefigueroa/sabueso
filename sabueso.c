@@ -16,21 +16,27 @@
 
 //MIS PROPIAS CABECERAS
 //#include "sabueso.h"
-#include "arper.h"
+//#include "arper.h" //LO SAQUE POR DESUSO Y PARA LIMPIAR UN POCO DE CODIGO
 //#include "parser.h"
-#include "splitter.h"
+//#include "splitter.h" //LO SAQUE POR DESUSO Y PARA LIMPIAR UN POCO DE CODIGO
 #include "arpDialogStruct.h"
+//#include "arpAskerStruct.h"
 #include "arpCollector_callback.h"
 #include "callbackArgs.h"
 
-#include "arpDialoguesTableManager.h"
-#include "arpDialoguesTableManagerArguments.h"
+//Includes para el port stealer
+//#include "portStealCaptureThreadsArguments.h"
+#include "portStealCaptureThreadsFunction.c"
+
+//#include "arpDialoguesTableManager.h"//se removio de este branche.. tarde pero se removio
+//#include "arpDialoguesTableManagerArguments.h" //y si.. tambien se removio este por supuesto
 //#include "arpDTMWorker_arguments_struct.h"
 
 //MENSAJES ESTATICOS
 #define MSG_START "Comienza aqui el programa principal\n"
 
-
+//MACROS DE ARGS
+#define TABLE_SIZE 4
 
 //Icludes del arpCollector.c
 //#include <unistd.h>
@@ -68,7 +74,14 @@ void sigint_handler(int s){
 	//ahora hago unlink para la SharedMem
 
 	//if((shm_unlink("/sharedMemPartida"))<0){
-	int retorno = shm_unlink("/sharedMemPartida");
+	int retorno = shm_unlink("/sharedMemDialogos");
+	printf("retorno %d\n",retorno);
+	if (retorno < 0 ) {
+		perror("shm_unlink()");
+		exit(EXIT_FAILURE);
+
+	}
+	retorno = shm_unlink("/sharedMemAskers");
 	printf("retorno %d\n",retorno);
 	if (retorno < 0 ) {
 		perror("shm_unlink()");
@@ -86,28 +99,142 @@ int main(int argc, char *argv[]){
 
 	if(0>=write(1,MSG_START, strlen(MSG_START)))
 		return -1;
-	//variables de datos del programa principal
-//	char *mac2guard;//argumento que evolucionara a array y que representa todos los hosts protegidos
-	//char *mac2guardIP //serian las ips que acompaña a las macs que van en mac2guard, para futuras versiones
-//	int *power=0;//este comando va a evolucionar, representa uno de los parametros de FUERZA (repeticion) del port stealer o arper.
-//	char* target;//propenso a desaparecer, dado que el target sera cualquier IP que pregunte por un mac2guard
-//	char* iface;//voy a conservarlo, es el nombre de la interfaz de red que quiero utilizar
-	//ojo abajo: en el caso del mac2guard lo hace dentro del arper a esto XD con el strcpy XD
-//	char arperIface[10];//por problema que no reconoce el arper el argumento a no ser que sea hardcodeado
-//	char arperTarget[15];//por lo mismo que con el anterior
+	int i=0;//indice utilizando en los for...
+//------------INICIA ZONA DE CONTROL DE PARAMETROS DE APLICACION-----------------------------------------------//
 
-	//parser(argv[1], &mac2guard, &power, &target, &iface);
+	//PARAMETROS DE CAPTURA, DE PASO PREAPRA VARIABLES DE CAPTURA PARA EL PRIMER HIJO
+	//COmienza a preparar la captura...
+	char *dev=NULL;
+	char *net=NULL;
+	char *mask=NULL;
+	struct in_addr addr;
+	char errbuf[PCAP_ERRBUF_SIZE];
+	pcap_t* descr;//descriptor de la captura
+	struct bpf_program fp;//aca se guardara el programa compilado de filtrado
+	bpf_u_int32 maskp;// mascara de subred
+	bpf_u_int32 netp;// direccion de red
+	dev = pcap_lookupdev(errbuf); //Buscamos un dispositivo del que comenzar la captura
+	printf("\nEcontro como dispositivo %s\n",dev);
+	if (dev == NULL){
+		fprintf(stderr," %s\n",errbuf); exit(1);
+	}
+	else{
+		printf("Abriendo %s en modo promiscuo\n",dev);
+	}
+	dev = "wlan0";//hardcodeo la wifi en desarrollo, luego la dejare utomatica o por parametro.
+	//obtener la direccion de red y la netmask de la NIC en "dev"
+	if(pcap_lookupnet(dev,&netp,&maskp,errbuf)==-1){
+		printf("ERROR %s\n",errbuf);
+		exit(-1);
+	}
+	addr.s_addr = netp; //traducir direccion de red en algo legible
+	if((net = inet_ntoa(addr))==NULL){
+		perror("inet _ntoa");
+		exit(-1);
+	}
+	printf("Direccion de Red: %s\n",net);
+	addr.s_addr = maskp;
+	mask = inet_ntoa(addr);
+	if((net=inet_ntoa(addr))==NULL){
+		perror("inet _ntoa");
+		exit(-1);
+	}
+	printf("Mascara de Red: %s\n",mask);
+	//comenzar captura y obtener descriptor llamado "descr" del tipo pcatp_t*
+	descr = pcap_open_live(dev,BUFSIZ,1,-1,errbuf); //comenzar captura en modo promiscuo
+	if (descr == NULL){
+		printf("pcap_open_live(): %s\n",errbuf);
+		exit(1);
+	}
+	//ahora compilo el programa de filtrado para hacer un filtro para ARP
+	if(pcap_compile(descr,&fp,"arp",0,netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
+		fprintf(stderr,"Error compilando el filtro\n");
+		exit(1);
+	}
+	//Para APLICAR el filtro compilado:
+	if(pcap_setfilter(descr,&fp)==-1){
+		fprintf(stderr,"Error aplicando el filtro\n");
+		exit(1);
+	}
+	//calculo el tamaño de la table para askers en funcion de la mascara de subred:
+	int maskTooBig=1;
+	int arpAskersTable_tableSize=0;
+	for(i=0;i<1;i++){
+		if(!strncmp(mask,"255.255.255.254",strlen("255.255.255.254"))){
+			printf("en cidr es una /31\n");
+			maskTooBig=0;
+			arpAskersTable_tableSize=2;
+			break;//rompe el bucle
+		}
+		if(!strncmp(mask,"255.255.255.252",strlen("255.255.255.252"))){
+			printf("en cidr es una /30\n");
+			maskTooBig=0;
+			arpAskersTable_tableSize=4;
+			break;//rompe el bucle
+		}
+		if(!strncmp(mask,"255.255.255.248",strlen("255.255.255.248"))){
+			printf("en cidr es una /29\n");
+			arpAskersTable_tableSize=8;
+			maskTooBig=0;
+			break;//rompe el bucle
+		}
+		if(!strncmp(mask,"255.255.255.240",strlen("255.255.255.240"))){
+			printf("en cidr es una /28\n");
+			arpAskersTable_tableSize=16;
+			maskTooBig=0;
+			break;//rompe el bucle
+		}
+		if(!strncmp(mask,"255.255.255.224",strlen("255.255.255.224"))){
+			printf("en cidr es una /27\n");
+			arpAskersTable_tableSize=32;
+			maskTooBig=0;
+			break;//rompe el bucle
+		}
+		if(!strncmp(mask,"255.255.255.192",strlen("255.255.255.192"))){
+			printf("en cidr es una /26\n");
+			arpAskersTable_tableSize=64;
+			maskTooBig=0;
+			break;//rompe el bucle
+		}
+		if(!strncmp(mask,"255.255.255.128",strlen("255.255.255.128"))){
+			printf("en cidr es una /25\n");
+			arpAskersTable_tableSize=128;
+			maskTooBig=0;
+			break;//rompe el bucle
+		}
+		if(!strncmp(mask,"255.255.255.0",strlen("255.255.255.0"))){
+			printf("en cidr es una /24\n");
+			arpAskersTable_tableSize=256;
+			maskTooBig=0;
+			break;//rompe el bucle
+		}
+		if(!strncmp(mask,"255.255.254.0",strlen("255.255.254.0"))){
+			printf("en cidr es una /23\n");
+			arpAskersTable_tableSize=512;
+			maskTooBig=0;
+			break;//rompe el bucle
+		}
+	}
+	if(maskTooBig==1){
+		printf("ERROR: La red es muy grande...intente con una subred mas chica\n");
+		_exit(EXIT_SUCCESS);
+	}
+	--arpAskersTable_tableSize,2;//ajusto el tamaño
+	//FIN PARAMETROS DE CAPTURA
 
-	//printf("\nVariables seteadas por el parser: \nMAC: %s\nTARGET: %s\nIFACE: %s\n",mac2guard,target,iface);
-	//int i=0;
-	//aqui abajo la magia de la que hablaba en la definicion de variables...
-//	strcpy(arperIface,iface);
-//	strcpy(arperTarget,target);
-	//segun el parametro power, son las veces que enviare frames
-	//mas adelante, debo separar la creacion del frame del envio del mismo para no repetir tooooodo por cada iteracion
+
+	//ajuste por depuracion:
+	arpAskersTable_tableSize=10;
 
 
+//-----------FINALIZA ZONA DE CONTROL DE PARAMETROS DE APLICACION---------------------------------------------//
 //------------INICIA ZONA DE DEFINICION DE ESTRUCTURAS DE DATOS DEL SABUESO--------------
+	//vida de los hijos
+//	int live=1;//Mas abajo se explica, es para no poner un while true.. ademas me permite INTERRUMPIR la ejecucion
+
+
+
+	//INICIA CREACION DE TABLA DE DIALOGOS
 
 	//Crear zona de memoria compartida para alojar la estructura (o.. array de estructuras)
 
@@ -117,17 +244,21 @@ int main(int argc, char *argv[]){
 	int fdshm;
 	//sharedMem
 	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla
-	struct arpDialog arpDialoguesTable[100];//hardcodeado, luego deberia parametrizarlo y variabilizarlo
+//	int tableSize=(arpAskersTable_tableSize*arpAskersTable_tableSize)/2;//maximo de preguntas ARp permitidas por el tamaño de la red
+	int tableSize=TABLE_SIZE;
+	//malloqueo para el puntero de la shm
+	shmPtr = (struct arpDialog *)malloc(sizeof(struct arpDialog)*TABLE_SIZE);
+	struct arpDialog arpDialoguesTable[tableSize];//CONSULTAR: AQUI NO DEBERIA MALLOQUEAR?? COREDUMP SI TABLESIZE ES MUY GRANDE!!
 	//inicializacion:
-	for(subindexCounterId=0;subindexCounterId<100;subindexCounterId++){//ese 100 es el hardcodeado anterior
-		arpDialoguesTable[subindexCounterId].index=subindexCounterId;
-		arpDialoguesTable[subindexCounterId].ethSrcMac=NULL;
-		arpDialoguesTable[subindexCounterId].ethDstMac=NULL;
-		arpDialoguesTable[subindexCounterId].arpSrcMac=NULL;
-		arpDialoguesTable[subindexCounterId].arpDstMac=NULL;
-		arpDialoguesTable[subindexCounterId].arpSrcIp=NULL;
-		arpDialoguesTable[subindexCounterId].arpDstIp=NULL;
-		arpDialoguesTable[subindexCounterId].type=NULL;
+	for(subindexCounterId=0;subindexCounterId<tableSize;subindexCounterId++){//ese 100 es el hardcodeado anterior
+		arpDialoguesTable[subindexCounterId].arpAskerIndex=subindexCounterId;
+		memset(arpDialoguesTable[subindexCounterId].ethSrcMac,0,40);
+		memset(arpDialoguesTable[subindexCounterId].ethDstMac,0,40);
+		memset(arpDialoguesTable[subindexCounterId].arpSrcMac,0,40);
+		memset(arpDialoguesTable[subindexCounterId].arpDstMac,0,40);
+		memset(arpDialoguesTable[subindexCounterId].arpSrcIp,0,40);
+		memset(arpDialoguesTable[subindexCounterId].arpDstIp,0,40);
+		arpDialoguesTable[subindexCounterId].type=99;//0 es pregunta, 1 es respuesta, 99 inicializada
 		arpDialoguesTable[subindexCounterId].doCheckIpI=0;
 		arpDialoguesTable[subindexCounterId].doCheckSpoofer=0;
 		arpDialoguesTable[subindexCounterId].doCheckHosts=0;
@@ -136,9 +267,11 @@ int main(int argc, char *argv[]){
 		//int sem_init(sem_t *sem, int pshared, unsigned int value);
 		sem_init(&(arpDialoguesTable[subindexCounterId].semaforo),1,1);//inicializa semaforos de cada entrada de la tabla
 	}//inicializadas las entradas de la tabla, paso a confeccionar la Memoria Compartida
+
+	arpDialoguesTable[4].hit=5;
 	
 	//SHAREDMEM arpDialoguesTableManagerArguments.h
-	if(((fdshm=shm_open("/sharedMemPartida", O_RDWR|O_CREAT, 0666))<0)){
+	if(((fdshm=shm_open("/sharedMemDialogos", O_RDWR|O_CREAT, 0666))<0)){
 		perror("shm_open()");
 		exit(EXIT_FAILURE);
 	}
@@ -148,13 +281,71 @@ int main(int argc, char *argv[]){
 	exit(EXIT_FAILURE);
 	}
 	//ojo con ese 100 de abajo.. es el hardcodeado, representa la cantidad de estructuras struct arpDilog que hay en el array arpDialoguesTable
-	if(!(shmPtr=mmap(NULL, sizeof(struct arpDialog)*100, PROT_READ|PROT_WRITE, MAP_SHARED, fdshm, 0))){
+	if(!(shmPtr=mmap(NULL, sizeof(struct arpDialog)*tableSize, PROT_READ|PROT_WRITE, MAP_SHARED, fdshm, 0))){
 		perror("mmap()");
 		exit(EXIT_FAILURE);
 	}
 	//la truncada de suerte!!:
-	ftruncate(fdshm, sizeof(struct arpDialog)*100);
+	ftruncate(fdshm, sizeof(struct arpDialog)*tableSize);
 	close(fdshm);
+
+	//FINALIZA CREACION DE TABLA DE DIALOGOS PARA MEMORIA COMPARTIDA
+
+	//-------------------------------------------------------------------------------------------------------------------------------------------
+
+	//INICIA CREACION DE TABLA DE ASKERS EN MEMORIA COMPARTIDA
+
+	//Crear zona de memoria compartida para alojar la estructura (o.. array de estructuras)
+
+	//puntero a la memoria compartida
+	/*struct*/ arpAsker *arpAskers_shmPtr=NULL;
+
+	//descriptor de la memoria compartida
+	int arpAskers_fdshm;
+	//sharedMem
+
+//RECICLO	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla 
+
+//	int arpAskersTable_tableSize=10; //lo saco del la netmask cidr obtenida al principio
+	
+	arpAskersTable_tableSize=100;//hardcodeado, pero este numero se calcula a partir de la cantidad de IP usables del rango de MI netmask
+	//malloqueo para el puntero de la shm
+	arpAskers_shmPtr = (arpAsker *)malloc(sizeof(arpAsker)*arpAskersTable_tableSize);
+
+	/*struct*/ arpAsker arpAskersTable[arpAskersTable_tableSize];//CONSULTAR: AQUI NO DEBERIA MALLOQUEAR?? COREDUMP SI TABLESIZE ES MUY GRANDE!!
+	//inicializacion:
+	for(subindexCounterId=0;subindexCounterId<arpAskersTable_tableSize;subindexCounterId++){//ese 100 es el hardcodeado anterior
+		arpAskersTable[subindexCounterId].arpAskerIndex=subindexCounterId;
+		memset(arpAskersTable[subindexCounterId].mac,0,40);
+		memset(arpAskersTable[subindexCounterId].ip,0,40);
+		arpAskersTable[subindexCounterId].status=99;
+		arpAskersTable[subindexCounterId].hit=0;
+		//int sem_init(sem_t *sem, int pshared, unsigned int value);
+		sem_init(&(arpAskersTable[subindexCounterId].semaforo),1,1);//inicializa semaforos de cada entrada de la tabla
+	}//inicializadas las entradas de la tabla, paso a confeccionar la Memoria Compartida
+
+	arpAskersTable[6].hit=9;//ejemplo, vamos a ver si anda la tabla.. =)
+	
+	//SHAREDMEM arpAskersTable
+	if(((arpAskers_fdshm=shm_open("/sharedMemAskers", O_RDWR|O_CREAT, 0666))<0)){//CONSULTAR: que hace aca?!?!?!?
+		perror("shm_open()");
+		exit(EXIT_FAILURE);
+	}
+	//lo escribo en blanco
+	if(!(write(arpAskers_fdshm,&arpAskersTable,sizeof(arpAskersTable)))){//podria ser el tamaño de una entrada * tarpAskersTable_ableSize como en el mmap??
+	perror("write()");
+	exit(EXIT_FAILURE);
+	}
+	//ojo con ese 100 de abajo.. es el hardcodeado, representa la cantidad de estructuras struct arpDilog que hay en el array arpDialoguesTable
+	if(!(arpAskers_shmPtr=mmap(NULL, sizeof(arpAsker)*arpAskersTable_tableSize, PROT_READ|PROT_WRITE, MAP_SHARED, arpAskers_fdshm, 0))){
+		perror("mmap()");
+		exit(EXIT_FAILURE);
+	}
+	//la truncada de suerte!!:
+	ftruncate(arpAskers_fdshm, sizeof(arpAsker)*arpAskersTable_tableSize);
+	close(arpAskers_fdshm);
+
+	//FINALIZA LA CREACION DE TABLA DE ASKERS EN MEMORIA COMPARTIDA
 
 //------------FIN ZONA DE DEFINICION DE ESTRUCTURAS DE DATOS DEL SABUESO------------------
 
@@ -170,278 +361,492 @@ int main(int argc, char *argv[]){
         }
 //------------FIN DEFINICION DE ELEMENTOS DE IPC, CONCURRENCIA Y EXCLUSION----------------
 
-//---------------INICIA FORK DE CONFIGURACION Y CHEQUEO DE TABLA DE DIALOGOS ARP-----------------------------
-
-        switch(fork()){
-                case -1:
-                        perror("fork()");
-                        _exit(EXIT_FAILURE);
-                case 0:
-                        puts("\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-                        puts("soy el HIJO manejador y centinela de tabla arpDialoguesTable...\n");
-                        //preparo para leer el PIPE, y luego lanzo los hilos para cada paquete leido
-                        //cierro escritura, solo voy a leer.
-                        close(fdPipe[1]);
-                        //variable para el paquete leido
-                        char bufl[4096];
-                        //hebras del admin de partidas
-                        pthread_t hilo;
-                        pthread_attr_t attr;
-                        pthread_attr_init (&attr);
-                        pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
-                        //n como contador de lo que se leyo
-                        int n=0,k=0,paquete=0;
-			//printf("hola\n");
-			arpDTMWorker_arguments arguments[1];
-			arguments[0].shmPtr=shmPtr;//asignacion que Funciona!!
-			while((n=read(fdPipe[0], bufl, sizeof bufl))){
-				paquete++;
-				puts("lei del pipe\n");
-				bufl[n]=0;
-				
-				if(strlen(bufl)!=0){
-					puts("parece que el primer HIJO leyo lo siguiente: ");
-					if(!(write(0, bufl, strlen(bufl)))){
-						perror("write()");
-						exit(EXIT_FAILURE);
-					}
-					printf("HILO paquetes: %d\n",paquete);
-					puts("\n\n");
-					k=0;
-					//llamo a la funcion splitter:
-					char **listSplit=NULL;
-					listSplit = splitter(bufl,'|');
-					while (listSplit[k]!=NULL){
-						switch(k){
-							case 0:
-								//printf("k=0, luego valor=%s\n",listSplit[k]);
-								arguments[0].ethSrcMac=listSplit[k];
-								//printf("para ethSrcMac tengo el valor=%s\n",arguments[0].ethSrcMac);
-
-							break;
-							case 1:
-								//printf("k=1, luego valor=%s\n",listSplit[k]);
-								arguments[0].ethDstMac=listSplit[k];
-								//printf("para ethDstMac tengo el valor=%s\n",arguments[0].ethDstMac);
-
-
-							break;
-							case 2:
-								//printf("k=2, luego valor=%s\n",listSplit[k]);
-								arguments[0].arpSrcMac=listSplit[k];
-								//printf("para arpSrcMac tengo el valor=%s\n",arguments[0].arpSrcMac);
-
-							break;
-							case 3:
-								//printf("k=3, luego valor=%s\n",listSplit[k]);
-								arguments[0].arpDstMac=listSplit[k];
-								//printf("para arpDstMac tengo el valor=%s\n",arguments[0].arpDstMac);
-
-
-							break;
-							case 4:
-								//printf("k=4, luego valor=%s\n",listSplit[k]);
-								arguments[0].arpSrcIp=listSplit[k];
-								//printf("para ethSrcIp tengo el valor=%s\n",arguments[0].arpSrcIp);
-							break;
-							case 5:
-								//printf("k=5, luego valor=%s\n",listSplit[k]);
-								arguments[0].arpDstIp=listSplit[k];
-								//printf("para arpDstIp tengo el valor=%s\n",arguments[0].arpDstIp);
-							break;
-
-							default:
-							break;
-						}
-						//listSplit[k++];//si comento esta linea, se joroba TODO!! ¿¡por queeee?!
-						printf("salio:%s\n" , listSplit[k++]);
-					}
-					//Mostrar el bufl crudo, como lo leyo del pipe..medio tarde pero deberia estar intacto
-					//printf("leiiiiiiii %s\n",bufl);
-
-					arguments[0].packet="|hola|como|estas|";
-					//printf("a modo de ejemplo muestro ethDstMac en a1= %s\n",arguments[0].ethDstMac);
-					//deberia controlar la creacion de HILOS.. algun limite..sino dice que no puede allocar mas memoria
-					if(pthread_create(&hilo, &attr, arpDialoguesTableManager, &arguments)){
-                                                perror("pthread_create()");
-                                                exit(EXIT_FAILURE);
-						//continue;
-                                        }
-					//lanzado el hilo..comienza de nuevo
-					printf("PAQUETE AL HILO : %d\n",paquete);
-					
-                                }
-                        }
-                        _exit(EXIT_SUCCESS);
-                }//switch fork
-//---------------FINALIZA FORK DE CONFIGURACION Y CHEQUEO DE TABLA DE DIALOGOS ARP-----------------------------
 
 //---------------INICIA FORK PARA RECOLECCION DE ARP EN EL BROADCAST O MODULO ARPCOLLECTOR-----------------------------
-		switch(fork()){
-			case -1:
-				perror("fork()");
-				_exit(EXIT_FAILURE);
-			case 0:
-				//Proceso arpCollector.c
-				puts("\n-------------------------");
-				puts("soy el HIJO recolector de mensajes ARP iniciando...\n");
-				//COmienza a preparar la captura...
-				char* dev=NULL;
-				char errbuf[PCAP_ERRBUF_SIZE];
-				pcap_t* descr;//descriptor de la captura
-				struct bpf_program fp;//aca se guardara el programa compilado de filtrado
-				bpf_u_int32 maskp;// mascara de subred
-				bpf_u_int32 netp;// direccion de red
-				dev = pcap_lookupdev(errbuf); //Buscamos un dispositivo del que comenzar la captura
-				printf("\nEcontro como dispositivo %s\n",dev);
-				if (dev == NULL){
-					fprintf(stderr," %s\n",errbuf); exit(1);
-				}
-				else{
-					printf("Abriendo %s en modo promiscuo\n",dev);
-				}
-				dev = "wlan0";//hardcodeo la wifi en desarrollo, luego la dejare utomatica o por parametro.
-				//obtener la direccion de red y la netmask de la NIC en "dev"
-				pcap_lookupnet(dev,&netp,&maskp,errbuf);
-				//comenzar captura y obtener descriptor llamado "descr" del tipo pcatp_t*
-				descr = pcap_open_live(dev,BUFSIZ,1,-1,errbuf); //comenzar captura en modo promiscuo
-				if (descr == NULL){
-					printf("pcap_open_live(): %s\n",errbuf);
-					exit(1);
-				}
-				//ahora compilo el programa de filtrado para hacer un filtro para ARP
-				if(pcap_compile(descr,&fp,"arp",0,netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
-					fprintf(stderr,"Error compilando el filtro\n");
-					exit(1);
-				}
-				//Para APLICAR el filtro compilado:
-				if(pcap_setfilter(descr,&fp)==-1){
-					fprintf(stderr,"Error aplicando el filtro\n");
-					exit(1);
-				}
-				//Argumentos para la funcion callback
-				arpCCArgs conf[2] = {
-				//	{0, "foo",shmPtr},
-					{1, "Argumentos",shmPtr}
-				};
-				//le paso los descriptores del PIPE
-				conf[0].fdPipe[0]=fdPipe[0];
-				conf[0].fdPipe[1]=fdPipe[1];
-
-				pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,(u_char*) conf);
-
-				_exit(EXIT_SUCCESS);
-		}//FIN DEL FORK PARA ARPCOLLECTOR
-
-
-//---------------FIN FORK PARA RECOLECCION DE ARP EN EL BROADCAST O MODULO ARPCOLLECTOR-----------------------------
-
-//CONTINUA EL HILO DE EJECUCION...
-
-
-
-//preparar creacion de hijo multihilado responsable del port stealing y alerta
-
-//------------INICIA FORK MULTIHILADO DE SEGUIMIENTO, ROBO DE PUERTO Y ALERTA-----------------------------
-
-//comentado para que no jorobe
-/*
 	switch(fork()){
 		case -1:
 			perror("fork()");
 			_exit(EXIT_FAILURE);
 		case 0:
 			//Proceso arpCollector.c
-			puts("soy el HIJO PORT STEALER...\n");
-
+			puts("\n-------------------------");
+			puts("soy el HIJO recolector de mensajes ARP iniciando...\n");
+	
 			//COmienza a preparar la captura...
-			char* dev=NULL;
-			char errbuf[PCAP_ERRBUF_SIZE];
-			pcap_t* descr;//descriptor de la captura
-			struct bpf_program fp;//aca se guardara el programa compilado de filtrado
-			bpf_u_int32 maskp;// mascara de subred
-			bpf_u_int32 netp;// direccion de red
-			//el IF de abajo no tiene nada que hacer aqui!!! que modo de uso ni que changos!!
-			if (argc != 2){
-				fprintf(stdout,"Modo de Uso %s \"programa de filtrado\"\n",argv[0]);
-				return 0;
-			}
-			dev = pcap_lookupdev(errbuf); //Buscamos un dispositivo del que comenzar la captura
-                        printf("\nEcontro como dispositivo %s\n",dev);
-                        if (dev == NULL){
-                                fprintf(stderr," %s\n",errbuf); exit(1);
-                        }
-                        else{
-                                printf("Abriendo %s en modo promiscuo\n",dev);
-                        }
-                        dev = "wlan0";//hardcodeo la wifi en desarrollo
-			//obtener la direccion de red y la netmask
-			pcap_lookupnet(dev,&netp,&maskp,errbuf);
-			//comenzar captura y obtener descriptor llamado "descr" del tipo pcatp_t*
-			descr = pcap_open_live(dev,BUFSIZ,1,-1,errbuf); //comenzar captura en modo promiscuo
-			if (descr == NULL){
-				printf("pcap_open_live(): %s\n",errbuf);
-				exit(1);
-			}
-			//ahora compilo el programa de filtrado para hacer un filtro para ARP
-			if(pcap_compile(descr,&fp,"arp",0,netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
-				fprintf(stderr,"Error compilando el filtro\n");
-				exit(1);
-			}
-			//Para APLICAR el filtro compilado:
-			if(pcap_setfilter(descr,&fp)==-1){
-				fprintf(stderr,"Error aplicando el filtro\n");
-				exit(1);
-			}
-			//Argumentos para la funcion callback (corregir esta struct luego...esta feasa)
-			arpCCArgs conf[1] = {
-			//	{0, "foo",shmPtr},
-				{1, "Argumentos",shmPtr}
+			dev=NULL;
+			net=NULL;
+			mask=NULL;
+			//Argumentos para la funcion callback
+			arpCCArgs conf[2] = {
+			//	{0, "foo",shmPtr,arpAskers_shmPtr},
+				{tableSize, "Argumentos",shmPtr,arpAskers_shmPtr,arpAskersTable_tableSize}
 			};
 			//le paso los descriptores del PIPE
 			conf[0].fdPipe[0]=fdPipe[0];
 			conf[0].fdPipe[1]=fdPipe[1];
-
-			//bucle: lanzar funcion callback de captura para cada frame capturado:
+			//El bucle de captura lo armo con variables que el padre ya preparo antes cuando hizo el check de la netmask
 			pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,(u_char*) conf);
-
 			_exit(EXIT_SUCCESS);
 	}//FIN DEL FORK PARA ARPCOLLECTOR
 
 
+//---------------FIN FORK PARA RECOLECCION DE ARP EN EL BROADCAST O MODULO ARPCOLLECTOR-----------------------------
+
+	//Continua el padre...
+	//ahora recorrer el array de servers que tengo que "cuidar" (monitorear)
+	//Recordemos que cada host que tenga interes en hablar con estos servers (que tienen informacion sensible) son
+	//posibles victimas de ataques arp spoofing.
+	//Ahora lo que voy a hacer, es por cada uno de los hosts a monitorear lanzar un HIJO con la funcion correspondiente.
+
+	//----VOY A HARDCODEAR LOS PARAMETROS DE MOMENTO:
+
+	int serversQuantity=5;//cantidad de servers a cuidar
+
+	//Estructura de datos de argumentos del programa principal
+	typedef struct{ 
+                char *mac;
+                char *ip;
+		char *serverName;
+                int serviceType;//0 http,1 rdp
+        }server2guard;
+
+	server2guard servers2guard[serversQuantity];//array de servers
+
+	//inicializar array de struct:
+	for(i=0;i<serversQuantity;i++){
+		servers2guard[i].mac=NULL;
+		servers2guard[i].ip=NULL;
+		servers2guard[i].serviceType=0;
+		servers2guard[i].serverName=NULL;
+	}
+	//invento hosts
+
+	servers2guard[2].mac="aa:bb:cc:dd:ee:f";
+	servers2guard[2].ip="192.168.1.121";
+	servers2guard[2].serviceType=0;
+	servers2guard[2].serverName="server-121";
+	
+
+	servers2guard[1].mac="12:43:56:a:a:2";
+	servers2guard[1].ip="192.168.1.126";
+	servers2guard[1].serviceType=0;
+	servers2guard[1].serverName="server-126";
+
+	servers2guard[4].mac="5c:d9:98:2c:0f:bb";
+	servers2guard[4].ip="192.168.1.19";
+	servers2guard[4].serviceType=0;
+	servers2guard[4].serverName="otroooo-19";
+
+	servers2guard[0].mac="5c:d9:98:2c:f:b6";//seria 5c:d9:98:2c:0f:b6
+	servers2guard[0].ip="192.168.1.1";
+	servers2guard[0].serviceType=0;
+	servers2guard[0].serverName="dd-wrt";
+
+	servers2guard[3].mac="00:21:5c:33:09:a5";
+	servers2guard[3].ip="192.168.1.100";
+	servers2guard[3].serviceType=0;
+	servers2guard[3].serverName="Thinkpad-100-myself";
+
+
+	int j=0;//otro subindice
+
+	int c=0;
+	int live=0;
+	serversQuantity=1;
+/*
+	while(1==1){
+		sleep(1);
+		
+		printf("mostrando memoria compartida desde el port stealer pasada %d\n",j);
+		for(c=0;c<tableSize;c++){
+			printf("entrada %d  |%s  ",c,shmPtr[c].ethSrcMac);
+			printf("|%s  ",shmPtr[c].ethDstMac);
+			printf("|%s  ",shmPtr[c].arpSrcMac);
+			printf("|%s  ",shmPtr[c].arpSrcMac);
+			printf("|%s  ",shmPtr[c].arpSrcIp);
+			printf("|%s \n",shmPtr[c].arpDstIp);
+		}
+		j++;
+	}
 */
 
-	//------------FIN FORK MULTIHILADO DE SEGUIMIENTO, ROBO DE PUERTO Y ALERTA--------------------------------
 
-	//------------INICIA FORK PARA MONITOREO DE ALERTAS-------------------------------------------------------
+	for(i=0;i<serversQuantity;i++){
+		//------------INICIA FORK MULTIHILADO DE SEGUIMIENTO, ROBO DE PUERTO Y ALERTA-----------------------------
+		switch(fork()){
+			case -1:
+				perror("fork()");
+				_exit(EXIT_FAILURE);
+			case 0:
+				sleep(5);
+				printf("soy el HIJO PORT STEALER del server: %s\n",(servers2guard[i].serverName));
+				j=0;
+				c=0;
+//----------------------------------------
+				while(1==1){
+					sleep(1);
+					
+					printf("mostrando memoria compartida desde el port stealer pasada %d\n",j);
+					for(c=0;c<tableSize;c++){
+						printf("entrada %d  |%s  ",c,shmPtr[c].ethSrcMac);
+						printf("|%s  ",shmPtr[c].ethDstMac);
+						printf("|%s  ",shmPtr[c].arpSrcMac);
+						printf("|%s  ",shmPtr[c].arpSrcMac);
+						printf("|%s  ",shmPtr[c].arpSrcIp);
+						printf("|%s \n",shmPtr[c].arpDstIp);
+					}
+					j++;
+					break;
+				}
+//------------------------------------------
+
+				printf("continuando con el portstealer\n");
+				//flags:
+				int askingForThisServer=0;//inicializa en "no preguntan por el server"
+				int responseForThisServer=0;//cuando es este server el que respondio
+							
+				//ALGORITMO:
+				//1|Examinar entrada por entrada de la tabla y para cada una:
+				live=1;
+				j=0;
+				int forlife=0;
+				while(live==1){//podria ser un while true, se utilizo esta variable para tener condicion de corte (aunque puedo usar break...)
+					sleep(5);//descanza 5 segundos antes de cada recorrida completa
+					printf("<<<< vuelta aquiiiii\n");
+					for(j=0;j<tableSize;j++){
+						printf("dentro del for con j=%d\n",j);
+						//por las dudas me fijo si la entrada en la tabla no es NULL:
+						printf("el nextState = %d\n",shmPtr[j].nextState);
+						printf("el type = %d\n",shmPtr[j].type);
+						//SI LA TRAMA ESTA MARCADA DIFERENTE A 1 ENTONCES LA PASO POR ALTO
+						if(shmPtr[j].nextState!=1){
+							printf("La entrada NO estaba marcada para checkear (%d) salto a la proxima\n",shmPtr[j].nextState);
+							continue;//salto a la proxima entrada de la tabla
+						}
+						//else... continua la ejecucion de codigo normalmente..
+
+//						if(shmPtr[j].nextState==99){//si es una entrada recien inicializada que lo salte
+						if(shmPtr[j].type==99){//recien inicializada (ES NULL...)
+							printf("<<Entrada vacia, continuar con la siguiente\n");
+							continue;//salta a la proxima entrada de la tabla
+						}
+						else{//si no esta "vacia" (inicializada en realiadad.."
+							printf("<<Esta entrada no esta vacia!!! ahora va al if de si coincide con el server que cuido...\n");
+							printf("<<comparando i: %s con shmPtr: %s \n",servers2guard[i].ip,shmPtr[j].arpDstIp);
+						}
+						//continua aca porque no cayo en el if de si estaba inicializada
+
+						//controlo el largo del srcIP a ver si realmente no estaba vacia la entrada (nextState no es confiable...?)
+						if(7>(int)strlen(shmPtr[j].arpSrcIp)){
+							printf("EPAA el largo de la srcip leido desde la tabla es menor que 7!!(no deberia mostrarse nunca\n");
+							continue;//interrumpe el ciclo actual...
+						}
+						//else...seguir aqui =)
+						//1.99 Si esta involucrado ESTE server:
+
+						//si es destino
+						printf("comparando i: %s con shmPtr: %s \n",servers2guard[i].ip,shmPtr[j].arpDstIp);
+						//PARCHE por largo..(antes de strncmp me fijo si tienen el mismo largo.. sino son distintas de una..
+						if(strlen(servers2guard[i].ip)!=strlen(shmPtr[j].arpDstIp)){//distinta logica, mismo metodo (strlen)
+							printf(">> PST: NO tienen el mismo largo!! continue a la siguiente entrada...\n");
+							continue;//que no siga la ejecucion con esta entrada y pase derecho a la proxima
+						}
+						//Si sigo aca es porque tenian el mismo largo
+						printf(">> PST: SI tienen el mismo largo, ahora evaluo si son iguales (es decir, si es de este server)\n");
+						
+						if(!strncmp(servers2guard[i].ip,shmPtr[j].arpDstIp,strlen(shmPtr[j].arpDstIp))){//ip es del server i
+							printf(">>>PST: (eran iguales) Entrada esta destinada al server %s\n",(servers2guard[i].serverName));
+							//evaluo si es pregunta o respuesta
+							switch(shmPtr[j].type==0){
+								case 0:
+									printf(">>era pregunta...\n");
+									askingForThisServer=1;//preguntan por este server (este fork) SI
+									responseForThisServer=0;//respuesta hacia este server NO
+								break;
+								case 1:
+									printf(">>supongo que era respuesta...revisar este caso luego (SALTAR por ahora)\n");
+									//de momento continua a la siguiente
+									continue;
+									responseForThisServer=1;//alguien le respondio a este server????
+									askingForThisServer=0;
+								break;
+								default:
+									printf(">>anomalia en la entrada de la tabla\n");
+									continue;
+								break;
+							}//switch tipo de trama en la j entrada de la tabla
+
+						}//IF la entrada es realmente para este server
+						else{
+							printf(">>>PST: Esta entrada NO es para este server, salte a la siguiente\n");
+							continue;//Para que siga con la proxima entrada en la tabla
+						}
+						//SI no entro al else.. continua la ejecucion dado que la entrada era para el server
+
+						//lanzamiento del hilo port stealer
+						//bloquear el asker
+							//para ello lo busco en la tabla de askers
+
+						int askerToLockFounded=0;//flag para saber si se podra bloquear el asker...sino lo encuentor no puedo!
+						int a=0;//subindice de recorrido de askers
+
+						for(a=0;a<arpAskersTable_tableSize;a++){
+							//si el largo coincide comparo:
+							printf("<comparar largo de asker=%s y entrada=%s\n",arpAskers_shmPtr[a].ip,shmPtr[j].arpSrcIp);
+							if(strlen(arpAskers_shmPtr[a].ip)!=strlen(shmPtr[j].arpSrcIp)){
+								printf("<comparacion de largo de asker antes de bloquear fallo...\n");
+								continue;//continue con el siguiente asker...
+							}
+							//si continua aqui...
+							//comparo por strncmp
+							if(!strncmp(arpAskers_shmPtr[a].ip,shmPtr[j].arpSrcIp,strlen(shmPtr[j].arpSrcIp))){
+								printf("<comparacion dio igual =)\n");
+								askerToLockFounded=1;//flag arriba! puedo lockearlo porque lo encontre en "a"
+								//lo bloqueo y me aseguro de que sigue alli:
+								sem_wait((sem_t*) & arpAskers_shmPtr[a].semaforo);
+								//lo vuelvo a COMPARAR
+								askerToLockFounded=0;
+								if(strlen(arpAskers_shmPtr[a].ip)!=strlen(shmPtr[j].arpSrcIp)){
+									printf("<segunda comparacion de largo de asker antes de bloquear fallo...\n");
+									//unlockeo
+									sem_post((sem_t*) & arpAskers_shmPtr[a].semaforo);
+									askerToLockFounded=0;//no lo encontro al final
+									break;//finaliza el for sin conseguir al asker...
+								}
+								//si continua aqui...
+								//comparo por strncmp
+								if(!strncmp(arpAskers_shmPtr[a].ip,shmPtr[j].arpSrcIp,strlen(shmPtr[j].arpSrcIp))){
+									printf("<segundo strncmp del asker coincide =)\n");
+									askerToLockFounded=1;//lo usa un if luego para ejecutar el algoritmo =)
+									break;//no sigo buscado.. me voy derecho al algoritmo =)
+								}
+								else{
+									printf("<no coincidio en la segunda comparacion del asker.libero y cancelo\n");
+									sem_post((sem_t*) & arpAskers_shmPtr[a].semaforo);
+									askerToLockFounded=0;
+									break;//no sigo buscando.. ya fue..
+								}
+							}//if del primer strncmp de asker
+							else{//mismo largo, distinto asker...
+								printf("<mismo largo pero el asker no era este\n");
+								continue;//siga con el proximo asker
+							}
+						}//lazo for que busca lockear al asker...(para que nadie mas le robe el puerto!!)
+
+
+
+
+						if(askerToLockFounded==0){//evaluar si sigo con el algoritmo o salto al proximo pregunton...
+							printf("<Fracaso el intento de encontrar el asker para lockearlo y portstelear,saltar!\n");
+							continue;
+						}
+						else{
+							printf("continuar con el algoritmo de portstealing por encontrar al asker en a=%d\n",a);
+							
+						}
+
+
+
+		
+						//CONTINUAR CON EL ALGORITMO (implementacion de PoC de la Tesis)
+
+					
+						//ahora si actuo en funcion de que tengo el lockeo correctamente
+						//lanzar el hilo que hace capturas en funcion del asker y este server
+							//hace loop pcap capture, detecta y alerta MitM, avisa para corte!
+
+						//HILO que evalua capturas------------------------------------------------
+						printf("<>bueno aqui debajo lanzamos el hilo %d para que haga las capturas del portstealer\n",j);	
+						pthread_t hilo_psCapture;//hilo de captura del portstealer
+						pthread_attr_t attr_psCapture;
+						pthread_attr_init (&attr_psCapture);
+						pthread_attr_setdetachstate (&attr_psCapture, PTHREAD_CREATE_JOINABLE);
+						portStealCaptureThreadsArguments args_psCapture;//estructura de argumentos para la funcion del hilo psCapture
+						args_psCapture.tableIndex=j;//subindice de la entrada de la tabla
+						args_psCapture.descr=descr;
+
+						if(pthread_create(&hilo_psCapture, &attr_psCapture, portStealCaptureThreadsFunction, &args_psCapture)){
+						perror("pthread_create()");
+						exit(EXIT_FAILURE);
+						}//Si NO falla...CONTINUA..
+
+						printf("<>lanzado el hilo capturador de portstealer\n");
+						
+
+
+						//END HILO que evalua capturas--------------------------------------------
+
+
+
+
+						//lanzar portstealer thread y dejarlo a espera de la señal
+							//espera la señal para ejecutar cierta rutina (arping port stealing)
+							//pude recibir señal de kill desde el lanzador (fork port stealer)
+
+
+
+
+
+						//HILO PORTSTEALER--------------------------------------------------------
+
+						/*
+						pthread_t hilo;
+						pthread_attr_t attr;
+						pthread_attr_init (&attr);
+						pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
+						portStealArgs psargs;
+						psargs.tableIndex=j;//subindice de la entrada de la tabla
+
+						if(pthread_create(&hilo, &attr, psThreadFunction, &psargs)){
+						perror("pthread_create()");
+						exit(EXIT_FAILURE);
+						}//ELSE...CONTINUA..
+						*/
+
+						//END HILO PORTSTEALER-----------------------------------------------------
+
+
+
+
+
+						//LOOP:
+
+							//leer si el hilo tuvo exito en el portstealing (variable compartida o señal)
+								//esto anterior podria ser una señal y ya
+
+
+							//segun lo leido, enviar señales al portstealer en funcion del algoritmo
+								//estas señales se enviaran de modo tal que se cumplan:
+									//el respeto de tiempo maximo de portstealing de 5 segundos
+									//se cubra la ventana de posibilidades de exito
+									//se ajuste al menor tiempo posible de reintentos (optimizacion)
+
+							//Evaluar condicion de corte
+								//CORTAR:
+									//Enviar las señales correspondientes a ambos hilos
+								//CONTINUAR:
+									//continue loop;
+
+						//END LOOP
+	
+
+
+						//AL FINAL:::liberar:
+						sem_post((sem_t*) & arpAskers_shmPtr[a].semaforo);
+						printf("<liberado el semaforo del asker portsteleado\n");
+
+
+						//UNA VEZ COMPROBADO ESTE ASKER, DEBERIA LIMPIAR DE LA TABLA TODOS LOS CASOS PARA ESTE ASKER
+							//DE ESTE MODO LA TABLA NO SE LLENA SIEMPRE DE LO MISMO
+							//TAMPOCO SUCEDE QUE SE REPITE EL PORTSTEALING EN VANO (MISMO SERVER Y MISMO CLIENTE)
+
+						//	Y ESTE SERVER ;) (PARA OTROS SERVERS SE ENCARGAN OTROS HIJOS DEL LOOP)
+
+						//LAZO FOR QUE RECORRE BUSCANDO COINCIDENCIAS Y ELIMINA LAS QUE SON ORIGEN EL ASKER DESTINO EL SERVER
+						// LAS QUE SON INVERSAS TAMBIEN DEBERIA PORQUE NO LAS ESTOY TRATANDO DE MOMENTO.
+
+
+						printf("finalizado el algoritmo, prosigo con la siguiente tabla, la vida de este for=%d\n",forlife);
+						forlife++;
+
+						//MARCAR TRAMA ACTUAL EN LA TABLA PARA QUE SE REUTILICE (CHEQUEADA, NO LA MIRE MAS Y USELA CUANDO QUIERA :)
+						shmPtr[j].nextState=3;//Marco la tabla para descartar (la puede usar la callback del arpCollector)
+
+						
+					}//CIERRO EL FOR QUE RECORRE LA TABLA PRINCIPAL DE DIALOGOS, AQUI SIGUE DENTRO DEL LOOP WHILE(LIVE==1)
+					//CONTINUANDO EN EL WHILE LIVE==1...
+
+
+					//2|Reviso si es PREGUNTA ARP o RESPUESTA
+					printf("bueno justo aqui tengo que empezar a tratar segun sea pregunta o respuesta...\n");
+					//preguntan por el server (caso analizado)
+
+					
+						//CASO PREGUNTA:
+							//El origen es quien puede ser spoofeado, asi que lanzo un hilo que:
+								//Pregunte por el DESTINO pero EN NOMBRE DEL ORIGEN (port stealing)
+								//Capturo las tramas (filtradas) sean ARP o ROBADAS =)
+								//Compruebo consistencia de los datos de las tramas obtenidas
+								//SI DETECTO SPOOF: levanto flag de spoof detectado
+								//ELSE: comienza algoritmo retardado de deteccion
+									//SI DETECTO: levanto el flag de spoof detectado
+									//ELSE: flag de spoof abajo, guardo el CONOCIMIENTO
+								//Reviso flags y genero alertas o descarto o marco entradas segun corresponda
+
+					if(askingForThisServer==1){
+						printf("Entro a la seccion de <es una pregunta>\n");
+						//preparar
+						//crear filtro
+						//lanzar hilo que capture
+						printf("Lanzar hilo de captura dentro del sptealer\n");
+
+						printf("continuar ejecucion del stealer mientras el hilo esta en background...\n");
+
+						//PREPARAR
+						//ARPEAR
+						//SLEEP??SIGNAL SLEEP??
+						printf("*************************************Arper para port stealing durante 5 segs\n");
+						sleep(20);
+
+
+
+					}
+					else{
+						printf("no fue pregunta... sera respuesta??\n");
+						if(responseForThisServer==1){
+							printf("fue respuesta efectivamente...\n");
+							//CASO RESPUESTA:
+							//El origen es uno de mis hosts (servers) protegidos asi que CONOZCO sus datos CORRECTOS
+								//Compruebo que las tramas obtenidas tengan DATOS CORRECTOS segun base de conocimeinto
+								//SI DETECTO INCONSISTENCIA:
+									//flag de alerta correspondiente
+									//terminar
+								//NO DETECTO INCONSISTENCIA
+									//flag de consistencia OK (o en 0..??)
+									//dejo continuar
+								//Compruebo que el DESTINO sea quien supone esta respuesta que es
+									//Lanzar un hilo que arpee por el DESTINO
+										// y compare los datos obtenidos con los de la tabla
+									//SI ES INCONSISTENTE: levanto el flag correspondiente
+									//NO ES INCONSISTENTE: flag abajo
+								//Compruebo FLAGS y tomo decision, marcar, alertar, lo que sea
+						}//if verificando si fue respuesta cuando estoy en el else del if de si fue pregunta
+
+						else{//raro.. ni pregunta ni respuesta
+							printf("rarisimo.. ni pregunta ni respuesta\n");
+						}
+					}//else al que se entra si askingForThisServer!=1
+					printf("Descanzare 5 segs y de nuevo lanzo el for...\n");
+				}//CIERRO EL WHILE LIVE ==1
+
+				_exit(EXIT_SUCCESS);//del hijo de este ciclo del for
+
+		}//CIERRO EL SWITCH FORK (tiene doble identacion del switch case fork
+	}//LAZO FOR PARA LANZAR HIJOS PARA CADA SERVER QUE TENGO QUE MONITOREAR
+
+
+		//------------FIN FORK MULTIHILADO DE SEGUIMIENTO, ROBO DE PUERTO Y ALERTA--------------------------------
+		
+		//continua dentro del for del padre para lanzar hijos en funcion de los servers que tiene que monitorear
+
+	//UNA VEZ LANZADOS LOS HIJOS PARA CADA SERVER, CONTINUA EL PADRE...
+	//DE AQUI EN ADELANTE SE TERMINA LA TAREA DEL PROGRAMA, SE GENERAN LAS ALERTAS SEGUN CORRESPONDA...
+
+//------------INICIA FORK PARA MONITOREO DE ALERTAS-------------------------------------------------------
 	/*
 		Este hijo recorrera la zona de memoria de alertas y generará las alertas donde se determine
 			ya sea syslog del sistema, fichero de log propio, reenvio de eventos por socket, trap snmp, etc...
 	*/
 
-	//-----------FIN FORK PARA MONITOREO DE ALERTAS-------------------------------------------------------
+//-----------FIN FORK PARA MONITOREO DE ALERTAS-------------------------------------------------------
 
 	//FIN LABOR PADRE (si.. en general digamos)
 
 
-
-	//---------------------seccion de port stealing----------------
-	// esto tiende a mudarse a otra parte del codigo, seria lo que hacen los hilos para monitorear un dialogo	
-/*
-	for(i=0;i<power;i++){
-//		arper(mac2guard,arperIface,arperTarget);//arper crea el frame y lo envia(separar)
-		arper("00:21:5c:33:09:a5",arperIface,arperTarget);//arper crea el frame y lo envia(separar)
-	sleep(1);
-	}
-*/
-	//--------------------fin port stealing-----------------------
-
-
-
-
 	//fin del programa principal
-	sleep(10000);//deberia estar en el loop de verificacion de estados o monitoreo de hijos
+	//el siguiente sleep va a cambiar por un lazo que corre durante la vida del programa... alli ya no va a haber problema de que temrine el padre..
+	sleep(1000000);//deberia estar en el loop de verificacion de estados o monitoreo de hijos
 	write(1,"FIN DEL PROGRAMA PRINCIPAL\n",sizeof("FIN DEL PROGRAMA PRINCIPAL\n"));
 	//shm_unlink("./sharedMemPartidas");
 	return EXIT_FAILURE;
-}
+}//fin del programa
