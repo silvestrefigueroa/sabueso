@@ -1,0 +1,3 @@
+struct arpCollectorArgumentsStruct{
+	int* shmPtr;
+};
