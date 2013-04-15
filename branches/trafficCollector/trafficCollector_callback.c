@@ -1,4 +1,4 @@
-//Icludes del arpCollector.c
+//Icludes del trafficCollector.c
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,7 +20,7 @@
 #include <semaphore.h>
 
 //include de la estructura de argumentos
-#include "arpCollector_callbackArguments.h"
+#include "trafficCollector_callbackArguments.h"
 
 //Include de la estructura arpDialog
 #include "arpDialogStruct.h"
@@ -30,7 +30,7 @@
 
 
 //Callback starts here!!
-void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,const u_char* packet){
+void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pkthdr,const u_char* packet){
 	static int count = 1;
 
 	//bufers para las reentrante de ether e inet
@@ -70,7 +70,7 @@ void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,con
 	ethSrcMac=ether_ntoa_r( ((const struct ether_addr*) eptr->ether_shost), ethSrcMacBuf);
 	ethDstMac=ether_ntoa_r( ((const struct ether_addr*) eptr->ether_dhost), ethDstMacBuf);
 
-	//ahora examino datos del payload de la trama ethernet (en este caso es ARP si o si por el filtro del arpCollector)
+	//ahora examino datos del payload de la trama ethernet (en este caso es ARP si o si por el filtro del trafficCollector)
 	//compruebo que sea ARP
 	if(ntohs(eptr->ether_type)!=ETHERTYPE_ARP){
 		printf("No viaja ARP sobre esta trama (aunque ya esta filtrada...)\n");

@@ -1,3 +1,3 @@
-struct arpCollectorArgumentsStruct{
+struct trafficCollectorArgumentsStruct{
 	int* shmPtr;
 };

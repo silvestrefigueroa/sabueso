@@ -9,4 +9,4 @@ typedef struct {
 	arpAsker* arpAskers_shmPtr;//puntero al array (tabla) de arpAsker -> la tabla arpAskersTable[]
 	int arpAskers_tableSize;
 	int fdPipe[2];
-}arpCCArgs;//arpCollectorCallbackArguments
+}trafficCCArgs;//arpCollectorCallbackArguments
