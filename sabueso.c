@@ -21,7 +21,7 @@
 //#include "splitter.h" //LO SAQUE POR DESUSO Y PARA LIMPIAR UN POCO DE CODIGO
 #include "arpDialogStruct.h"
 //#include "arpAskerStruct.h"
-#include "arpCollector_callback.h"
+#include "trafficCollector_callback.h"
 #include "callbackArgs.h"
 
 //#include "arpDialoguesTableManager.h"//se removio de este branche.. tarde pero se removio
@@ -34,7 +34,7 @@
 //MACROS DE ARGS
 #define TABLE_SIZE 4
 
-//Icludes del arpCollector.c
+//Icludes del trafficCollector.c
 //#include <unistd.h>
 //#include <stdio.h>
 //#include <stdlib.h>
@@ -364,7 +364,7 @@ int main(int argc, char *argv[]){
 			perror("fork()");
 			_exit(EXIT_FAILURE);
 		case 0:
-			//Proceso arpCollector.c
+			//Proceso trafficCollector.c
 			puts("\n-------------------------");
 			puts("soy el HIJO recolector de mensajes ARP iniciando...\n");
 	
@@ -373,7 +373,7 @@ int main(int argc, char *argv[]){
 			net=NULL;
 			mask=NULL;
 			//Argumentos para la funcion callback
-			arpCCArgs conf[2] = {
+			trafficCCArgs conf[2] = {
 			//	{0, "foo",shmPtr,arpAskers_shmPtr},
 				{tableSize, "Argumentos",shmPtr,arpAskers_shmPtr,arpAskersTable_tableSize}
 			};
@@ -381,7 +381,7 @@ int main(int argc, char *argv[]){
 			conf[0].fdPipe[0]=fdPipe[0];
 			conf[0].fdPipe[1]=fdPipe[1];
 			//El bucle de captura lo armo con variables que el padre ya preparo antes cuando hizo el check de la netmask
-			pcap_loop(descr,-1,(pcap_handler)arpCollector_callback,(u_char*) conf);
+			pcap_loop(descr,-1,(pcap_handler)trafficCollector_callback,(u_char*) conf);
 			_exit(EXIT_SUCCESS);
 	}//FIN DEL FORK PARA ARPCOLLECTOR
 
@@ -732,7 +732,7 @@ int main(int argc, char *argv[]){
 						forlife++;
 
 						//MARCAR TRAMA ACTUAL EN LA TABLA PARA QUE SE REUTILICE (CHEQUEADA, NO LA MIRE MAS Y USELA CUANDO QUIERA :)
-						shmPtr[j].nextState=3;//Marco la tabla para descartar (la puede usar la callback del arpCollector)
+						shmPtr[j].nextState=3;//Marco la tabla para descartar (la puede usar la callback del trafficCollector)
 
 						
 					}//CIERRO EL FOR QUE RECORRE LA TABLA PRINCIPAL DE DIALOGOS, AQUI SIGUE DENTRO DEL LOOP WHILE(LIVE==1)
