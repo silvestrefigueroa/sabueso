@@ -24,10 +24,6 @@
 #include "arpCollector_callback.h"
 #include "callbackArgs.h"
 
-//Includes para el port stealer
-//#include "portStealCaptureThreadsArguments.h"
-#include "portStealCaptureThreadsFunction.c"
-
 //#include "arpDialoguesTableManager.h"//se removio de este branche.. tarde pero se removio
 //#include "arpDialoguesTableManagerArguments.h" //y si.. tambien se removio este por supuesto
 //#include "arpDTMWorker_arguments_struct.h"
@@ -656,21 +652,7 @@ int main(int argc, char *argv[]){
 							//hace loop pcap capture, detecta y alerta MitM, avisa para corte!
 
 						//HILO que evalua capturas------------------------------------------------
-						printf("<>bueno aqui debajo lanzamos el hilo %d para que haga las capturas del portstealer\n",j);	
-						pthread_t hilo_psCapture;//hilo de captura del portstealer
-						pthread_attr_t attr_psCapture;
-						pthread_attr_init (&attr_psCapture);
-						pthread_attr_setdetachstate (&attr_psCapture, PTHREAD_CREATE_JOINABLE);
-						portStealCaptureThreadsArguments args_psCapture;//estructura de argumentos para la funcion del hilo psCapture
-						args_psCapture.tableIndex=j;//subindice de la entrada de la tabla
-						args_psCapture.descr=descr;
-
-						if(pthread_create(&hilo_psCapture, &attr_psCapture, portStealCaptureThreadsFunction, &args_psCapture)){
-						perror("pthread_create()");
-						exit(EXIT_FAILURE);
-						}//Si NO falla...CONTINUA..
-
-						printf("<>lanzado el hilo capturador de portstealer\n");
+						printf("<>Aqui se lanzaria el hilo de portstealer capture pero lo hace el trafficCollector (ex arpCollctor\n");
 						
 
 
