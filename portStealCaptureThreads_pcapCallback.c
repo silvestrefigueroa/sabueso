@@ -20,7 +20,7 @@
 #include <semaphore.h>
 
 //include de la estructura de argumentos
-#include "arpCollector_callbackArguments.h"
+#include "portStealCaptureThreads_pcapCallbackArguments.c"
 
 //Include de la estructura arpDialog
 #include "arpDialogStruct.h"
@@ -30,7 +30,12 @@
 
 
 //Callback starts here!!
-void arpCollector_callback(arpCCArgs args[],const struct pcap_pkthdr* pkthdr,const u_char* packet){
+void portStealCaptureThreads_pcapCallback(portSCT_pcapCallbackArgs args[],const struct pcap_pkthdr* pkthdr,const u_char* packet){
+
+	printf("le sanzo este otro callback!!!\n");
+	return;
+
+
 	static int count = 1;
 
 	//bufers para las reentrante de ether e inet
