@@ -5,5 +5,7 @@ typedef struct {
         int tableIndex;
 	pcap_t* descr;//descriptor de la captura
         struct bpf_program fp;//aca se guardara el programa compilado de filtrado
+	bpf_u_int32 netp;//direccion de red
+	int tableSize;
 	//otros atributos de la estructura
 }portStealCaptureThreadsArguments;//arpCollectorCallbackArguments
