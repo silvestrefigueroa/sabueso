@@ -108,45 +108,45 @@ int main(int argc, char *argv[]){
                 char *mac;
                 char *ip;
 		char *serverName;
-                int serviceType;//0 http,1 rdp
-        }server2guard;
+                int tos;//0 http,1 rdp
+        }_server2guard;
 
-	server2guard servers2guard[serversQuantity];//array de servers
+	_server2guard _servers2guard[serversQuantity];//array de servers
 
 	//inicializar array de struct:
 	for(i=0;i<serversQuantity;i++){
-		servers2guard[i].mac=NULL;
-		servers2guard[i].ip=NULL;
-		servers2guard[i].serviceType=0;
-		servers2guard[i].serverName=NULL;
+		_servers2guard[i].mac=NULL;
+		_servers2guard[i].ip=NULL;
+		_servers2guard[i].tos=0;
+		_servers2guard[i].serverName=NULL;
 	}
 	//invento hosts
 
-	servers2guard[2].mac="aa:bb:cc:dd:ee:f";
-	servers2guard[2].ip="192.168.1.121";
-	servers2guard[2].serviceType=0;
-	servers2guard[2].serverName="server-121";
+	_servers2guard[2].mac="aa:bb:cc:dd:ee:f";
+	_servers2guard[2].ip="192.168.1.121";
+	_servers2guard[2].tos=0;
+	_servers2guard[2].serverName="server-121";
 	
 
-	servers2guard[1].mac="12:43:56:a:a:2";
-	servers2guard[1].ip="192.168.1.126";
-	servers2guard[1].serviceType=0;
-	servers2guard[1].serverName="server-126";
+	_servers2guard[1].mac="12:43:56:a:a:2";
+	_servers2guard[1].ip="192.168.1.126";
+	_servers2guard[1].tos=0;
+	_servers2guard[1].serverName="server-126";
 
-	servers2guard[4].mac="5c:d9:98:2c:0f:bb";
-	servers2guard[4].ip="192.168.1.19";
-	servers2guard[4].serviceType=0;
-	servers2guard[4].serverName="otroooo-19";
+	_servers2guard[4].mac="5c:d9:98:2c:0f:bb";
+	_servers2guard[4].ip="192.168.1.19";
+	_servers2guard[4].tos=0;
+	_servers2guard[4].serverName="otroooo-19";
 
-	servers2guard[0].mac="5c:d9:98:2c:f:b6";//seria 5c:d9:98:2c:0f:b6
-	servers2guard[0].ip="192.168.1.1";
-	servers2guard[0].serviceType=0;
-	servers2guard[0].serverName="dd-wrt";
+	_servers2guard[0].mac="5c:d9:98:2c:f:b6";//seria 5c:d9:98:2c:0f:b6
+	_servers2guard[0].ip="192.168.1.1";
+	_servers2guard[0].tos=0;
+	_servers2guard[0].serverName="dd-wrt";
 
-	servers2guard[3].mac="00:21:5c:33:09:a5";
-	servers2guard[3].ip="192.168.1.100";
-	servers2guard[3].serviceType=0;
-	servers2guard[3].serverName="Thinkpad-100-myself";
+	_servers2guard[3].mac="00:21:5c:33:09:a5";
+	_servers2guard[3].ip="192.168.1.100";
+	_servers2guard[3].tos=0;
+	_servers2guard[3].serverName="Thinkpad-100-myself";
 
 
 	int j=0;//otro subindice
@@ -216,11 +216,11 @@ int main(int argc, char *argv[]){
 	memset(filter,0,filterLen);//inicializo
 	//ejemplo: dst host 192.168.1.1 or 192.168.1.100
 	strcpy(filter,"host ");
-	strcpy(filter+strlen(filter),servers2guard[0].ip);//a manopla para plantarle sin el | del lazo for (comodidad ??)
+	strcpy(filter+strlen(filter),_servers2guard[0].ip);//a manopla para plantarle sin el | del lazo for (comodidad ??)
 
 	for(i=1;i<serversQuantity;i++){
 		strcpy(filter+strlen(filter)," or ");
-		strcpy(filter+strlen(filter),servers2guard[i].ip);
+		strcpy(filter+strlen(filter),_servers2guard[i].ip);
 	}
 
 	printf("::::el filtro quedo %s \n",filter);
@@ -312,6 +312,61 @@ int main(int argc, char *argv[]){
 	//vida de los hijos
 //	int live=1;//Mas abajo se explica, es para no poner un while true.. ademas me permite INTERRUMPIR la ejecucion
 
+	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla
+
+
+
+	//-------------------------------------------------------------------------------------------------------------------------------------------
+
+	//INICIA CREACION DE TABLA DE SERVERS2GUARD EN MEMORIA COMPARTIDA
+
+	//Crear zona de memoria compartida para alojar la estructura (o.. array de estructuras)
+
+	//puntero a la memoria compartida
+	server2guardStruct *servers2guard_shmPtr=NULL;//le tuve que agregar Struct para mantener el array server2guard que tengo con anterioridad
+
+
+	//descriptor de la memoria compartida
+//	int arpAskers_fdshm;
+	int servers2guard_fdshm;
+	
+	//sharedMem
+	int servers2guardTable_tableSize=serversQuantity;//calculado dinamicamente con anterioridad ;););)
+	//malloqueo para el puntero de la shm
+//	arpAskers_shmPtr = (arpAsker *)malloc(sizeof(arpAsker)*arpAskersTable_tableSize);
+	servers2guard_shmPtr=(server2guardStruct *)malloc(sizeof(server2guardStruct)*servers2guardTable_tableSize);
+
+	server2guardStruct servers2guardTable[servers2guardTable_tableSize];
+	//inicializacion:
+	for(subindexCounterId=0;subindexCounterId<servers2guardTable_tableSize;subindexCounterId++){
+		memset(servers2guardTable[subindexCounterId].mac,0,40);
+		memset(servers2guardTable[subindexCounterId].ip,0,40);
+		memset(servers2guardTable[subindexCounterId].serverName,0,30);
+		servers2guardTable[subindexCounterId].tos=99;//Type of Service
+	}//inicializadas las entradas de la tabla, paso a confeccionar la Memoria Compartida
+	//SHAREDMEM servers2guardTable
+	if(((servers2guard_fdshm=shm_open("/sharedMemServers", O_RDWR|O_CREAT, 0666))<0)){//CONSULTAR: que hace aca?!?!?!?
+		perror("shm_open()");
+		exit(EXIT_FAILURE);
+	}
+	//lo escribo en blanco
+	if(!(write(servers2guard_fdshm,&servers2guardTable,sizeof(servers2guardTable)))){
+	perror("write()");
+	exit(EXIT_FAILURE);
+	}
+	//mmap:
+	if(!(servers2guard_shmPtr=mmap(NULL, sizeof(server2guardStruct)*servers2guardTable_tableSize, PROT_READ|PROT_WRITE, MAP_SHARED, servers2guard_fdshm, 0))){
+		perror("mmap()");
+		exit(EXIT_FAILURE);
+	}
+	//la truncada de suerte!!:
+	ftruncate(servers2guard_fdshm, sizeof(server2guardStruct)*servers2guardTable_tableSize);
+	close(servers2guard_fdshm);
+
+	//FINALIZA LA CREACION DE TABLA DE SERVERS2GUARD EN MEMORIA COMPARTIDA
+
+
+	//----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 	//INICIA CREACION DE TABLA DE DIALOGOS
@@ -323,7 +378,7 @@ int main(int argc, char *argv[]){
 	//descriptor de la memoria compartida
 	int fdshm;
 	//sharedMem
-	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla
+//	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla
 //	int tableSize=(arpAskersTable_tableSize*arpAskersTable_tableSize)/2;//maximo de preguntas ARp permitidas por el tamaño de la red
 	int tableSize=TABLE_SIZE;
 	//malloqueo para el puntero de la shm
@@ -433,12 +488,6 @@ int main(int argc, char *argv[]){
 	/*
 		En este punto definire los PIPES, semaforos, etc...
 	*/
-	//defino el PIPE que voy a utilizar con el HIJO multihilado que chekea la informacion ANTES de guardarla
-	int fdPipe[2];
-        if(pipe(fdPipe)==-1){
-                perror("Problema con el pipe");
-                exit(EXIT_FAILURE);
-        }
 //------------FIN DEFINICION DE ELEMENTOS DE IPC, CONCURRENCIA Y EXCLUSION----------------
 
 
@@ -459,11 +508,10 @@ int main(int argc, char *argv[]){
 			//Argumentos para la funcion callback
 			trafficCCArgs conf[2] = {
 			//	{0, "foo",shmPtr,arpAskers_shmPtr},
+//				{tableSize, "Argumentos",shmPtr,arpAskers_shmPtr,arpAskersTable_tableSize,servers2guard_shmPtr,servers2guardTable_tableSize}
 				{tableSize, "Argumentos",shmPtr,arpAskers_shmPtr,arpAskersTable_tableSize}
+
 			};
-			//le paso los descriptores del PIPE
-			conf[0].fdPipe[0]=fdPipe[0];
-			conf[0].fdPipe[1]=fdPipe[1];
 			//El bucle de captura lo armo con variables que el padre ya preparo antes cuando hizo el check de la netmask
 			pcap_loop(descr,-1,(pcap_handler)trafficCollector_callback,(u_char*) conf);
 			_exit(EXIT_SUCCESS);
@@ -503,7 +551,7 @@ int main(int argc, char *argv[]){
 				_exit(EXIT_FAILURE);
 			case 0:
 				sleep(5);
-				printf("soy el HIJO PORT STEALER del server: %s\n",(servers2guard[i].serverName));
+				printf("soy el HIJO PORT STEALER del server: %s\n",(_servers2guard[i].serverName));
 				j=0;
 				c=0;
 //----------------------------------------
@@ -556,7 +604,7 @@ int main(int argc, char *argv[]){
 						}
 						else{//si no esta "vacia" (inicializada en realiadad.."
 							printf("<<Esta entrada no esta vacia!!! ahora va al if de si coincide con el server que cuido...\n");
-							printf("<<comparando i: %s con shmPtr: %s \n",servers2guard[i].ip,shmPtr[j].arpDstIp);
+							printf("<<comparando i: %s con shmPtr: %s \n",_servers2guard[i].ip,shmPtr[j].arpDstIp);
 						}
 						//continua aca porque no cayo en el if de si estaba inicializada
 
@@ -569,17 +617,17 @@ int main(int argc, char *argv[]){
 						//1.99 Si esta involucrado ESTE server:
 
 						//si es destino
-						printf("comparando i: %s con shmPtr: %s \n",servers2guard[i].ip,shmPtr[j].arpDstIp);
+						printf("comparando i: %s con shmPtr: %s \n",_servers2guard[i].ip,shmPtr[j].arpDstIp);
 						//PARCHE por largo..(antes de strncmp me fijo si tienen el mismo largo.. sino son distintas de una..
-						if(strlen(servers2guard[i].ip)!=strlen(shmPtr[j].arpDstIp)){//distinta logica, mismo metodo (strlen)
+						if(strlen(_servers2guard[i].ip)!=strlen(shmPtr[j].arpDstIp)){//distinta logica, mismo metodo (strlen)
 							printf(">> PST: NO tienen el mismo largo!! continue a la siguiente entrada...\n");
 							continue;//que no siga la ejecucion con esta entrada y pase derecho a la proxima
 						}
 						//Si sigo aca es porque tenian el mismo largo
 						printf(">> PST: SI tienen el mismo largo, ahora evaluo si son iguales (es decir, si es de este server)\n");
 						
-						if(!strncmp(servers2guard[i].ip,shmPtr[j].arpDstIp,strlen(shmPtr[j].arpDstIp))){//ip es del server i
-							printf(">>>PST: (eran iguales) Entrada esta destinada al server %s\n",(servers2guard[i].serverName));
+						if(!strncmp(_servers2guard[i].ip,shmPtr[j].arpDstIp,strlen(shmPtr[j].arpDstIp))){//ip es del server i
+							printf(">>>PST: (eran iguales) Entrada esta destinada al server %s\n",(_servers2guard[i].serverName));
 							//evaluo si es pregunta o respuesta
 							switch(shmPtr[j].type==0){
 								case 0:
