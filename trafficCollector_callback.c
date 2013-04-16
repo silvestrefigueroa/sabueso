@@ -28,6 +28,19 @@
 #define TABLE_SIZE args[0].tableSize//TAMAÑO DE LA TABLA DE DIALOGOS
 #define ARPASKERS_TABLE_SIZE args[0].arpAskers_tableSize//TAMAÑO DE LA TABLA DE ASKERS
 
+/*
+	Esta funcion se encarga de 2 cosas fundamentales:
+		1) monitorear trafico arp, para determinar dialogos entre equipos de la red (en caso de gratuito arp comprobar si es del atacante)
+		2) validar el trafico no arp, con el objeto de comprobar un ataque MitM
+			esta ultima funcionalidad se añadio a partir del renombrado de arpCollector a trafficCollecotor
+			la idea es simplificar el desarrollo asumiendo el coste de perfomance y diseño
+*/
+
+
+
+
+
+
 
 //Callback starts here!!
 void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pkthdr,const u_char* packet){
@@ -72,10 +85,24 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 
 	//ahora examino datos del payload de la trama ethernet (en este caso es ARP si o si por el filtro del trafficCollector)
 	//compruebo que sea ARP
-	if(ntohs(eptr->ether_type)!=ETHERTYPE_ARP){
-		printf("No viaja ARP sobre esta trama (aunque ya esta filtrada...)\n");
+	if(ntohs(eptr->ether_type)!=ETHERTYPE_ARP){//NO ES ARP
+		printf("{====================================== NO viaja ARP sobre esta trama (debido al nuevo trafficCollecor!!!)\n");
+		//aqui se trata el trafico que NO es arp
+
+		//bueno aqui con comparar el sender de la trama con la informacion que tengo de los servers2guard me alcanza para detectar al spoofer =)
+		//BUSCAR EN LA TABLA DE SERVERS2GUARD ALGUNA ENTRADA QUE TENGA IP = A LA IP DEL SENDER
+		//COMPARAR LAS MAC
+			//SI DA DISTINTO, ALERTAR EL SPOOFING
+			//SI ES EL MISMO, PASAR POR ALTO (TRAFICO NORMAL)
+		//REIRSE PORQUE ES ASI DE FACIL =)
+
+
+
 	}
-	else{
+	else{//ES ARP
+		printf("{++++++++++++++++++++++++++++++++++++++TENEMOS ARP sobre esta trama\n");
+
+		//aqui se trata el trafico que SI es arp (preguntas y respuestas para dialogos como para deteccion de spoofer (esto ultimo no implentado aun)
 		struct ether_arp *arpPtr;
 		//ahora posiciono el puntero en el primer byte(es decir con un offset de size of ether header)
 		arpPtr =(struct ether_arp*)(packet+sizeof(struct ether_header));//o lo que es lo mismo packet+14;

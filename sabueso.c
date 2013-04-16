@@ -97,6 +97,65 @@ int main(int argc, char *argv[]){
 		return -1;
 	int i=0;//indice utilizando en los for...
 //------------INICIA ZONA DE CONTROL DE PARAMETROS DE APLICACION-----------------------------------------------//
+	//PARAMETROS DE LANZAMIENTO:
+
+	//----VOY A HARDCODEAR LOS PARAMETROS DE MOMENTO:
+
+	int serversQuantity=5;//cantidad de servers a cuidar
+
+	//Estructura de datos de argumentos del programa principal
+	typedef struct{ 
+                char *mac;
+                char *ip;
+		char *serverName;
+                int serviceType;//0 http,1 rdp
+        }server2guard;
+
+	server2guard servers2guard[serversQuantity];//array de servers
+
+	//inicializar array de struct:
+	for(i=0;i<serversQuantity;i++){
+		servers2guard[i].mac=NULL;
+		servers2guard[i].ip=NULL;
+		servers2guard[i].serviceType=0;
+		servers2guard[i].serverName=NULL;
+	}
+	//invento hosts
+
+	servers2guard[2].mac="aa:bb:cc:dd:ee:f";
+	servers2guard[2].ip="192.168.1.121";
+	servers2guard[2].serviceType=0;
+	servers2guard[2].serverName="server-121";
+	
+
+	servers2guard[1].mac="12:43:56:a:a:2";
+	servers2guard[1].ip="192.168.1.126";
+	servers2guard[1].serviceType=0;
+	servers2guard[1].serverName="server-126";
+
+	servers2guard[4].mac="5c:d9:98:2c:0f:bb";
+	servers2guard[4].ip="192.168.1.19";
+	servers2guard[4].serviceType=0;
+	servers2guard[4].serverName="otroooo-19";
+
+	servers2guard[0].mac="5c:d9:98:2c:f:b6";//seria 5c:d9:98:2c:0f:b6
+	servers2guard[0].ip="192.168.1.1";
+	servers2guard[0].serviceType=0;
+	servers2guard[0].serverName="dd-wrt";
+
+	servers2guard[3].mac="00:21:5c:33:09:a5";
+	servers2guard[3].ip="192.168.1.100";
+	servers2guard[3].serviceType=0;
+	servers2guard[3].serverName="Thinkpad-100-myself";
+
+
+	int j=0;//otro subindice
+
+	int c=0;
+	int live=0;
+//	serversQuantity=1;
+
+
 
 	//PARAMETROS DE CAPTURA, DE PASO PREAPRA VARIABLES DE CAPTURA PARA EL PRIMER HIJO
 	//COmienza a preparar la captura...
@@ -142,8 +201,33 @@ int main(int argc, char *argv[]){
 		printf("pcap_open_live(): %s\n",errbuf);
 		exit(1);
 	}
-	//ahora compilo el programa de filtrado para hacer un filtro para ARP
-	if(pcap_compile(descr,&fp,"arp",0,netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
+
+
+
+
+
+	//ahora compilo el programa de filtrado para hacer un filtro para ARP o trafico supuestamente enviado por los servers2guard
+		//eso de supuestamente enviados se refiere a que me traigo las tramas que tienen ip origen la del los servers ;) asi que de ese modo
+			//voy a incluir las spoofeadas y las reales para luego evaluarlas desde el trafficCollector
+	//ARMAR FILTRO
+	int filterLen=4095;//el tamaño del filtro se calcula segun lo que se tenga para filtrar... pasa que depende de los servers2guard seteados
+	filterLen=16*serversQuantity+4;//ip+espacio de cada server mas "arp "
+	char filter[filterLen];
+	memset(filter,0,filterLen);//inicializo
+	//ejemplo: dst host 192.168.1.1 or 192.168.1.100
+	strcpy(filter,"host ");
+	strcpy(filter+strlen(filter),servers2guard[0].ip);//a manopla para plantarle sin el | del lazo for (comodidad ??)
+
+	for(i=1;i<serversQuantity;i++){
+		strcpy(filter+strlen(filter)," or ");
+		strcpy(filter+strlen(filter),servers2guard[i].ip);
+	}
+
+	printf("::::el filtro quedo %s \n",filter);
+//	return 0;
+
+	//COMPILAR FILTRO
+	if(pcap_compile(descr,&fp,filter,0,netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
 		fprintf(stderr,"Error compilando el filtro\n");
 		exit(1);
 	}
@@ -393,62 +477,6 @@ int main(int argc, char *argv[]){
 	//Recordemos que cada host que tenga interes en hablar con estos servers (que tienen informacion sensible) son
 	//posibles victimas de ataques arp spoofing.
 	//Ahora lo que voy a hacer, es por cada uno de los hosts a monitorear lanzar un HIJO con la funcion correspondiente.
-
-	//----VOY A HARDCODEAR LOS PARAMETROS DE MOMENTO:
-
-	int serversQuantity=5;//cantidad de servers a cuidar
-
-	//Estructura de datos de argumentos del programa principal
-	typedef struct{ 
-                char *mac;
-                char *ip;
-		char *serverName;
-                int serviceType;//0 http,1 rdp
-        }server2guard;
-
-	server2guard servers2guard[serversQuantity];//array de servers
-
-	//inicializar array de struct:
-	for(i=0;i<serversQuantity;i++){
-		servers2guard[i].mac=NULL;
-		servers2guard[i].ip=NULL;
-		servers2guard[i].serviceType=0;
-		servers2guard[i].serverName=NULL;
-	}
-	//invento hosts
-
-	servers2guard[2].mac="aa:bb:cc:dd:ee:f";
-	servers2guard[2].ip="192.168.1.121";
-	servers2guard[2].serviceType=0;
-	servers2guard[2].serverName="server-121";
-	
-
-	servers2guard[1].mac="12:43:56:a:a:2";
-	servers2guard[1].ip="192.168.1.126";
-	servers2guard[1].serviceType=0;
-	servers2guard[1].serverName="server-126";
-
-	servers2guard[4].mac="5c:d9:98:2c:0f:bb";
-	servers2guard[4].ip="192.168.1.19";
-	servers2guard[4].serviceType=0;
-	servers2guard[4].serverName="otroooo-19";
-
-	servers2guard[0].mac="5c:d9:98:2c:f:b6";//seria 5c:d9:98:2c:0f:b6
-	servers2guard[0].ip="192.168.1.1";
-	servers2guard[0].serviceType=0;
-	servers2guard[0].serverName="dd-wrt";
-
-	servers2guard[3].mac="00:21:5c:33:09:a5";
-	servers2guard[3].ip="192.168.1.100";
-	servers2guard[3].serviceType=0;
-	servers2guard[3].serverName="Thinkpad-100-myself";
-
-
-	int j=0;//otro subindice
-
-	int c=0;
-	int live=0;
-	serversQuantity=1;
 /*
 	while(1==1){
 		sleep(1);
