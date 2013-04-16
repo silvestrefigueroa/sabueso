@@ -344,6 +344,20 @@ int main(int argc, char *argv[]){
 		memset(servers2guardTable[subindexCounterId].serverName,0,30);
 		servers2guardTable[subindexCounterId].tos=99;//Type of Service
 	}//inicializadas las entradas de la tabla, paso a confeccionar la Memoria Compartida
+
+//VOY A SETEAR LA MEMORIA COMPARTIDA CON LOS MISMO DATOS QUE TENGO EN LA ESTRUCTURA (TEMPORAL, SOLO POR DEBUG, LUEGO SE GUARDARA TODO EN LA SHM DE UNA)
+
+	for(subindexCounterId=0;subindexCounterId<servers2guardTable_tableSize;subindexCounterId++){
+                strcpy(servers2guardTable[subindexCounterId].mac,_servers2guard[subindexCounterId].mac);
+                strcpy(servers2guardTable[subindexCounterId].ip,_servers2guard[subindexCounterId].ip);
+                strcpy(servers2guardTable[subindexCounterId].serverName,_servers2guard[subindexCounterId].serverName);
+                servers2guardTable[subindexCounterId].tos=_servers2guard[subindexCounterId].tos;//Type of Service
+        }
+
+
+
+
+
 	//SHAREDMEM servers2guardTable
 	if(((servers2guard_fdshm=shm_open("/sharedMemServers", O_RDWR|O_CREAT, 0666))<0)){//CONSULTAR: que hace aca?!?!?!?
 		perror("shm_open()");
@@ -364,6 +378,13 @@ int main(int argc, char *argv[]){
 	close(servers2guard_fdshm);
 
 	//FINALIZA LA CREACION DE TABLA DE SERVERS2GUARD EN MEMORIA COMPARTIDA
+
+	printf("me quedaron en la shm:\n");
+
+	for(subindexCounterId=0;subindexCounterId<servers2guardTable_tableSize;subindexCounterId++){
+		printf("%d ) server=%s ip=%s mac=%s\n",subindexCounterId,servers2guard_shmPtr[subindexCounterId].serverName,servers2guard_shmPtr[subindexCounterId].ip,servers2guard_shmPtr[subindexCounterId].mac);
+	}
+	sleep(5);
 
 
 	//----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -507,9 +528,8 @@ int main(int argc, char *argv[]){
 			mask=NULL;
 			//Argumentos para la funcion callback
 			trafficCCArgs conf[2] = {
-			//	{0, "foo",shmPtr,arpAskers_shmPtr},
-//				{tableSize, "Argumentos",shmPtr,arpAskers_shmPtr,arpAskersTable_tableSize,servers2guard_shmPtr,servers2guardTable_tableSize}
-				{tableSize, "Argumentos",shmPtr,arpAskers_shmPtr,arpAskersTable_tableSize}
+				{tableSize, "Argumentos",shmPtr,arpAskers_shmPtr,arpAskersTable_tableSize,servers2guard_shmPtr,servers2guardTable_tableSize}
+//				{tableSize, "Argumentos",shmPtr,arpAskers_shmPtr,arpAskersTable_tableSize}
 
 			};
 			//El bucle de captura lo armo con variables que el padre ya preparo antes cuando hizo el check de la netmask
