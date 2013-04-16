@@ -37,7 +37,10 @@
 */
 
 
+//LA SIGUIENTES MACROS SON PARA EVITAR CONFUCION, DADO QUE UTILICE LAS MISMAS VARIABLES PARA REFERIRME A LA IP ORIGEN Y DESTINO EN IP Y EN ARP
 
+#define IP_SRC "arpSrcIp"
+#define IP_DST "arpDstIp"
 
 
 
@@ -54,6 +57,10 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 	char arpDstMacBuf[20]={};
 	char arpSrcIpBuf[20]={};
 	char arpDstIpBuf[20]={};
+
+	//EN CASO DE NO SER ARP Y SER IP:
+	char ipSrcBuf[20]={};
+        char ipDstBuf[20]={};
 	
 	//los punteritos comodos ajaja
 	char* ethSrcMac=NULL;
@@ -63,7 +70,13 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 	char* arpSrcIp=NULL;
 	char* arpDstIp=NULL;
 
+	//EN CASO DE NO SER ARP Y SER IP:
+	char* ipSrc=NULL;
+        char* ipDst=NULL;
 
+
+	int i=0;//para lazos for, subindice
+	int offset=0;//desplazamiento para aritmetica de punteros en cabecera IP
 
 //	fflush(stdout);
 	
@@ -86,7 +99,7 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 	//ahora examino datos del payload de la trama ethernet (en este caso es ARP si o si por el filtro del trafficCollector)
 	//compruebo que sea ARP
 	if(ntohs(eptr->ether_type)!=ETHERTYPE_ARP){//NO ES ARP
-		printf("{====================================== NO viaja ARP sobre esta trama (debido al nuevo trafficCollecor!!!)\n");
+		printf("====================================== NO viaja ARP sobre esta trama (SE ANALIZARA EN BUSQUEDA DE SPOOFERS...)\n");
 		//aqui se trata el trafico que NO es arp
 
 		//bueno aqui con comparar el sender de la trama con la informacion que tengo de los servers2guard me alcanza para detectar al spoofer =)
@@ -95,12 +108,85 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 			//SI DA DISTINTO, ALERTAR EL SPOOFING
 			//SI ES EL MISMO, PASAR POR ALTO (TRAFICO NORMAL)
 		//REIRSE PORQUE ES ASI DE FACIL =)
+		printf("mostrando lo que tengo en la memoria compartida...\n");
+		for(i=0;i<args[0].servers2guardTable_tableSize;i++){
+			printf("server=%s ip=%s mac=%s\n",args[0].servers2guard_shmPtr[i].serverName,args[0].servers2guard_shmPtr[i].ip,args[0].servers2guard_shmPtr[i].mac);
+		}
+//		sleep(5);
+		//AHORA TENGO QUE OBTENER LA IP ORIGEN Y DESTINO DE LA CAPA DE INTERNET (IP O LAYER 3)
+		if(ETHERTYPE_IP != htons(eptr->ether_type)){
+			printf("Protocolo de capa de RED no soportado\n");
+			return;
+		}//si es que NO es IP
+		//SI ES IP..continua normalemnte
+
+		printf("tenemos cabeceras IP arriba de la trama....\n");
+//		sleep(5);
+		struct ip *iptr;
+		offset += sizeof(struct ether_header);
+		iptr = (struct ip *)(packet + offset);
+		offset += sizeof(struct ip);
+		printf("%s => ", inet_ntoa(iptr->ip_src));
+		printf("%s)", inet_ntoa(iptr->ip_dst));
+		printf("ya mostro lo que tenia....\n");
+//		sleep(10);
+
+		//AHORA almaceno en las variables correspondientes los valores de las ip origen y destino
+
+		 //utilizo las reentrantes:(los puse casteados a char* porque el compilador chillaba porq tenia const char*!!!!
+                ipSrc=(char *)inet_ntop(AF_INET,&(iptr->ip_src), ipSrcBuf, /*INET_ADDRSTRLEN*/ sizeof ipSrcBuf );
+                ipDst=(char *)inet_ntop(AF_INET,&(iptr->ip_dst), ipDstBuf, sizeof ipDstBuf );//NO ME ACUERDO BIEN EL TEMA DEL &(iptr-> cosas de tipos)
+		
+		
+		printf(".-.-.-.-.-.-.-.-.-entonces me ha quedado: IP_SRC= %s | IP_DST= %s \n",ipSrc,ipDst);
+
+		//UNA VEZ QUE TENGO LAS IP Y LAS MAC, PROCEDO A BUSCAR EN LA TABLA DE SERVERS LA IP Y SI LA ENCUENTRO COMPROBAR LA COINCIDENCIA DE LAS MAC
+		printf("buscando IP extraida en la tabla de servers...\n");		
+		int server2guardFound=0;//no encontrado por default
+		for(i=0;i<args[0].servers2guardTable_tableSize;i++){
+			//COMPARAR EL LARGO PRIMERO
+			if(strlen(args[0].servers2guard_shmPtr[i].ip)!=strlen(ipSrc)){
+				printf("la ip tiene distinto largo\n");
+				continue;//salto a la proxima entrada de la tabla
+			}//si no coincide el largo
+			else{//mismo largo...
+				if(!strncmp(args[0].servers2guard_shmPtr[i].ip,ipSrc,strlen(ipSrc))){
+					printf("Se encontro coincidencias entre la IP extraida de la trama y uno de los servers, el %d \n",i);
+					server2guardFound=1;
+					break;//rompo el lazo y continua adelante del lazo (me quedo i con el subindex del server;)
+				}
+				else{//Distintos
+					printf("tenia el mismo largo pero la ip extraida no era la misma que el server leido en %d \n",i);
+				}
+			}//cierro else que entra si tienen el mismo largo
+
+                }//continua aqui por el break
+		if(server2guardFound==0){//no se encontro el server y se termino el lazo
+			printf("destino desconocido...\n");
+			return;
+		}
+		//SINO..CONTINUA AQUI :=)
+
+		//comparo las MAC address:
+
+		if(ethSrcMac==args[0].servers2guard_shmPtr[i].mac){
+			printf("SPD: Tranquilo.... la mac es correcta.. el server no esta spoofeado...\n");
+			return;
+		}
+		else{
+			printf("SPD: SPOOFER DETECTADO!!!!!!\n");
+			return;
+		}
+		//EN AMBOS CASOS... SE INTERRUMPE LA EJECUCION AQUI MISMO...
+
+
+		
 
 
 
 	}
 	else{//ES ARP
-		printf("{++++++++++++++++++++++++++++++++++++++TENEMOS ARP sobre esta trama\n");
+		printf("++++++++++++++++++++++++++++++++++++++TENEMOS ARP sobre esta trama\n");
 
 		//aqui se trata el trafico que SI es arp (preguntas y respuestas para dialogos como para deteccion de spoofer (esto ultimo no implentado aun)
 		struct ether_arp *arpPtr;
@@ -136,7 +222,7 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 	//	int doHitIncrement=0;
 		int nextState=0;//por default, almacenarla y ya
 		int type=99;//consultar posibles valores en tabla_de_dialogos.txt [Arquitectura] (lo uso para saber si esta inicializada, vacia)
-		int i=0;
+//		int i=0;
 	//	int dstZeroMacFlag=0;
 	//	int dstBrdMacFlag=0;
 		int askFlag=0;
