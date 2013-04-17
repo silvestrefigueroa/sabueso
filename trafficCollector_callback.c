@@ -127,7 +127,7 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 		iptr = (struct ip *)(packet + offset);
 		offset += sizeof(struct ip);
 		printf("%s => ", inet_ntoa(iptr->ip_src));
-		printf("%s)", inet_ntoa(iptr->ip_dst));
+		printf("%s\n", inet_ntoa(iptr->ip_dst));
 		printf("ya mostro lo que tenia....\n");
 //		sleep(10);
 
@@ -145,14 +145,16 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 		int server2guardFound=0;//no encontrado por default
 		for(i=0;i<args[0].servers2guardTable_tableSize;i++){
 			//COMPARAR EL LARGO PRIMERO
+			printf("comparando: Leida: %s Capturada: %s \n",args[0].servers2guard_shmPtr[i].ip,ipSrc);
 			if(strlen(args[0].servers2guard_shmPtr[i].ip)!=strlen(ipSrc)){
 				printf("la ip tiene distinto largo\n");
 				continue;//salto a la proxima entrada de la tabla
 			}//si no coincide el largo
 			else{//mismo largo...
+				printf("tienen el mismo largo...paso a compararlas completamente...\n");
 				if(!strncmp(args[0].servers2guard_shmPtr[i].ip,ipSrc,strlen(ipSrc))){
-					printf("Se encontro coincidencias entre la IP extraida de la trama y uno de los servers, el %d \n",i);
-					server2guardFound=1;
+					printf("Se encontro coincidencias en IP leida=%s y extraida=%s en %d\n",args[0].servers2guard_shmPtr[i].ip,ipSrc,i);
+					server2guardFound=1;//se encontro un server coincidente con el sender!!
 					break;//rompo el lazo y continua adelante del lazo (me quedo i con el subindex del server;)
 				}
 				else{//Distintos
@@ -161,21 +163,31 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 			}//cierro else que entra si tienen el mismo largo
 
                 }//continua aqui por el break
+		printf("fuera del for, evaluo si se encontro o no el server\n");
 		if(server2guardFound==0){//no se encontro el server y se termino el lazo
-			printf("destino desconocido...\n");
+			printf("host origen %s no coincidio con ningun server monitoreado\n",ipSrc);
 			return;
 		}
 		//SINO..CONTINUA AQUI :=)
-
+		printf("El host origen %s coincidio con el server monitoreado %s\n",args[0].servers2guard_shmPtr[i].ip,ipSrc);
 		//comparo las MAC address:
+		printf("comparando MAC capturada= %s contra MAC del server2guard= %s\n",ethSrcMac,args[0].servers2guard_shmPtr[i].mac);
+		
 
-		if(ethSrcMac==args[0].servers2guard_shmPtr[i].mac){
-			printf("SPD: Tranquilo.... la mac es correcta.. el server no esta spoofeado...\n");
+
+		if(strlen(ethSrcMac)!=strlen(args[0].servers2guard_shmPtr[i].mac)){
+			printf("SPD: SPOOFER DETECTADO!! LAS MAC NO COINCIDEN EN LARGO...\n");
 			return;
 		}
-		else{
-			printf("SPD: SPOOFER DETECTADO!!!!!!\n");
-			return;
+		else{//sino, si tienen el mismo largo las comparo caracter a caracter
+			if(!strncmp(ethSrcMac,args[0].servers2guard_shmPtr[i].mac,strlen(args[0].servers2guard_shmPtr[i].mac))){
+				printf("TRANQUILO, LAS MACS SON IGUALES, LA TRAMA ES CONFIABLE...\n");
+				return;
+			}
+			else{//no coinciden
+				printf("SPD: SPOOFER DETECTADO POR SER DISTINTAS LAS MACS A PESAR DE TENER EL MISMO LARGO!!!!!!\n");
+				return;
+			}
 		}
 		//EN AMBOS CASOS... SE INTERRUMPE LA EJECUCION AQUI MISMO...
 

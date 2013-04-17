@@ -143,7 +143,7 @@ int main(int argc, char *argv[]){
 	_servers2guard[0].tos=0;
 	_servers2guard[0].serverName="dd-wrt";
 
-	_servers2guard[3].mac="00:21:5c:33:09:a5";
+	_servers2guard[3].mac="0:21:5c:33:9:a5";//para pcap seria 0:21:5c:33:9:a5 mientras que la real seria "00:21:5c:33:09:a5"
 	_servers2guard[3].ip="192.168.1.100";
 	_servers2guard[3].tos=0;
 	_servers2guard[3].serverName="Thinkpad-100-myself";
