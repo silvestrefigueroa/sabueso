@@ -15,6 +15,7 @@
 #include <netinet/ether.h>
 #include <netinet/ip.h>
 #include <pthread.h>
+#include <syslog.h>
 
 //include de los semaforos:
 #include <semaphore.h>
@@ -73,6 +74,8 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 	//EN CASO DE NO SER ARP Y SER IP:
 	char* ipSrc=NULL;
         char* ipDst=NULL;
+
+	char *spooferDetectedMessage="SPOOFER DETECTADO DESDE EL SABUESO!!";
 
 
 	int i=0;//para lazos for, subindice
@@ -177,6 +180,8 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 
 		if(strlen(ethSrcMac)!=strlen(args[0].servers2guard_shmPtr[i].mac)){
 			printf("SPD: SPOOFER DETECTADO!! LAS MAC NO COINCIDEN EN LARGO...\n");
+			syslog(1, "%s", spooferDetectedMessage);
+
 			return;
 		}
 		else{//sino, si tienen el mismo largo las comparo caracter a caracter
@@ -186,6 +191,8 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 			}
 			else{//no coinciden
 				printf("SPD: SPOOFER DETECTADO POR SER DISTINTAS LAS MACS A PESAR DE TENER EL MISMO LARGO!!!!!!\n");
+				syslog(1, "%s", spooferDetectedMessage);
+
 				return;
 			}
 		}
@@ -411,6 +418,7 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 
                 if(strlen(ethSrcMac)!=strlen(args[0].servers2guard_shmPtr[i].mac)){
                         printf("SPD: SPOOFER DETECTADO!! LAS MAC NO COINCIDEN EN LARGO...\n");
+			syslog(1,"%s",spooferDetectedMessage);
                         return;
                 }
                 else{//sino, si tienen el mismo largo las comparo caracter a caracter
@@ -420,6 +428,7 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
                         }
                         else{//no coinciden
                                 printf("SPD: SPOOFER DETECTADO POR SER DISTINTAS LAS MACS A PESAR DE TENER EL MISMO LARGO!!!!!!\n");
+				syslog(1,"%s",spooferDetectedMessage);
                                 return;
                         }
                 }
