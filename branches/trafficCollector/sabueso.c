@@ -12,7 +12,7 @@
 #include <sys/wait.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-
+//#include <syslog.h>
 
 //MIS PROPIAS CABECERAS
 //#include "sabueso.h"
@@ -89,6 +89,13 @@ void sigint_handler(int s){
 
 //Aqui comienza la magia =)
 int main(int argc, char *argv[]){
+	/*
+	char *cadenilla="sysloguenadooooooooooooooooooooooooooo";
+	syslog(1, "%s", cadenilla);
+	printf("syslogueado\n");
+	return 0;
+	*/
+
 
 	//manejador SIGTERM
 	signal(SIGINT , sigint_handler);
