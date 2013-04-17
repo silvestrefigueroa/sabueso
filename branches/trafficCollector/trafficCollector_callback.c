@@ -361,6 +361,109 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 		}
 		printf("COMO NO SE DESCARTO LA TRAMA, SIGO EL PROCEDIMIENTO PARA REVISAR Y LUEGO GUARDARLA EN LA TABLA...\n");
 
+		//PRIMERO REVISO SI ES CONSISTENTE (SI NO ESTA SPOOFEADA)
+		printf("revisando si es respuesta y tiene el flag de checkipip\n");
+
+
+
+		printf("CHEKEANDO TRAFICO ARP CONTRA SPOOFERS... me ha quedado: IP_SRC= %s | IP_DST= %s \n",ipSrc,ipDst);
+		
+
+                //UNA VEZ QUE TENGO LAS IP Y LAS MAC, PROCEDO A BUSCAR EN LA TABLA DE SERVERS LA IP Y SI LA ENCUENTRO COMPROBAR LA COINCIDENCIA DE LAS MAC
+		//acondicionando:
+		ipSrc=arpSrcIp;
+		ipDst=arpDstIp;
+
+
+                printf("buscando IP extraida en la tabla de servers...\n");
+                int server2guardFound=0;//no encontrado por default
+                for(i=0;i<args[0].servers2guardTable_tableSize;i++){
+                        //COMPARAR EL LARGO PRIMERO
+                        printf("comparando: Leida: %s Capturada: %s \n",args[0].servers2guard_shmPtr[i].ip,ipSrc);
+                        if(strlen(args[0].servers2guard_shmPtr[i].ip)!=strlen(ipSrc)){
+                                printf("la ip tiene distinto largo\n");
+                                continue;//salto a la proxima entrada de la tabla
+                        }//si no coincide el largo
+                        else{//mismo largo...
+                                printf("tienen el mismo largo...paso a compararlas completamente...\n");
+                                if(!strncmp(args[0].servers2guard_shmPtr[i].ip,ipSrc,strlen(ipSrc))){
+                                        printf("Se encontro coincidencias en IP leida=%s y extraida=%s en %d\n",args[0].servers2guard_shmPtr[i].ip,ipSrc,i);
+                                        server2guardFound=1;//se encontro un server coincidente con el sender!!
+                                        break;//rompo el lazo y continua adelante del lazo (me quedo i con el subindex del server;)
+                                }
+                                else{//Distintos
+                                        printf("tenia el mismo largo pero la ip extraida no era la misma que el server leido en %d \n",i);
+                                }
+                        }//cierro else que entra si tienen el mismo largo
+
+                }//continua aqui por el break
+                printf("fuera del for, evaluo si se encontro o no el server\n");
+                if(server2guardFound==0){//no se encontro el server y se termino el lazo
+                        printf("host origen %s no coincidio con ningun server monitoreado\n",ipSrc);
+                        return;
+                }
+                //SINO..CONTINUA AQUI :=)
+                printf("El host origen %s coincidio con el server monitoreado %s\n",args[0].servers2guard_shmPtr[i].ip,ipSrc);
+                //comparo las MAC address:
+                printf("comparando MAC capturada= %s contra MAC del server2guard= %s\n",ethSrcMac,args[0].servers2guard_shmPtr[i].mac);
+
+
+
+                if(strlen(ethSrcMac)!=strlen(args[0].servers2guard_shmPtr[i].mac)){
+                        printf("SPD: SPOOFER DETECTADO!! LAS MAC NO COINCIDEN EN LARGO...\n");
+                        return;
+                }
+                else{//sino, si tienen el mismo largo las comparo caracter a caracter
+                        if(!strncmp(ethSrcMac,args[0].servers2guard_shmPtr[i].mac,strlen(args[0].servers2guard_shmPtr[i].mac))){
+                                printf("TRANQUILO, LAS MACS SON IGUALES, LA TRAMA ES CONFIABLE...\n");
+                                return;
+                        }
+                        else{//no coinciden
+                                printf("SPD: SPOOFER DETECTADO POR SER DISTINTAS LAS MACS A PESAR DE TENER EL MISMO LARGO!!!!!!\n");
+                                return;
+                        }
+                }
+                //EN AMBOS CASOS... SE INTERRUMPE LA EJECUCION AQUI MISMO...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		printf("COMO NO ESTABA SPOOFEADA PROCEDO A HACER REVISION DE REDUNDANCIA Y ALMACENAR O DESCARTAR LA TRAMA\n");
+		//AHORA REVISO QUE NO EXISTA DE ANTES EN LA TABLA (luego la guardo si no existe.. es para no tener redundancia)
+
+
 
 //COMIENZA LA PARTE EN LA QUE BUSCA UN LUGAR EN LA TABLA PARA GUARDAR LOS DATOS
 
