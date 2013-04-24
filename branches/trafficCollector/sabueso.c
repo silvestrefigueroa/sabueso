@@ -160,7 +160,7 @@ int main(int argc, char *argv[]){
 
 	int c=0;
 	int live=0;
-//	serversQuantity=1;
+	serversQuantity=1;
 
 
 
@@ -234,7 +234,7 @@ int main(int argc, char *argv[]){
 //	return 0;
 
 	//COMPILAR FILTRO
-	if(pcap_compile(descr,&fp,filter,0,netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
+	if(pcap_compile(descr,&fp,"arp"/*filter*/,0,netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
 		fprintf(stderr,"Error compilando el filtro\n");
 		exit(1);
 	}
@@ -591,7 +591,7 @@ int main(int argc, char *argv[]){
 						printf("entrada %d  |%s  ",c,shmPtr[c].ethSrcMac);
 						printf("|%s  ",shmPtr[c].ethDstMac);
 						printf("|%s  ",shmPtr[c].arpSrcMac);
-						printf("|%s  ",shmPtr[c].arpSrcMac);
+						printf("|%s  ",shmPtr[c].arpDstMac);
 						printf("|%s  ",shmPtr[c].arpSrcIp);
 						printf("|%s \n",shmPtr[c].arpDstIp);
 					}
@@ -618,6 +618,7 @@ int main(int argc, char *argv[]){
 						//por las dudas me fijo si la entrada en la tabla no es NULL:
 						printf("el nextState = %d\n",shmPtr[j].nextState);
 						printf("el type = %d\n",shmPtr[j].type);
+						printf("src: %s dst: %s\n",shmPtr[j].arpSrcIp,shmPtr[j].arpDstIp);
 						//SI LA TRAMA ESTA MARCADA DIFERENTE A 1 ENTONCES LA PASO POR ALTO
 						if(shmPtr[j].nextState!=1){
 							printf("La entrada NO estaba marcada para checkear (%d) salto a la proxima\n",shmPtr[j].nextState);
@@ -657,7 +658,7 @@ int main(int argc, char *argv[]){
 						if(!strncmp(_servers2guard[i].ip,shmPtr[j].arpDstIp,strlen(shmPtr[j].arpDstIp))){//ip es del server i
 							printf(">>>PST: (eran iguales) Entrada esta destinada al server %s\n",(_servers2guard[i].serverName));
 							//evaluo si es pregunta o respuesta
-							switch(shmPtr[j].type==0){
+							switch(shmPtr[j].type){
 								case 0:
 									printf(">>era pregunta...\n");
 									askingForThisServer=1;//preguntan por este server (este fork) SI
@@ -713,7 +714,8 @@ int main(int argc, char *argv[]){
 
 
 							//si el largo coincide comparo:
-							printf("<comparar largo de asker=%s y entrada=%s\n",arpAskers_shmPtr[a].ip,shmPtr[j].arpSrcIp);
+							printf("entrada askers %d\n",a);
+							printf("<comparar largo de askerEntry=%s y tableEntry=%s\n",arpAskers_shmPtr[a].ip,shmPtr[j].arpSrcIp);
 							if(strlen(arpAskers_shmPtr[a].ip)!=strlen(shmPtr[j].arpSrcIp)){
 								printf("<comparacion de largo de asker antes de bloquear fallo...\n");
 								continue;//continue con el siguiente asker...
@@ -756,7 +758,7 @@ int main(int argc, char *argv[]){
 						}//lazo for que busca lockear al asker...(para que nadie mas le robe el puerto!!)
 
 
-
+printf("bueno ahora me fijo si fue un fracaso la busqueda del asker o si continua...\n");
 
 						if(askerToLockFounded==0){//evaluar si sigo con el algoritmo o salto al proximo pregunton...
 							printf("<Fracaso el intento de encontrar el asker para lockearlo y portstelear,saltar!\n");
@@ -776,11 +778,13 @@ int main(int argc, char *argv[]){
 						printf("<<>> Comienza el loop para portstealing...\n");
 						//LOOP:
 						while(arpAskers_shmPtr[a].status==2){//mientras este asker se este chekeando (y no se determine spoofed u OK)
+							sleep(10);
 							printf("<<>>Dentro del while del status, comenzando el portstealing\n");
 
 
 							//Arpeo por el asker
-							arper("default","default",shmPtr[j].arpDstIp,dev);//arper crea el frame y lo envia(separar)
+//							arper("default","default",shmPtr[j].arpDstIp,dev);//arper crea el frame y lo envia(separar)
+printf("ya se habria ejecutado el arper\n");
 							
 							//portstealing (rafaga de robo de puerto)
 
