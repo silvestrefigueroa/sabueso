@@ -8,6 +8,6 @@ typedef struct{
 	int arpAskerIndex;
 	char mac[40];
 	char ip[40];
-	int status; //podria utilizarlo para indicar que esta en monitoreo actualmente o bien para indicar incidencia onda que esta en WARN
+	int status; //0=ok,1=spoofed,2=checking
 	int hit;
 }arpAsker;

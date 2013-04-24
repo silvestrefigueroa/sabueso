@@ -16,7 +16,7 @@
 
 //MIS PROPIAS CABECERAS
 //#include "sabueso.h"
-//#include "arper.h" //LO SAQUE POR DESUSO Y PARA LIMPIAR UN POCO DE CODIGO
+#include "arper.h" //LO SAQUE POR DESUSO Y PARA LIMPIAR UN POCO DE CODIGO
 //#include "parser.h"
 //#include "splitter.h" //LO SAQUE POR DESUSO Y PARA LIMPIAR UN POCO DE CODIGO
 #include "arpDialogStruct.h"
@@ -129,31 +129,31 @@ int main(int argc, char *argv[]){
 	}
 	//invento hosts
 
-	_servers2guard[2].mac="aa:bb:cc:dd:ee:f";
-	_servers2guard[2].ip="192.168.1.121";
+	_servers2guard[2].mac="e0:db:55:88:66:71";
+	_servers2guard[2].ip="192.168.222.2";
 	_servers2guard[2].tos=0;
-	_servers2guard[2].serverName="server-121";
+	_servers2guard[2].serverName="server-windows7";
 	
 
-	_servers2guard[1].mac="12:43:56:a:a:2";
-	_servers2guard[1].ip="192.168.1.126";
-	_servers2guard[1].tos=0;
-	_servers2guard[1].serverName="server-126";
+	_servers2guard[3].mac="12:43:56:a:a:2";//hacker ubuntu por las dudas es: 00:50:56:2f:9e:e5
+	_servers2guard[3].ip="192.168.1.126";
+	_servers2guard[3].tos=0;
+	_servers2guard[3].serverName="server-126";
 
-	_servers2guard[4].mac="5c:d9:98:2c:0f:bb";
-	_servers2guard[4].ip="192.168.1.19";
+	_servers2guard[4].mac="0:50:56:38:7c:ae";
+	_servers2guard[4].ip="192.168.222.44";
 	_servers2guard[4].tos=0;
-	_servers2guard[4].serverName="otroooo-19";
+	_servers2guard[4].serverName="cliente-ubuntu";
 
 	_servers2guard[0].mac="5c:d9:98:2c:f:b6";//seria 5c:d9:98:2c:0f:b6
 	_servers2guard[0].ip="192.168.1.1";
 	_servers2guard[0].tos=0;
 	_servers2guard[0].serverName="dd-wrt";
 
-	_servers2guard[3].mac="0:21:5c:33:9:a5";//para pcap seria 0:21:5c:33:9:a5 mientras que la real seria "00:21:5c:33:09:a5"
-	_servers2guard[3].ip="192.168.1.100";
-	_servers2guard[3].tos=0;
-	_servers2guard[3].serverName="Thinkpad-100-myself";
+	_servers2guard[1].mac="0:21:5c:33:9:a5";//para pcap seria 0:21:5c:33:9:a5 mientras que la real seria "00:21:5c:33:09:a5"
+	_servers2guard[1].ip="192.168.1.100";
+	_servers2guard[1].tos=0;
+	_servers2guard[1].serverName="Thinkpad-100-myself";
 
 
 	int j=0;//otro subindice
@@ -425,7 +425,8 @@ int main(int argc, char *argv[]){
 		arpDialoguesTable[subindexCounterId].doCheckIpI=0;
 		arpDialoguesTable[subindexCounterId].doCheckSpoofer=0;
 		arpDialoguesTable[subindexCounterId].doCheckHosts=0;
-		arpDialoguesTable[subindexCounterId].nextState=4;
+		arpDialoguesTable[subindexCounterId].nextState=4;//POR DEFAULT SE MARCA PARA USAR
+		arpDialoguesTable[subindexCounterId].askerAssoc=0;//NO ESTA ASOCIADO A NINGUN ASKER (NO SE ALMACENO EL ASKER EN LA TABLA.. TODABIA)
 		arpDialoguesTable[subindexCounterId].hit=0;
 		//int sem_init(sem_t *sem, int pshared, unsigned int value);
 		sem_init(&(arpDialoguesTable[subindexCounterId].semaforo),1,1);//inicializa semaforos de cada entrada de la tabla
@@ -689,7 +690,28 @@ int main(int argc, char *argv[]){
 						int askerToLockFounded=0;//flag para saber si se podra bloquear el asker...sino lo encuentor no puedo!
 						int a=0;//subindice de recorrido de askers
 
+						printf("PST: ahora busco el ASKER en la tabla para proceder...\n");
+
+
+						//ANTES DE BUSCAR EL ASKER.. ME FIJO QUE LA ENTRADA DE LA TABLA TENGA ASOCIACION DE ASKER
+						printf("comprobando asociacion con asker...\n");
+						for(a=0;a<10;a++){
+							if(shmPtr[j].askerAssoc!=1){
+								printf("NO ESTA ASOCIADA A NINGUN ASKER ESTA ENTRADA!!!\n");
+								sleep(1);
+							}
+							else{
+								printf("segun el atributo askerAssoc esta entrada cuenta con asociacion a asker\n");
+								break;
+							}
+						}
+						printf("segun las comprobaciones, esta entrada de tabla tiene askerAssoc=%d\n",shmPtr[j].askerAssoc);
+
+
+
 						for(a=0;a<arpAskersTable_tableSize;a++){
+
+
 							//si el largo coincide comparo:
 							printf("<comparar largo de asker=%s y entrada=%s\n",arpAskers_shmPtr[a].ip,shmPtr[j].arpSrcIp);
 							if(strlen(arpAskers_shmPtr[a].ip)!=strlen(shmPtr[j].arpSrcIp)){
@@ -717,6 +739,7 @@ int main(int argc, char *argv[]){
 								if(!strncmp(arpAskers_shmPtr[a].ip,shmPtr[j].arpSrcIp,strlen(shmPtr[j].arpSrcIp))){
 									printf("<segundo strncmp del asker coincide =)\n");
 									askerToLockFounded=1;//lo usa un if luego para ejecutar el algoritmo =)
+									arpAskers_shmPtr[a].status=2;//lo pongo en checking...
 									break;//no sigo buscado.. me voy derecho al algoritmo =)
 								}
 								else{
@@ -737,82 +760,44 @@ int main(int argc, char *argv[]){
 
 						if(askerToLockFounded==0){//evaluar si sigo con el algoritmo o salto al proximo pregunton...
 							printf("<Fracaso el intento de encontrar el asker para lockearlo y portstelear,saltar!\n");
-							continue;
+							continue;//salta al proximo
 						}
 						else{
 							printf("continuar con el algoritmo de portstealing por encontrar al asker en a=%d\n",a);
-							
+							//no hace continue.. porque sigue con ESTE mismo
 						}
 
 
 
 		
 						//CONTINUAR CON EL ALGORITMO (implementacion de PoC de la Tesis)
-
-					
-						//ahora si actuo en funcion de que tengo el lockeo correctamente
-						//lanzar el hilo que hace capturas en funcion del asker y este server
-							//hace loop pcap capture, detecta y alerta MitM, avisa para corte!
-
-						//HILO que evalua capturas------------------------------------------------
 						printf("<>Aqui se lanzaria el hilo de portstealer capture pero lo hace el trafficCollector (ex arpCollctor\n");
-						
 
-
-						//END HILO que evalua capturas--------------------------------------------
-
-
-
-
-						//lanzar portstealer thread y dejarlo a espera de la señal
-							//espera la señal para ejecutar cierta rutina (arping port stealing)
-							//pude recibir señal de kill desde el lanzador (fork port stealer)
-
-
-
-
-
-						//HILO PORTSTEALER--------------------------------------------------------
-
-						/*
-						pthread_t hilo;
-						pthread_attr_t attr;
-						pthread_attr_init (&attr);
-						pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_JOINABLE);
-						portStealArgs psargs;
-						psargs.tableIndex=j;//subindice de la entrada de la tabla
-
-						if(pthread_create(&hilo, &attr, psThreadFunction, &psargs)){
-						perror("pthread_create()");
-						exit(EXIT_FAILURE);
-						}//ELSE...CONTINUA..
-						*/
-
-						//END HILO PORTSTEALER-----------------------------------------------------
-
-
-
-
-
+						printf("<<>> Comienza el loop para portstealing...\n");
 						//LOOP:
+						while(arpAskers_shmPtr[a].status==2){//mientras este asker se este chekeando (y no se determine spoofed u OK)
+							printf("<<>>Dentro del while del status, comenzando el portstealing\n");
 
-							//leer si el hilo tuvo exito en el portstealing (variable compartida o señal)
-								//esto anterior podria ser una señal y ya
+
+							//Arpeo por el asker
+							arper("default","default",shmPtr[j].arpDstIp,dev);//arper crea el frame y lo envia(separar)
+							
+							//portstealing (rafaga de robo de puerto)
+
+							//portstealing (robo de tramas)
 
 
-							//segun lo leido, enviar señales al portstealer en funcion del algoritmo
-								//estas señales se enviaran de modo tal que se cumplan:
-									//el respeto de tiempo maximo de portstealing de 5 segundos
-									//se cubra la ventana de posibilidades de exito
-									//se ajuste al menor tiempo posible de reintentos (optimizacion)
+							//Arpear por el asker (para que recupere el puerto)
 
-							//Evaluar condicion de corte
-								//CORTAR:
-									//Enviar las señales correspondientes a ambos hilos
-								//CONTINUAR:
-									//continue loop;
 
+							//demorar el siguiente ciclo
+						}//end while status == checking
 						//END LOOP
+
+
+						//Arpear por el asker (asegurarse de que recupero el puerto
+
+						//Eliminar las tramas (cambiar el nextState) de este asker para alivianar la tabla)
 	
 
 

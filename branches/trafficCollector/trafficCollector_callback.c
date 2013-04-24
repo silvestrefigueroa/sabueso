@@ -75,10 +75,12 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 	char* ipSrc=NULL;
         char* ipDst=NULL;
 
-	char *spooferDetectedMessage="SPOOFER DETECTADO DESDE EL SABUESO!!";
+	char *spooferDetectedMessageARP="---------------SPOOFER DETECTADO DESDE EL SABUESO: (MENSAJE ARP SPOOFEADO)!!";
+	char *spooferDetectedMessageNOARP="+++++++++++++++SPOOFER DETECTADO DESDE EL SABUEO: (TRAMAS ENVENENADAS, NO ARP)";
 
 
 	int i=0;//para lazos for, subindice
+	int tableIndex=0;//para salvar el i luego cuando quiero referenciar la entrada de la tabla desde la rutina de askers
 	int offset=0;//desplazamiento para aritmetica de punteros en cabecera IP
 
 //	fflush(stdout);
@@ -179,20 +181,19 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 
 
 		if(strlen(ethSrcMac)!=strlen(args[0].servers2guard_shmPtr[i].mac)){
-			printf("SPD: SPOOFER DETECTADO!! LAS MAC NO COINCIDEN EN LARGO...\n");
-			syslog(1, "%s", spooferDetectedMessage);
+			printf("SPD: SPOOFER NO ARP DETECTADO!! LAS MAC NO COINCIDEN EN LARGO...\n");
+			syslog(1, "%s", spooferDetectedMessageNOARP);
 
 			return;
 		}
 		else{//sino, si tienen el mismo largo las comparo caracter a caracter
 			if(!strncmp(ethSrcMac,args[0].servers2guard_shmPtr[i].mac,strlen(args[0].servers2guard_shmPtr[i].mac))){
-				printf("TRANQUILO, LAS MACS SON IGUALES, LA TRAMA ES CONFIABLE...\n");
+				printf("TRANQUILO, LAS MACS NO ARP SON IGUALES, LA TRAMA ES CONFIABLE...\n");
 				return;
 			}
 			else{//no coinciden
-				printf("SPD: SPOOFER DETECTADO POR SER DISTINTAS LAS MACS A PESAR DE TENER EL MISMO LARGO!!!!!!\n");
-				syslog(1, "%s", spooferDetectedMessage);
-
+				printf("SPD: SPOOFER NO ARP DETECTADO POR SER DISTINTAS LAS MACS A PESAR DE TENER EL MISMO LARGO!!!!!!\n");
+				syslog(1, "%s", spooferDetectedMessageNOARP);
 				return;
 			}
 		}
@@ -374,7 +375,6 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 
 
 		printf("CHEKEANDO TRAFICO ARP CONTRA SPOOFERS... me ha quedado: IP_SRC= %s | IP_DST= %s \n",ipSrc,ipDst);
-		
 
                 //UNA VEZ QUE TENGO LAS IP Y LAS MAC, PROCEDO A BUSCAR EN LA TABLA DE SERVERS LA IP Y SI LA ENCUENTRO COMPROBAR LA COINCIDENCIA DE LAS MAC
 		//acondicionando:
@@ -418,55 +418,21 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 
                 if(strlen(ethSrcMac)!=strlen(args[0].servers2guard_shmPtr[i].mac)){
                         printf("SPD: SPOOFER DETECTADO!! LAS MAC NO COINCIDEN EN LARGO...\n");
-			syslog(1,"%s",spooferDetectedMessage);
+			syslog(1,"%s",spooferDetectedMessageARP);
                         return;
                 }
                 else{//sino, si tienen el mismo largo las comparo caracter a caracter
                         if(!strncmp(ethSrcMac,args[0].servers2guard_shmPtr[i].mac,strlen(args[0].servers2guard_shmPtr[i].mac))){
                                 printf("TRANQUILO, LAS MACS SON IGUALES, LA TRAMA ES CONFIABLE...\n");
-                                return;
+                                //return;//SI DEJO ESTE RETURN, LA TRAMA NO SE ALMACENARA NUNCA!!! AUNQUE SEA CONFIABLE!! (y esta mal relamente??respuesta?)
                         }
                         else{//no coinciden
                                 printf("SPD: SPOOFER DETECTADO POR SER DISTINTAS LAS MACS A PESAR DE TENER EL MISMO LARGO!!!!!!\n");
-				syslog(1,"%s",spooferDetectedMessage);
+				syslog(1,"%s",spooferDetectedMessageARP);
                                 return;
                         }
                 }
-                //EN AMBOS CASOS... SE INTERRUMPE LA EJECUCION AQUI MISMO...
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                //EN AMBOS CASOS DE DETECCION SE INTERRUMPE LA EJECUCION AQUI MISMO, SI NO HAY ANOMALIAS CONTINUARA LA EJECUCION NORMALMENTE...
 
 
 		printf("COMO NO ESTABA SPOOFEADA PROCEDO A HACER REVISION DE REDUNDANCIA Y ALMACENAR O DESCARTAR LA TRAMA\n");
@@ -753,7 +719,7 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 						break;
 					}
 
-					printf("**************antes de la asignacion tengo arpSrcIp: %s cadena: %s\n",arpSrcIp,cadena);
+					printf("**************antes de la asignacion tengo arpSrcIp %s cadena %s, nextState %d \n",arpSrcIp,cadena,nextState);
 
 					strncpy(args[0].shmPtr[i].ethSrcMac,ethSrcMac,strlen(ethSrcMac));
 					strncpy(args[0].shmPtr[i].ethDstMac,ethDstMac,strlen(ethDstMac));
@@ -761,6 +727,7 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 					strncpy(args[0].shmPtr[i].arpDstMac,arpDstMac,strlen(arpDstMac));
 					strncpy(args[0].shmPtr[i].arpSrcIp,arpSrcIp,strlen(arpSrcIp));
 					strncpy(args[0].shmPtr[i].arpDstIp,arpDstIp,strlen(arpDstIp));
+					
 
 					args[0].shmPtr[i].nextState=nextState;//OJO son enteros
 					if(askFlag==0){
@@ -811,7 +778,8 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 			//que haga un mantenimiento de la misma; La comunicacion podria ser por pipe.
 		}
 		else{
-			printf("LOG: se guardo con exito la trama en la tabla\n");
+			printf("LOG: se guardo con exito la trama en la tabla EN LA ENTRADA %d\n",i);
+			tableIndex=i;//GUARDO EL INDICE DE LA ENTRADA DE LA TABLA
 		}
 		
 		//UNA VEZ TERMINA DE RECORRER... PODRIA USAR ETIQUETAS DEL SIGUIENTE MODO:
@@ -962,8 +930,12 @@ int askerReplaceIndex=0;//subindice de la entrada donde se encontro el asker a r
 		}
 		else{
 			printf("Se ingreso al asker en la tabla\n");
+			
 		}
 		//FIN MANEJO DE ASKER TABLE
+		
+		//AHORA SE MARCA LA ENTRADA DE LA TABLA PARA QUE INDIQUE QUE SU ASKER HA SIDO ASOCIADO/CHEKEADO
+		args[0].shmPtr[i].askerAssoc=tableIndex;//SIN SEMAFORO... LO HACE DE TENAZ NO MAS!!
 
 		//puedo continuar con el proximo frame =) finaliza la tarea de la Callback
 		//aumenta el contador de frames
