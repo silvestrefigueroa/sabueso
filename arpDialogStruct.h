@@ -19,5 +19,6 @@ struct arpDialog{
 	int doCheckSpoofer;
 	int doCheckHosts;
 	int nextState;
+	int askerAssoc;
 	int hit;
 };
