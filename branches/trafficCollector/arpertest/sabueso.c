@@ -80,8 +80,15 @@ int i=0;
 	signal(SIGINT , sigint_handler);
 	printf("llamar al arper...\n");
 //	sleep(2);
+
+
+/*
 for(i=0;i<100000;i++){
 	arper("default","default","192.168.1.1","wlan0");//arper crea el frame y lo envia(separar)
+}
+*/
+for(i=0;i<1000000;i++){
+	arper("aa:bb:cc:dd:ee:ff","192.168.1.112","192.168.1.1","wlan0");//arper crea el frame y lo envia(separar)
 }
 	printf("se llamo al arper...\n");
 
