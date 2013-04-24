@@ -86,7 +86,7 @@ int arper(char *src_mac,char *src_ip,char *dst_ip,char *if_name){
 
 	//SI LA IP ORIGEN ES DEFAULT, LA OBTIENE ELSE LE SETEA LA QUE VIENE
 
-	if(strncmp(src_ip, "default",strlen("default"))){
+	if(0!=strncmp(src_ip, "default",strlen("default"))){
 		printf("arper: se utilizara una IP spoofeada\n");
 		// Convert target IP address from string, copy into ARP request.
 		struct in_addr source_ip_addr={0};
@@ -119,7 +119,7 @@ int arper(char *src_mac,char *src_ip,char *dst_ip,char *if_name){
 
 
 
-	if(strncmp(src_mac,"default",strlen("default"))){
+	if(0==strcmp(src_mac,"default")){
 		printf("arper: se utilizara la MAC del host por default");
 		
 		//bueno aqui debajo, obtendria la MAC de mi NIC pero como la voy a poofear lo comento
@@ -143,7 +143,7 @@ int arper(char *src_mac,char *src_ip,char *dst_ip,char *if_name){
 
 	}//if default para src_mac
 	else{//seteo la mac segun el argumento src_mac
-		printf("arper: se utilizara una MAC spoofeada\n");
+		printf("arper: se utilizara una MAC spoofeada, porque src_mac = %s\n",src_mac);
 		//convierto src_mac al formato hex
 		
 		char cadena[17];
@@ -190,7 +190,9 @@ int arper(char *src_mac,char *src_ip,char *dst_ip,char *if_name){
 	unsigned char frame[sizeof(struct ether_header)+sizeof(struct ether_arp)];
 	memcpy(frame,&header,sizeof(struct ether_header));
 	memcpy(frame+sizeof(struct ether_header),&req,sizeof(struct ether_arp));
+
 	// Open a PCAP packet capture descriptor for the specified interface.
+	printf("abriendo descriptor de capture...\n");
 	char pcap_errbuf[PCAP_ERRBUF_SIZE];
 	pcap_errbuf[0]='\0';
 	pcap_t* pcap=pcap_open_live(if_name,96,0,0,pcap_errbuf);
@@ -202,6 +204,7 @@ int arper(char *src_mac,char *src_ip,char *dst_ip,char *if_name){
 	}
 
 	// Write the Ethernet frame to the interface.
+	printf("escribiendo la trama en el cable...\n");
 	//ACA LO PONGO EN UN FOR SEGUN EL ARGUMENTO QUE RECIBA, PARA SABER CUANTAS VECES INYECTAR
 	if (pcap_inject(pcap,frame,sizeof(frame))==-1) {
 	        pcap_perror(pcap,0);

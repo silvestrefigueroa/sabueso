@@ -777,22 +777,39 @@ printf("bueno ahora me fijo si fue un fracaso la busqueda del asker o si continu
 
 						printf("<<>> Comienza el loop para portstealing...\n");
 						//LOOP:
+						int pst=0;//Para el algoritmo de portstealing (contador)
 						while(arpAskers_shmPtr[a].status==2){//mientras este asker se este chekeando (y no se determine spoofed u OK)
 							sleep(10);
 							printf("<<>>Dentro del while del status, comenzando el portstealing\n");
 
 
 							//Arpeo por el asker
-//							arper("default","default",shmPtr[j].arpDstIp,dev);//arper crea el frame y lo envia(separar)
-printf("ya se habria ejecutado el arper\n");
+							//arper("default","default",shmPtr[j].arpDstIp,dev);//arper crea el frame y lo envia(separar)//USO
+
+							printf("ya se ejecuto el arper!!\n");
+							//printf("ya se habria ejecutado el arper\n");
+
 							
-							//portstealing (rafaga de robo de puerto)
-
+							//portstealing (rafaga de robo de puerto) -> Sacada del script de pruebas tester.sh
+							printf("PST-MAIN: RAFAGA...\n");
+							for(pst=0;pst<20;pst++){
+								arper(shmPtr[j].ethSrcMac,shmPtr[j].arpSrcIp,shmPtr[j].arpDstIp,dev);
+								usleep(100);
+							}
+							printf("PST-MAIN: PORTSTEALING 7 SEGUNDOS....\n");
 							//portstealing (robo de tramas)
-
-
+							for(pst=0;pst<7;pst++){
+								arper(shmPtr[j].ethSrcMac,shmPtr[j].arpSrcIp,shmPtr[j].arpDstIp,dev);//LLAMADA OK
+								printf("PST-MAIN: PORTSTEALING MESSSAGE %d\n",pst);
+								usleep(1000000);
+							}
+							printf("PST-MAIN: DEVOLVIENDO EL PUERTO AL CLIENTE...\n");
 							//Arpear por el asker (para que recupere el puerto)
-
+							for(pst=0;pst<10;pst++){
+                                                                arper("default","default",shmPtr[j].arpSrcIp,dev);//LLAMADA OK
+                                                                usleep(100000);
+                                                        }
+							printf("PST-MAIN: Algortimo completado!!!\n");
 
 							//demorar el siguiente ciclo
 						}//end while status == checking
