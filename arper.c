@@ -119,8 +119,8 @@ int arper(char *src_mac,char *src_ip,char *dst_ip,char *if_name){
 
 
 
-	if(strncmp(src_mac, "default",strlen("default"))){
-		printf("arper: se utilizara la MAC del host");
+	if(strncmp(src_mac,"default",strlen("default"))){
+		printf("arper: se utilizara la MAC del host por default");
 		
 		//bueno aqui debajo, obtendria la MAC de mi NIC pero como la voy a poofear lo comento
 		//-------------------------------------------------------------------------------------------

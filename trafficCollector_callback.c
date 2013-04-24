@@ -299,6 +299,8 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 				//bueno aqui va el codigo para cuando estaba la trama dirigida a una mac especifica:
 				//destino ethernet bien definido, pero MAC destino en ARP DISTINA!!MALFORMACION!!
 				//Este curioso caso se da por ejemplo con el DDwrt. el destino en ARP debera ser 0:0:0:0:0:0
+				//POR DEBUG:
+				nextState=99;
 				printf("LOG:antes de comparar con zero, tengo %s y %s\n",arpDstMac,zeroMac);
 				if(!strcmp(arpDstMac,zeroMac)){
 					printf("LOG: por strcmp, mac destino en ARP es todo 0:  %s\n",arpDstMac);
@@ -357,6 +359,7 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 				break;
 				default:
 					printf("LOG:caso anomalo no tratado, no pudo determinarse igualdad de mac origen\n");
+					nextState=98;//DEBUG
 					//en estos casos, podria meter en la primer evaluacion respecto a las srcMac, numero superiores
 					//para casos especiales, de momento no se trata este tipo de "mac reservada"
 				break;
@@ -374,13 +377,13 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 
 
 
-		printf("CHEKEANDO TRAFICO ARP CONTRA SPOOFERS... me ha quedado: IP_SRC= %s | IP_DST= %s \n",ipSrc,ipDst);
 
                 //UNA VEZ QUE TENGO LAS IP Y LAS MAC, PROCEDO A BUSCAR EN LA TABLA DE SERVERS LA IP Y SI LA ENCUENTRO COMPROBAR LA COINCIDENCIA DE LAS MAC
 		//acondicionando:
 		ipSrc=arpSrcIp;
 		ipDst=arpDstIp;
 
+		printf("CHEKEANDO TRAFICO ARP CONTRA SPOOFERS... me ha quedado: IP_SRC= %s | IP_DST= %s \n",ipSrc,ipDst);
 
                 printf("buscando IP extraida en la tabla de servers...\n");
                 int server2guardFound=0;//no encontrado por default
@@ -407,31 +410,35 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
                 printf("fuera del for, evaluo si se encontro o no el server\n");
                 if(server2guardFound==0){//no se encontro el server y se termino el lazo
                         printf("host origen %s no coincidio con ningun server monitoreado\n",ipSrc);
-                        return;
+                        //return;//DE NINGUNA MANERA... SINO NO ALMACENARIA NUNCA LAS PREGUNTAS ARP!!!!
+			//continua el algoritmo para comprobar redundancias y guardar
                 }
-                //SINO..CONTINUA AQUI :=)
-                printf("El host origen %s coincidio con el server monitoreado %s\n",args[0].servers2guard_shmPtr[i].ip,ipSrc);
-                //comparo las MAC address:
-                printf("comparando MAC capturada= %s contra MAC del server2guard= %s\n",ethSrcMac,args[0].servers2guard_shmPtr[i].mac);
+		else{//es decir, si coincidio con un server2guard o mac2guard(old version) procedo a checkear spoof antes de guardar
+	                //SINO..CONTINUA AQUI :=)
+        	        printf("El host origen %s coincidio con el server monitoreado %s\n",args[0].servers2guard_shmPtr[i].ip,ipSrc);
+                	//comparo las MAC address:
+	                printf("comparando MAC capturada= %s contra MAC del server2guard= %s\n",ethSrcMac,args[0].servers2guard_shmPtr[i].mac);
 
 
 
-                if(strlen(ethSrcMac)!=strlen(args[0].servers2guard_shmPtr[i].mac)){
-                        printf("SPD: SPOOFER DETECTADO!! LAS MAC NO COINCIDEN EN LARGO...\n");
-			syslog(1,"%s",spooferDetectedMessageARP);
-                        return;
-                }
-                else{//sino, si tienen el mismo largo las comparo caracter a caracter
-                        if(!strncmp(ethSrcMac,args[0].servers2guard_shmPtr[i].mac,strlen(args[0].servers2guard_shmPtr[i].mac))){
-                                printf("TRANQUILO, LAS MACS SON IGUALES, LA TRAMA ES CONFIABLE...\n");
-                                //return;//SI DEJO ESTE RETURN, LA TRAMA NO SE ALMACENARA NUNCA!!! AUNQUE SEA CONFIABLE!! (y esta mal relamente??respuesta?)
-                        }
-                        else{//no coinciden
-                                printf("SPD: SPOOFER DETECTADO POR SER DISTINTAS LAS MACS A PESAR DE TENER EL MISMO LARGO!!!!!!\n");
+			if(strlen(ethSrcMac)!=strlen(args[0].servers2guard_shmPtr[i].mac)){
+				printf("SPD: SPOOFER DETECTADO!! LAS MAC NO COINCIDEN EN LARGO...\n");
 				syslog(1,"%s",spooferDetectedMessageARP);
-                                return;
-                        }
-                }
+				return;
+			}
+			else{//sino, si tienen el mismo largo las comparo caracter a caracter
+				if(!strncmp(ethSrcMac,args[0].servers2guard_shmPtr[i].mac,strlen(args[0].servers2guard_shmPtr[i].mac))){
+					printf("TRANQUILO, LAS MACS SON IGUALES, LA TRAMA ES CONFIABLE...\n");
+					//return;//SI DEJO ESTE RETURN, LA TRAMA NO SE ALMACENARA NUNCA!!! AUNQUE SEA CONFIABLE!!aunque respuestas...para que?
+				}
+				else{//no coinciden
+					printf("SPD: SPOOFER DETECTADO POR SER DISTINTAS LAS MACS A PESAR DE TENER EL MISMO LARGO!!!!!!\n");
+					syslog(1,"%s",spooferDetectedMessageARP);
+					return;
+				}
+			}
+		}//Cierra el else al que entra si coincidio con un server2guard
+
                 //EN AMBOS CASOS DE DETECCION SE INTERRUMPE LA EJECUCION AQUI MISMO, SI NO HAY ANOMALIAS CONTINUARA LA EJECUCION NORMALMENTE...
 
 
@@ -440,7 +447,7 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 
 
 
-//COMIENZA LA PARTE EN LA QUE BUSCA UN LUGAR EN LA TABLA PARA GUARDAR LOS DATOS
+		//COMIENZA LA PARTE EN LA QUE BUSCA UN LUGAR EN LA TABLA PARA GUARDAR LOS DATOS DE LA TRAMA CAPTURADA
 
 
 		//antes de ir a meterlo en la tabla, deberia comprobar que la informacion que estoy metiendo no existe ya de antes!!!
