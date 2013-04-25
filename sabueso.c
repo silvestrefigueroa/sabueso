@@ -150,8 +150,8 @@ int main(int argc, char *argv[]){
 	_servers2guard[0].tos=0;
 	_servers2guard[0].serverName="dd-wrt";
 
-	_servers2guard[1].mac="0:21:5c:33:9:a5";//para pcap seria 0:21:5c:33:9:a5 mientras que la real seria "00:21:5c:33:09:a5"
-	_servers2guard[1].ip="192.168.1.100";
+	_servers2guard[1].mac="0:21:5c:33:9:a1";//para pcap seria 0:21:5c:33:9:a5 mientras que la real seria "00:21:5c:33:09:a5"
+	_servers2guard[1].ip="192.168.1.104";
 	_servers2guard[1].tos=0;
 	_servers2guard[1].serverName="Thinkpad-100-myself";
 
@@ -160,7 +160,7 @@ int main(int argc, char *argv[]){
 
 	int c=0;
 	int live=0;
-	serversQuantity=1;
+//	serversQuantity=1;//PARA DEBUGGEAR CON UN SOLO HIJO.. SINO SE ENSUCIA MUCHISIMO EL STDOUT
 
 
 
@@ -553,23 +553,6 @@ int main(int argc, char *argv[]){
 	//Recordemos que cada host que tenga interes en hablar con estos servers (que tienen informacion sensible) son
 	//posibles victimas de ataques arp spoofing.
 	//Ahora lo que voy a hacer, es por cada uno de los hosts a monitorear lanzar un HIJO con la funcion correspondiente.
-/*
-	while(1==1){
-		sleep(1);
-		
-		printf("mostrando memoria compartida desde el port stealer pasada %d\n",j);
-		for(c=0;c<tableSize;c++){
-			printf("entrada %d  |%s  ",c,shmPtr[c].ethSrcMac);
-			printf("|%s  ",shmPtr[c].ethDstMac);
-			printf("|%s  ",shmPtr[c].arpSrcMac);
-			printf("|%s  ",shmPtr[c].arpSrcMac);
-			printf("|%s  ",shmPtr[c].arpSrcIp);
-			printf("|%s \n",shmPtr[c].arpDstIp);
-		}
-		j++;
-	}
-*/
-
 
 	for(i=0;i<serversQuantity;i++){
 		//------------INICIA FORK MULTIHILADO DE SEGUIMIENTO, ROBO DE PUERTO Y ALERTA-----------------------------
@@ -596,15 +579,12 @@ int main(int argc, char *argv[]){
 						printf("|%s \n",shmPtr[c].arpDstIp);
 					}
 					j++;
-					break;
+					break;//No me iba a quedar en el while true ni loco!!! AJJajJJAAJJAaaaaa
 				}
 //------------------------------------------
 
 				printf("continuando con el portstealer\n");
-				//flags:
-				int askingForThisServer=0;//inicializa en "no preguntan por el server"
-				int responseForThisServer=0;//cuando es este server el que respondio
-							
+						
 				//ALGORITMO:
 				//1|Examinar entrada por entrada de la tabla y para cada una:
 				live=1;
@@ -661,15 +641,15 @@ int main(int argc, char *argv[]){
 							switch(shmPtr[j].type){
 								case 0:
 									printf(">>era pregunta...\n");
-									askingForThisServer=1;//preguntan por este server (este fork) SI
-									responseForThisServer=0;//respuesta hacia este server NO
+//									askingForThisServer=1;//preguntan por este server (este fork) SI
+//									responseForThisServer=0;//respuesta hacia este server NO
 								break;
 								case 1:
 									printf(">>supongo que era respuesta...revisar este caso luego (SALTAR por ahora)\n");
 									//de momento continua a la siguiente
-									continue;
-									responseForThisServer=1;//alguien le respondio a este server????
-									askingForThisServer=0;
+									continue;//Esto obliga a que se continue SOLO si son preguntas ARP (obviando responses)
+//									responseForThisServer=1;//alguien le respondio a este server????
+//									askingForThisServer=0;
 								break;
 								default:
 									printf(">>anomalia en la entrada de la tabla\n");
@@ -690,6 +670,14 @@ int main(int argc, char *argv[]){
 
 						int askerToLockFounded=0;//flag para saber si se podra bloquear el asker...sino lo encuentor no puedo!
 						int a=0;//subindice de recorrido de askers
+
+
+						//SI HIT > 1, ENTONCES SALTO
+						if(shmPtr[j].hit > 2){
+							printf("el HIT era mayor que 2 en el portstealer...\n");
+							continue;//salto.. hasta que la vea el traffic de nuevo...
+						}
+
 
 						printf("PST: ahora busco el ASKER en la tabla para proceder...\n");
 
@@ -758,7 +746,7 @@ int main(int argc, char *argv[]){
 						}//lazo for que busca lockear al asker...(para que nadie mas le robe el puerto!!)
 
 
-printf("bueno ahora me fijo si fue un fracaso la busqueda del asker o si continua...\n");
+						printf("bueno ahora me fijo si fue un fracaso la busqueda del asker o si continua...\n");
 
 						if(askerToLockFounded==0){//evaluar si sigo con el algoritmo o salto al proximo pregunton...
 							printf("<Fracaso el intento de encontrar el asker para lockearlo y portstelear,saltar!\n");
@@ -814,14 +802,9 @@ printf("bueno ahora me fijo si fue un fracaso la busqueda del asker o si continu
 							//demorar el siguiente ciclo
 						}//end while status == checking
 						//END LOOP
-
-
-						//Arpear por el asker (asegurarse de que recupero el puerto
-
-						//Eliminar las tramas (cambiar el nextState) de este asker para alivianar la tabla)
-	
-
-
+						//INCREMENTAR EL HIT
+						shmPtr[j].hit=shmPtr[j].hit + 1;//incremento el hit para no reespoofearla al vicio no mas..
+						printf("incrementado el HIT para no volver a spoofear al vicio...\n");
 						//AL FINAL:::liberar:
 						sem_post((sem_t*) & arpAskers_shmPtr[a].semaforo);
 						printf("<liberado el semaforo del asker portsteleado\n");
@@ -848,65 +831,8 @@ printf("bueno ahora me fijo si fue un fracaso la busqueda del asker o si continu
 					//CONTINUANDO EN EL WHILE LIVE==1...
 
 
-					//2|Reviso si es PREGUNTA ARP o RESPUESTA
-					printf("bueno justo aqui tengo que empezar a tratar segun sea pregunta o respuesta...\n");
-					//preguntan por el server (caso analizado)
-
-					
-						//CASO PREGUNTA:
-							//El origen es quien puede ser spoofeado, asi que lanzo un hilo que:
-								//Pregunte por el DESTINO pero EN NOMBRE DEL ORIGEN (port stealing)
-								//Capturo las tramas (filtradas) sean ARP o ROBADAS =)
-								//Compruebo consistencia de los datos de las tramas obtenidas
-								//SI DETECTO SPOOF: levanto flag de spoof detectado
-								//ELSE: comienza algoritmo retardado de deteccion
-									//SI DETECTO: levanto el flag de spoof detectado
-									//ELSE: flag de spoof abajo, guardo el CONOCIMIENTO
-								//Reviso flags y genero alertas o descarto o marco entradas segun corresponda
-
-					if(askingForThisServer==1){
-						printf("Entro a la seccion de <es una pregunta>\n");
-						//preparar
-						//crear filtro
-						//lanzar hilo que capture
-						printf("Lanzar hilo de captura dentro del sptealer\n");
-
-						printf("continuar ejecucion del stealer mientras el hilo esta en background...\n");
-
-						//PREPARAR
-						//ARPEAR
-						//SLEEP??SIGNAL SLEEP??
-						printf("*************************************Arper para port stealing durante 5 segs\n");
-						sleep(20);
 
 
-
-					}
-					else{
-						printf("no fue pregunta... sera respuesta??\n");
-						if(responseForThisServer==1){
-							printf("fue respuesta efectivamente...\n");
-							//CASO RESPUESTA:
-							//El origen es uno de mis hosts (servers) protegidos asi que CONOZCO sus datos CORRECTOS
-								//Compruebo que las tramas obtenidas tengan DATOS CORRECTOS segun base de conocimeinto
-								//SI DETECTO INCONSISTENCIA:
-									//flag de alerta correspondiente
-									//terminar
-								//NO DETECTO INCONSISTENCIA
-									//flag de consistencia OK (o en 0..??)
-									//dejo continuar
-								//Compruebo que el DESTINO sea quien supone esta respuesta que es
-									//Lanzar un hilo que arpee por el DESTINO
-										// y compare los datos obtenidos con los de la tabla
-									//SI ES INCONSISTENTE: levanto el flag correspondiente
-									//NO ES INCONSISTENTE: flag abajo
-								//Compruebo FLAGS y tomo decision, marcar, alertar, lo que sea
-						}//if verificando si fue respuesta cuando estoy en el else del if de si fue pregunta
-
-						else{//raro.. ni pregunta ni respuesta
-							printf("rarisimo.. ni pregunta ni respuesta\n");
-						}
-					}//else al que se entra si askingForThisServer!=1
 					printf("Descanzare 5 segs y de nuevo lanzo el for...\n");
 				}//CIERRO EL WHILE LIVE ==1
 
@@ -916,20 +842,17 @@ printf("bueno ahora me fijo si fue un fracaso la busqueda del asker o si continu
 	}//LAZO FOR PARA LANZAR HIJOS PARA CADA SERVER QUE TENGO QUE MONITOREAR
 
 
-		//------------FIN FORK MULTIHILADO DE SEGUIMIENTO, ROBO DE PUERTO Y ALERTA--------------------------------
+		//------------FIN FOR DE FORKS SEGUIMIENTO, ROBO DE PUERTO Y ALERTA--------------------------------
+
 		
 		//continua dentro del for del padre para lanzar hijos en funcion de los servers que tiene que monitorear
 
 	//UNA VEZ LANZADOS LOS HIJOS PARA CADA SERVER, CONTINUA EL PADRE...
 	//DE AQUI EN ADELANTE SE TERMINA LA TAREA DEL PROGRAMA, SE GENERAN LAS ALERTAS SEGUN CORRESPONDA...
 
-//------------INICIA FORK PARA MONITOREO DE ALERTAS-------------------------------------------------------
-	/*
-		Este hijo recorrera la zona de memoria de alertas y generará las alertas donde se determine
-			ya sea syslog del sistema, fichero de log propio, reenvio de eventos por socket, trap snmp, etc...
-	*/
 
-//-----------FIN FORK PARA MONITOREO DE ALERTAS-------------------------------------------------------
+	printf("aqui el padre... aburrido... entra al sleep de 100000...\n");
+
 
 	//FIN LABOR PADRE (si.. en general digamos)
 
