@@ -429,6 +429,8 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 			else{//sino, si tienen el mismo largo las comparo caracter a caracter
 				if(!strncmp(ethSrcMac,args[0].servers2guard_shmPtr[i].mac,strlen(args[0].servers2guard_shmPtr[i].mac))){
 					printf("TRANQUILO, LAS MACS SON IGUALES, LA TRAMA ES CONFIABLE...\n");
+					printf("Se descarta la entrada de pregunta ARP por ser el ORIGEN un SERVER2GUARD %s\n",ipSrc);
+					return;
 					//return;//SI DEJO ESTE RETURN, LA TRAMA NO SE ALMACENARA NUNCA!!! AUNQUE SEA CONFIABLE!!aunque respuestas...para que?
 				}
 				else{//no coinciden
@@ -439,10 +441,22 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 			}
 		}//Cierra el else al que entra si coincidio con un server2guard
 
-                //EN AMBOS CASOS DE DETECCION SE INTERRUMPE LA EJECUCION AQUI MISMO, SI NO HAY ANOMALIAS CONTINUARA LA EJECUCION NORMALMENTE...
+                //EN AMBOS CASOS DE DETECCION SE INTERRUMPE LA EJECUCION AQUI MISMO
+		//SI NO HAY ANOMALIAS CONTINUARA LA EJECUCION NORMALMENTE SI Y SOLO SI EL IPSRC NO ES UN SERVER2GUARD =)
 
 
 		printf("COMO NO ESTABA SPOOFEADA PROCEDO A HACER REVISION DE REDUNDANCIA Y ALMACENAR O DESCARTAR LA TRAMA\n");
+
+		//ANTES QUE NADA, CORROBORO QUE EL SRC NO SEA UN SERVER2GUARD, YA QUE NO VOY A MONITOREAR POR PORTSTEALING A LOS SERVERS SINO A LOS CLIENTES
+		for(i=0;i<args[0].servers2guardTable_tableSize;i++){
+                        //COMPARAR EL LARGO PRIMERO
+                        printf("comparando si lo que estoy por guardar es un server: Leida: %s Capturada: %s \n",args[0].servers2guard_shmPtr[i].ip,ipSrc);
+                        if(strlen(args[0].servers2guard_shmPtr[i].ip)!=strlen(ipSrc)){
+                                printf("la ip tiene distinto largo\n");
+                                continue;//salto a la proxima entrada de la tabla
+                        }//si no coincide el largo
+		}
+
 		//AHORA REVISO QUE NO EXISTA DE ANTES EN LA TABLA (luego la guardo si no existe.. es para no tener redundancia)
 
 
@@ -474,6 +488,7 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 			printf("estoy frente a una pregunta o respuesta ARP\n");
 			//estoy aquiiii no se como comparar.. ahora se me jodio el null por la inicializacion!! (no pasa nada. uso el type ;)
 
+
 			if(args[0].shmPtr[i].type==99){
 				printf("\nEntrada de la tabla %d VACIA\n",i);
 				printf("______________________________________________________________\n");
@@ -493,6 +508,7 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 				printf("el ethSrcMac de la tabla no tiene el mismo largo que el ethSrcMac\n");
 				comparacion=1;
 			}//FIN PARCHE
+
 			printf("valor de la comparacion = %d\n",comparacion);//0 iguales else distintos
 			if(comparacion==0){//SI COINCIDIERON
 				printf("resulto que eran iguales el de la entrada y este\n");
@@ -529,6 +545,13 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 								//misma IP destino, si llego aca DESCARTOOO!!!
 								printf("LOG: Coincidencia en la tabla, descartar trama\n");
 								dropFlag=1;//descartar trama
+								//decrementar HIT de la entrada coincidente si HIT > 2
+								sem_wait((sem_t*) & (args[0].shmPtr[i].semaforo));
+								if(args[0].shmPtr[i].hit>2){
+									args[0].shmPtr[i].hit=((int) (args[0].shmPtr[i].hit)) -1;
+								}
+								printf("se RESTO 1 al HIT por coincidir, valor resultante: %d\n",(int) args[0].shmPtr[i].hit);
+								sem_post((sem_t*) & (args[0].shmPtr[i].semaforo));
 								break;//rompo el lazo
 							}
 							else{
@@ -563,6 +586,7 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 				//pruebo tambien el cruzado :)
 				printf("la comparacion dio DIFERENTE el actual y la tabla..si no es pregunta, probaria el cruzado\n");
 			}
+
 			if(askFlag==1){//si es una pregunta salteo el cruzado...
 				printf("como era una pregunta arp me salteo el cruzado...\n");
 				continue;//salto
@@ -626,10 +650,19 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 								//misma IP origen en la tabla coincide con el destino de este caso.llego aca DESCARTOOO!!!
 								printf("LOG: Coincidencia CRUZADA en la tabla, descartar trama\n");
 								dropFlag=1;
+
+								//decrementar HIT de la entrada coincidente si HIT > 2
+                                                                sem_wait((sem_t*) & (args[0].shmPtr[i].semaforo));
+                                                                if(args[0].shmPtr[i].hit>2){
+                                                                        args[0].shmPtr[i].hit=((int) (args[0].shmPtr[i].hit)) -1;
+                                                                }
+                                                                printf("se RESTO 1 al HIT por coincidir, valor resultante: %d\n",(int) args[0].shmPtr[i].hit);
+                                                                sem_post((sem_t*) & (args[0].shmPtr[i].semaforo));
+
 								break;//rompo el lazo
 							}
 							else{
-								printf("no es la misma IP origen en tabla y destino en este caso. Inconsistencia de datos!!\n");
+								printf("no es la misma IP origen en tabla y destino en este caso. Inconsistencia de datos!\n");
 								//Para comprender este caso, revisar comentarios en la revision derecha (esta es la cruzada)
 								dropFlag=0;
 							}
@@ -665,6 +698,7 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 		else{
 			printf("LOG: se procede al almacenamiento de la trama....\n");
 		}
+
 		for(i=0,savedFlag=0;i<TABLE_SIZE;i++){//lazo para almacenar datos, con flag en "unsaved" por default
 			printf("___________________________________________________________________________\n");
 			printf("almacenador, pasada %d\n",i);
@@ -737,6 +771,8 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 					
 
 					args[0].shmPtr[i].nextState=nextState;//OJO son enteros
+					printf("se setea el HIT = 1 por ser creacion de entrada en tabla\n");
+					args[0].shmPtr[i].hit=1;//A LA FUERZA POR SER CREACION
 					if(askFlag==0){
 						args[0].shmPtr[i].type=1;
 						printf("se seteoo type=1 y el type era %d\n",type);
@@ -810,6 +846,7 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 				return;
 			}
 			//Sino... continua para guardar el Asker...
+		
 
 
 int askerFounded=0;
@@ -946,7 +983,9 @@ int askerReplaceIndex=0;//subindice de la entrada donde se encontro el asker a r
 
 		//puedo continuar con el proximo frame =) finaliza la tarea de la Callback
 		//aumenta el contador de frames
+		
 	
 	}//ELSE VIAJA ARP
 fflush(stdout);
 }//definicion de la funcion
+
