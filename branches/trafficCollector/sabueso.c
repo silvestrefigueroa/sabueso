@@ -674,8 +674,11 @@ int main(int argc, char *argv[]){
 
 						//SI HIT > 1, ENTONCES SALTO
 						if(shmPtr[j].hit > 2){
-							printf("el HIT era mayor que 2 en el portstealer...\n");
+							printf("el HIT (%d) era mayor que 2 en el portstealer, saltando a la proxima trama..\n",shmPtr[j].hit);
 							continue;//salto.. hasta que la vea el traffic de nuevo...
+						}
+						else{
+							printf("el HIT (%d) no era mayor que 2 asi que procedo a portstelear...\n",shmPtr[j].hit);
 						}
 
 
@@ -768,6 +771,23 @@ int main(int argc, char *argv[]){
 						int pst=0;//Para el algoritmo de portstealing (contador)
 						while(arpAskers_shmPtr[a].status==2){//mientras este asker se este chekeando (y no se determine spoofed u OK)
 							sleep(10);
+
+
+
+
+
+
+
+//EN ALGUN MOMENTO, DEBERIA CORTAR SOLIDARIAMENTE, ES DECIR, SI NO LE INDICA QUE EL ASKER ESTA SPOOFEADO.. NO POR ELLO VA A SEGUIR INFINITAMENTE
+//ESTABLECER BIEN ESTE PUNTO DE CORTE
+
+
+
+
+
+
+
+
 							printf("<<>>Dentro del while del status, comenzando el portstealing\n");
 
 
@@ -805,6 +825,8 @@ int main(int argc, char *argv[]){
 						//INCREMENTAR EL HIT
 						shmPtr[j].hit=shmPtr[j].hit + 1;//incremento el hit para no reespoofearla al vicio no mas..
 						printf("incrementado el HIT para no volver a spoofear al vicio...\n");
+						//FORZAR EL STATUS A CHECK PARA QUE SI OTRO PROCESO ESTABA ESPERANDO EL UNLOCK, PUEDA PROCEDER AL CHECKEAR
+						arpAskers_shmPtr[a].status=2;
 						//AL FINAL:::liberar:
 						sem_post((sem_t*) & arpAskers_shmPtr[a].semaforo);
 						printf("<liberado el semaforo del asker portsteleado\n");
