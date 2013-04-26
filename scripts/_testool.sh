@@ -7,6 +7,6 @@ arping -i wlan0 -p -s ee:3c:cc:dd:aa:f1 192.168.1.23 -c 1
 arping -i wlan0 -p -s 22:3b:cc:dd:aa:f1 192.168.1.226 -c 1
 arping -i wlan0 -p -s a2:2b:cc:dd:ea:f1 192.168.1.190 -c 1
 arping -i wlan0 -p -s aa:2b:cc:dd:ea:f1 192.168.1.19 -c 1
-arping -i wlan0 -p -s aa:3b:cc:dd:ea:f1 192.168.1.180 -c 1
+arping -i wlan0 -p -s aa:3b:cc:dd:ea:f1 192.168.1.1 -c 1
 arping -i wlan0 -p -s aa:3b:cc:dd:aa:f1 192.168.1.100 -c 1
 arping 192.168.1.1 -c 1 -I wlan0

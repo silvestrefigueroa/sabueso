@@ -30,11 +30,14 @@
 #define ARPASKERS_TABLE_SIZE args[0].arpAskers_tableSize//TAMAÑO DE LA TABLA DE ASKERS
 
 /*
+
 	Esta funcion se encarga de 2 cosas fundamentales:
 		1) monitorear trafico arp, para determinar dialogos entre equipos de la red (en caso de gratuito arp comprobar si es del atacante)
 		2) validar el trafico no arp, con el objeto de comprobar un ataque MitM
 			esta ultima funcionalidad se añadio a partir del renombrado de arpCollector a trafficCollecotor
 			la idea es simplificar el desarrollo asumiendo el coste de perfomance y diseño
+
+
 */
 
 
@@ -79,7 +82,8 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 	char *spooferDetectedMessageNOARP="+++++++++++++++SPOOFER DETECTADO DESDE EL SABUEO: (TRAMAS ENVENENADAS, NO ARP)";
 
 
-	int i=0;//para lazos for, subindice
+	int i=0,u=0;//para lazos for, subindice
+	int askerSpoofed=0,destinationSpoofed=0;
 	int tableIndex=0;//para salvar el i luego cuando quiero referenciar la entrada de la tabla desde la rutina de askers
 	int offset=0;//desplazamiento para aritmetica de punteros en cabecera IP
 
@@ -183,8 +187,8 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 		if(strlen(ethSrcMac)!=strlen(args[0].servers2guard_shmPtr[i].mac)){
 			printf("SPD: SPOOFER NO ARP DETECTADO!! LAS MAC NO COINCIDEN EN LARGO...\n");
 			syslog(1, "%s", spooferDetectedMessageNOARP);
-
-			return;
+			//return;//ANtes de retornar debo indicar que el asker status es 1, para ello me espero y hago el return mas a bajo
+			askerSpoofed=1;//indicar que el asker se detecto como spoofeado
 		}
 		else{//sino, si tienen el mismo largo las comparo caracter a caracter
 			if(!strncmp(ethSrcMac,args[0].servers2guard_shmPtr[i].mac,strlen(args[0].servers2guard_shmPtr[i].mac))){
@@ -194,17 +198,53 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 			else{//no coinciden
 				printf("SPD: SPOOFER NO ARP DETECTADO POR SER DISTINTAS LAS MACS A PESAR DE TENER EL MISMO LARGO!!!!!!\n");
 				syslog(1, "%s", spooferDetectedMessageNOARP);
-				return;
+				//return;//return;//ANtes de retornar debo indicar que el asker status es 1, para ello me espero y hago el return mas a bajo
+				askerSpoofed=1;//indicar que el asker se detecto como spoofeado
 			}
 		}
-		//EN AMBOS CASOS... SE INTERRUMPE LA EJECUCION AQUI MISMO...
+		//EN AMBOS CASOS DE DETECCION DE SPOOFER... SE CONTINUA LA EJECUCION AQUI, LUEGO HE DE MARCAR AL ASKER COMO SPOOFEADO:
+		if(askerSpoofed==1){
+			//BUSCAR AL ASKER:(RECORRER TABLA DE ASKERS)
+			for(u=0;u<ARPASKERS_TABLE_SIZE;u++){
+				printf("buscando %s en la tabla de askers\n",ipSrc);//busco la IP origen en la tabla de askers
 
+				//chequear si coincide
+				//1| si la entrada esta en NULL entonces esta vacia, saltar a la siguiente
+				if(args[0].arpAskers_shmPtr[u].status==99){//status 99 es inicializado asi que es el "null" en este caso..
+					printf("entrada vacia, saltar a la proxima porque estoy comparando nada mas...\n");
+					continue;//continue salta al proximo ciclo.. break rompe el lazo y return la instancia..
+				}
+				else{//si entra aca hay algo en la entrada..compararlo entonces con la arpSrcIp que tengo
+					printf("comparando: %s contra %s por no estar vacia la entrada\n", args[0].arpAskers_shmPtr[u].ip,ipSrc);
+					//OJO que tengo que ver que tengan el mismo strlen para asegurarme de que puedo hacer la comparacion strncmp
+					//sino, por ejemplo si comparo 1.1.1.111 con 1.1.1.1 con strlen(1.1.1.1) me van a dar iguales!!!
+					if(strlen(ipSrc)!=strlen(args[0].arpAskers_shmPtr[u].ip)){
+						printf("tienen diferente largo.. asi que son diferentes.. no comparo nada sin distitnas y punto\n");
+						continue;//saltar a la proxima entrada de asker.. proximo ciclo de ESTE for
+					}
+					//Else continua ejecutando aqui porque no hizo el continue del IF =^.^=
+					printf("tienen el mismo largo, pueden ser iguales, asi que las comparo...\n");
+					//como se que si sigo aqui es porque tienen el MISMO largo, entonces comparo por strNcmp...
+					if(!strncmp(args[0].arpAskers_shmPtr[u].ip,ipSrc,strlen(ipSrc))){
+						//SI SON IGUALES, ES PORQUE TENGO AL ASKER, LO MARCO!!
+						printf("SI: %s == %s => Lo marco para que no lo portsteleenmas\n",ipSrc,args[0].arpAskers_shmPtr[u].ip);
+						//MARCAR EL ASKER (como spoofeado, luego al romperse el while en el sabueso(fork 2) volerlo a check
+							//Eso de volverlo a check es porque si otro hijo estaba esperando que se unlockeara para
+							//chekearlo, debera poder entrar al su while sino nunca va a entrar y nadie mas podria checkearlo
 
-		
+						args[0].arpAskers_shmPtr[u].status=1;//spoofed (si, lo hace sin semaforo... asi de tenaz no mas!!	
+						//HACER EL RETURN QUE LE COMENTE DEBAJO DE SYSLOG A LOS IF'S ANTERIORES
+						return;
 
-
-
-	}
+					}
+					else{
+						printf("al final eran diferentes, asi que paso a la siguiente a ver si encuentro el asker y lo marco\n");
+					}
+				}//else porque status!=99
+			}//for u=0 para askers
+		}//if spoofed == 1
+	
+	}//cierro el if "si NO es ARP"...
 	else{//ES ARP
 		printf("++++++++++++++++++++++++++++++++++++++TENEMOS ARP sobre esta trama\n");
 
@@ -239,6 +279,7 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 		int doCheckIpI=0;
 		int doCheckSpoofer=0;
 		int doCheckWAck=0;
+		int arpType=2;//0 es pregunta, 1 es respuesta, 2 es inicializado
 	//	int doHitIncrement=0;
 		int nextState=0;//por default, almacenarla y ya
 		int type=99;//consultar posibles valores en tabla_de_dialogos.txt [Arquitectura] (lo uso para saber si esta inicializada, vacia)
@@ -345,6 +386,7 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 						doCheckIpI=1;//siempre primero, es la trivial.si conozco la info real, no noecesito el stealer.
 						type=1;//Campo que indica en la trama si se trata de una respuesta arp
 						nextState=1;
+						arpType=1;//ES UNA RESPUESTA (podria consultar el tipo de arp desde el header...)
 						//Normalmente a no ser que sea una respuesta dirigida al sabueso, no veria estas tramas...(si..con el portstl)
 						//es por ello que lo mas seguro es que esta trama sean robadas del porstealing
 				break;
@@ -372,80 +414,149 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 		}
 		printf("COMO NO SE DESCARTO LA TRAMA, SIGO EL PROCEDIMIENTO PARA REVISAR Y LUEGO GUARDARLA EN LA TABLA...\n");
 
-		//PRIMERO REVISO SI ES CONSISTENTE (SI NO ESTA SPOOFEADA)
-		printf("revisando si es respuesta y tiene el flag de checkipip\n");
+		//PRIMERO REVISO SI ES UNA RESPUESTA ARP CONSISTENTE (SI NO ESTA SPOOFEADA), SI ES PREGUNTA, ME SALTO EL CHECK DE SPOOFERS.
+			//OJO, LAS PREGUNTAS ARP PUEDEN ESTAR SPOOFEADAS Y CAUSAR ARP POISONING, PERO NO ESTA DENTRO DEL ALCANCE DE ESTE TRABAJO. (SF)
+		printf("revisando si es respuesta y tiene el flag de checkipip\n");//LO DEL FLAG CHEKIPIP.. LO VOY A OBVIAR..
+
+
+
+//acondicionando:
+                        ipSrc=arpSrcIp;
+                        ipDst=arpDstIp;
 
 
 
 
-                //UNA VEZ QUE TENGO LAS IP Y LAS MAC, PROCEDO A BUSCAR EN LA TABLA DE SERVERS LA IP Y SI LA ENCUENTRO COMPROBAR LA COINCIDENCIA DE LAS MAC
-		//acondicionando:
-		ipSrc=arpSrcIp;
-		ipDst=arpDstIp;
+		//SI ES RESPUESTA:
+		destinationSpoofed=0;//antes la dejo en 0 para evaluar (default NO spoofeado)
+		if(arpType==1){
+			
 
-		printf("CHEKEANDO TRAFICO ARP CONTRA SPOOFERS... me ha quedado: IP_SRC= %s | IP_DST= %s \n",ipSrc,ipDst);
+			//BUSCAR EN LA TABLA DE SERVERS LA IP Y SI LA ENCUENTRO COMPROBAR LA COINCIDENCIA DE LAS MAC PARA HACER CHECK DE CONSISTENCIA
 
-                printf("buscando IP extraida en la tabla de servers...\n");
-                int server2guardFound=0;//no encontrado por default
-                for(i=0;i<args[0].servers2guardTable_tableSize;i++){
-                        //COMPARAR EL LARGO PRIMERO
-                        printf("comparando: Leida: %s Capturada: %s \n",args[0].servers2guard_shmPtr[i].ip,ipSrc);
-                        if(strlen(args[0].servers2guard_shmPtr[i].ip)!=strlen(ipSrc)){
-                                printf("la ip tiene distinto largo\n");
-                                continue;//salto a la proxima entrada de la tabla
-                        }//si no coincide el largo
-                        else{//mismo largo...
-                                printf("tienen el mismo largo...paso a compararlas completamente...\n");
-                                if(!strncmp(args[0].servers2guard_shmPtr[i].ip,ipSrc,strlen(ipSrc))){
-                                        printf("Se encontro coincidencias en IP leida=%s y extraida=%s en %d\n",args[0].servers2guard_shmPtr[i].ip,ipSrc,i);
-                                        server2guardFound=1;//se encontro un server coincidente con el sender!!
-                                        break;//rompo el lazo y continua adelante del lazo (me quedo i con el subindex del server;)
-                                }
-                                else{//Distintos
-                                        printf("tenia el mismo largo pero la ip extraida no era la misma que el server leido en %d \n",i);
-                                }
-                        }//cierro else que entra si tienen el mismo largo
+			printf("CHEKEANDO TRAFICO ARP CONTRA SPOOFERS... me ha quedado: IP_SRC= %s | IP_DST= %s \n",ipSrc,ipDst);
 
-                }//continua aqui por el break
-                printf("fuera del for, evaluo si se encontro o no el server\n");
-                if(server2guardFound==0){//no se encontro el server y se termino el lazo
-                        printf("host origen %s no coincidio con ningun server monitoreado\n",ipSrc);
-                        //return;//DE NINGUNA MANERA... SINO NO ALMACENARIA NUNCA LAS PREGUNTAS ARP!!!!
-			//continua el algoritmo para comprobar redundancias y guardar
-                }
-		else{//es decir, si coincidio con un server2guard o mac2guard(old version) procedo a checkear spoof antes de guardar
-	                //SINO..CONTINUA AQUI :=)
-        	        printf("El host origen %s coincidio con el server monitoreado %s\n",args[0].servers2guard_shmPtr[i].ip,ipSrc);
-                	//comparo las MAC address:
-	                printf("comparando MAC capturada= %s contra MAC del server2guard= %s\n",ethSrcMac,args[0].servers2guard_shmPtr[i].mac);
+			printf("buscando IP extraida en la tabla de servers...\n");
+			int server2guardFound=0;//no encontrado por default
+			for(i=0;i<args[0].servers2guardTable_tableSize;i++){
+				//COMPARAR EL LARGO PRIMERO
+				printf("comparando: Leida: %s Capturada: %s \n",args[0].servers2guard_shmPtr[i].ip,ipSrc);
+				if(strlen(args[0].servers2guard_shmPtr[i].ip)!=strlen(ipSrc)){
+					printf("la ip tiene distinto largo\n");
+					continue;//salto a la proxima entrada de la tabla
+				}//si no coincide el largo
+				else{//mismo largo...
+					printf("tienen el mismo largo...paso a compararlas completamente...\n");
+					if(!strncmp(args[0].servers2guard_shmPtr[i].ip,ipSrc,strlen(ipSrc))){
+						printf("Hay coincidencias en IP leida=%s y extraida=%s en %d\n",args[0].servers2guard_shmPtr[i].ip,ipSrc,i);
+						server2guardFound=1;//se encontro un server coincidente con el sender!!
+						break;//rompo el lazo y continua adelante del lazo (me quedo i con el subindex del server;)
+					}
+					else{//Distintos
+						printf("tenia el mismo largo pero la ip extraida no era la misma que el server leido en %d \n",i);
+					}
+				}//cierro else que entra si tienen el mismo largo
 
-
-
-			if(strlen(ethSrcMac)!=strlen(args[0].servers2guard_shmPtr[i].mac)){
-				printf("SPD: SPOOFER DETECTADO!! LAS MAC NO COINCIDEN EN LARGO...\n");
-				syslog(1,"%s",spooferDetectedMessageARP);
-				return;
+			}//continua aqui por el break
+			printf("fuera del for, evaluo si se encontro o no el server\n");
+			if(server2guardFound==0){//no se encontro el server y se termino el lazo
+				printf("host origen %s no coincidio con ningun server monitoreado\n",ipSrc);
+				//return;//DE NINGUNA MANERA... SINO NO ALMACENARIA NUNCA LAS PREGUNTAS ARP!!!!
+				//continua el algoritmo para comprobar redundancias y guardar
 			}
-			else{//sino, si tienen el mismo largo las comparo caracter a caracter
-				if(!strncmp(ethSrcMac,args[0].servers2guard_shmPtr[i].mac,strlen(args[0].servers2guard_shmPtr[i].mac))){
-					printf("TRANQUILO, LAS MACS SON IGUALES, LA TRAMA ES CONFIABLE...\n");
-					printf("Se descarta la entrada de pregunta ARP por ser el ORIGEN un SERVER2GUARD %s\n",ipSrc);
-					return;
-					//return;//SI DEJO ESTE RETURN, LA TRAMA NO SE ALMACENARA NUNCA!!! AUNQUE SEA CONFIABLE!!aunque respuestas...para que?
-				}
-				else{//no coinciden
-					printf("SPD: SPOOFER DETECTADO POR SER DISTINTAS LAS MACS A PESAR DE TENER EL MISMO LARGO!!!!!!\n");
+			else{//es decir, si coincidio con un server2guard o mac2guard(old version) procedo a checkear spoof antes de guardar
+				//SINO..CONTINUA AQUI :=)
+				printf("El host origen %s coincidio con el server monitoreado %s\n",args[0].servers2guard_shmPtr[i].ip,ipSrc);
+				//comparo las MAC address:
+				printf("comparando MAC capturada= %s contra MAC del server2guard= %s\n",ethSrcMac,args[0].servers2guard_shmPtr[i].mac);
+
+
+
+				if(strlen(ethSrcMac)!=strlen(args[0].servers2guard_shmPtr[i].mac)){
+					printf("SPD: SPOOFER DETECTADO!! LAS MAC NO COINCIDEN EN LARGO...\n");
 					syslog(1,"%s",spooferDetectedMessageARP);
-					return;
+					//return;//EN LUGAR DE HACER RETURN AQUI, MODIFICO EL VALOR DEL ASKER MAS ABAJO Y LUEGO HAGO RETURN
+					destinationSpoofed=1;//like askerSpoofed
 				}
-			}
-		}//Cierra el else al que entra si coincidio con un server2guard
+				else{//sino, si tienen el mismo largo las comparo caracter a caracter
+					if(!strncmp(ethSrcMac,args[0].servers2guard_shmPtr[i].mac,strlen(args[0].servers2guard_shmPtr[i].mac))){
+						printf("TRANQUILO, LAS MACS SON IGUALES, LA TRAMA ES CONFIABLE...\n");
+						printf("Se descarta la entrada de RESPUESTA ARP por ser el ORIGEN un SERVER2GUARD %s\n",ipSrc);
+						return;
+						//return;//SI DEJO RETURN,LA TRAMA NO SE ALMACENARA NUNCA! AUNQUE SEA CONFIABLE!!aunque respuestas...para que?
+					}
+					else{//no coinciden
+						printf("SPD: SPOOFER DETECTADO POR SER DISTINTAS LAS MACS A PESAR DE TENER EL MISMO LARGO!!!!!!\n");
+						syslog(1,"%s",spooferDetectedMessageARP);
+						//return;//EN LUGAR DE HACER RETURN AQUI, MODIFICO EL VALOR DEL ASKER MAS ABAJO Y LUEGO HAGO RETURN
+						destinationSpoofed=1;//like askerSpoofed
+					}
+				}//ELSE
+			}//Cierra el else al que entra si coincidio con un server2guard
+		}//cierro el if de si es respuesta
 
-                //EN AMBOS CASOS DE DETECCION SE INTERRUMPE LA EJECUCION AQUI MISMO
+		//EN CASOS DE DETECCION SE MODIFICARA EL INDICADOR DE STATUS AL ASKER
+		// Y LUEGO SE INTERRUMPE LA EJECUCION JUSTO ANTES DE LA RUTINA DE CHECK SERVER2GUARD Y REDUNDANCIA & SAVE!
+		//PERO SI NO ENTRA AL IF SIGUIENTE, ES PORQUE NO HUBO DETECCION Y SE CONTINUA CON EL PROCEDIMIENTO DE ALMACENAMIENTO.
+
+//----------------------
+
+                if(destinationSpoofed==1){
+                        //BUSCAR AL ASKER:(RECORRER TABLA DE ASKERS)
+                        for(u=0;u<ARPASKERS_TABLE_SIZE;u++){
+                                printf("buscando %s en la tabla de askers\n",ipDst);//busco la IP origen en la tabla de askers
+
+                                //chequear si coincide
+                                //1| si la entrada esta en NULL entonces esta vacia, saltar a la siguiente
+                                if(args[0].arpAskers_shmPtr[u].status==99){//status 99 es inicializado asi que es el "null" en este caso..
+                                        printf("entrada vacia, saltar a la proxima porque estoy comparando nada mas...\n");
+                                        continue;//continue salta al proximo ciclo.. break rompe el lazo y return la instancia..
+                                }
+                                else{//si entra aca hay algo en la entrada..compararlo entonces con la arpSrcIp que tengo
+                                        printf("comparando: %s contra %s por no estar vacia la entrada\n", args[0].arpAskers_shmPtr[u].ip,ipDst);
+                                        //OJO que tengo que ver que tengan el mismo strlen para asegurarme de que puedo hacer la comparacion strncmp
+                                        //sino, por ejemplo si comparo 1.1.1.111 con 1.1.1.1 con strlen(1.1.1.1) me van a dar iguales!!!
+                                        if(strlen(ipDst)!=strlen(args[0].arpAskers_shmPtr[u].ip)){
+                                                printf("tienen diferente largo.. asi que son diferentes.. no comparo nada sin distitnas y punto\n");
+                                                continue;//saltar a la proxima entrada de asker.. proximo ciclo de ESTE for
+                                        }
+                                        //Else continua ejecutando aqui porque no hizo el continue del IF =^.^=
+                                        printf("tienen el mismo largo, pueden ser iguales, asi que las comparo...\n");
+                                        //como se que si sigo aqui es porque tienen el MISMO largo, entonces comparo por strNcmp...
+                                        if(!strncmp(args[0].arpAskers_shmPtr[u].ip,ipSrc,strlen(ipDst))){
+                                                //SI SON IGUALES, ES PORQUE TENGO AL ASKER, LO MARCO!!
+                                                printf("SI: %s == %s => Lo marco para que no lo portsteleenmas\n",ipDst,args[0].arpAskers_shmPtr[u].ip);
+                                                //MARCAR EL ASKER (como spoofeado, luego al romperse el while en el sabueso(fork 2) volerlo a check
+                                                        //Eso de volverlo a check es porque si otro hijo estaba esperando que se unlockeara para
+                                                        //chekearlo, debera poder entrar al su while sino nunca va a entrar y nadie mas podria checkearlo
+
+                                                args[0].arpAskers_shmPtr[u].status=1;//spoofed (si, lo hace sin semaforo... asi de tenaz no mas!!       
+                                                //HACER EL RETURN QUE LE COMENTE DEBAJO DE SYSLOG A LOS IF'S ANTERIORES
+                                                return;
+
+                                        }
+                                        else{
+                                                printf("al final eran diferentes, asi que paso a la siguiente a ver si encuentro el asker y lo marco\n");
+                                        }
+                                }//else porque status!=99
+                        }//for u=0 para askers
+                }//if destinationSpoofed == 1
+
+
+
+//----------------------
+
+		//CONTINUA LA EJECUCION PORQUE NO SE DETECTO SPOOFING...
+		//PERO POR LAS DUDAS PONGO EL CORTE:
+		if(destinationSpoofed==1){
+			printf("ERROR: este mensaje no deberia haberse mostrado ya que el return deberia haber saltado antes!!\n");
+			return;
+		}
+		//SI NO SE DETECTO.. CONTINUA DE LARGO (Y ESTA PERFECTO)
+
 		//SI NO HAY ANOMALIAS CONTINUARA LA EJECUCION NORMALMENTE SI Y SOLO SI EL IPSRC NO ES UN SERVER2GUARD =)
-
-
-		printf("COMO NO ESTABA SPOOFEADA PROCEDO A HACER REVISION DE REDUNDANCIA Y ALMACENAR O DESCARTAR LA TRAMA\n");
+		printf("SI he llegado aqui es porque o bien era respuesta y no estaba spofeada, o bien es una pregunta y salteo la parte del spoof check\n");
+		printf("PROCEDIENDO A HACER REVISION DE REDUNDANCIA Y ALMACENAR O DESCARTAR LA TRAMA(por repeticion o por ser s2g\n");
 
 		//ANTES QUE NADA, CORROBORO QUE EL SRC NO SEA UN SERVER2GUARD, YA QUE NO VOY A MONITOREAR POR PORTSTEALING A LOS SERVERS SINO A LOS CLIENTES
 		for(i=0;i<args[0].servers2guardTable_tableSize;i++){
@@ -455,16 +566,39 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
                                 printf("la ip tiene distinto largo\n");
                                 continue;//salto a la proxima entrada de la tabla
                         }//si no coincide el largo
+			else{//es decir, SI "SI tienen el mismo largo", evaluo si son iguales...
+				printf("como tienen el mismo largo, me fijo si son iguales...\n");
+				if(!strcmp(args[0].servers2guard_shmPtr[i].ip,ipSrc)){//SI SON IGUALES
+					printf("Como son iguales %s y %s, se descarta por ser server2guard\n",args[0].servers2guard_shmPtr[i].ip,ipSrc);
+					return;
+				}
+				else{
+					printf("por mas que tenian el mismo largo, no era la misma.. asi que sigo evaluando si es o no un server2guard\n");
+					continue;
+				}
+			}
 		}
+		//SI SIGUE ACA.. ES PORQUE NO ERA UN SERVER2GUARD		
+		printf("COMO PASO LA PRUEBA DE SI ES UN SERVER2GUARD, CONTINUO EVALUANDO SI ES UNA RESPUESTA ARP (PARA SALTARLA)\n");
+
+		//ESTO ES NUEVO, ME INTERESAN SOLO LAS PREGUNTAS ARP YA QUE ME INTERESA CON QUIEN QUIEREN LOS CLIENTES HABLAR, ASI QUE NO VOY A GUARDAR
+		//LAS RESPUESTAS XD
+		
+		if(arpType==1){//SI SE TRATA DE UNA RESPUESTA (OJO QUE NO MARCO EN 0 CUANDO ES PREGUNTA...)
+			printf("OMITO ALMACENAMIENTO DE TRAMA POR TRATARSE DE UNA RESPUESTA, SOLO GUARDO PREGUNTAS\n");
+			return;
+		}
+		printf("Como no se detecto que fuera respuesta, y como no es el origen un server2guard, procedo a almacenar la preguntaARP\n");
+
+		//ENTONCES, SOLO SI NO ES RESPUESTA ARP (PERO SI ES PROTO ARP) Y SI EL SRC (EL QUE PREGUNTA) NO ES UN SERVER2GUARD, PROCEDO CON EL MECANISMO
+		//DE ALMACENAMIENTO (CHECKEAR REDUNDANCIA Y GUARDAR)
+
+		//LO HE HECHO DE ESTE MODO, PARA QUE SEA POSIBLE REVERTIR EN ALGUN CASO EL PROCEDIMIENTO Y EXISTA LA POSIBILIDAD DE ALMACENAR RESPUESTAS
+		//ES DECIR, HAY CODIGO MAS ABAJO QUE NO SE VA A UTILIZAR A MENOS QUE SE TRATE DE UNA RESPUESTA.. PARECE INNECESARIO PERO DEJA
+		//LA POSIBILIDAD DE IMPLEMENTAR MAS FUNCIONALIDADES BASADAS EN LAS RESPUESTAS ALMACENADAS.
 
 		//AHORA REVISO QUE NO EXISTA DE ANTES EN LA TABLA (luego la guardo si no existe.. es para no tener redundancia)
-
-
-
 		//COMIENZA LA PARTE EN LA QUE BUSCA UN LUGAR EN LA TABLA PARA GUARDAR LOS DATOS DE LA TRAMA CAPTURADA
-
-
-		//antes de ir a meterlo en la tabla, deberia comprobar que la informacion que estoy metiendo no existe ya de antes!!!
 		//LAZO PARA CHECKEAR SI EXISTE UNA ENTRADA IGUAL O CRUZADA DE ESTE CASO
 		for(i=0;i<TABLE_SIZE;i++){//ese tamaño de la tabla de memoria deberia ser un sizeof o de alguna manera conocerlo ahora hardcodeado
 
@@ -483,7 +617,7 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 			//COMO SIRVE EL MISMO METODO, SOLO QUE EN LA RESPUESTA PUEDE QUE NECESITE ADEMAS HACERLO CRUZADO, APLICO SIEMPRE
 			//EL METODO COMPATIBLE CON LA PREGUNTA ARP Y SOLO EN CASO DE NO SER UNA PREGUNTA APLICO EL CRUZADO =)
 
-printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
+			printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac,arpSrcMac,arpDstMac,arpSrcIp,arpDstIp);
 
 			printf("estoy frente a una pregunta o respuesta ARP\n");
 			//estoy aquiiii no se como comparar.. ahora se me jodio el null por la inicializacion!! (no pasa nada. uso el type ;)
@@ -546,11 +680,15 @@ printf("hasta ahora tengo: \n %s\n %s\n %s\n %s\n %s\n %s\n",ethSrcMac,ethDstMac
 								printf("LOG: Coincidencia en la tabla, descartar trama\n");
 								dropFlag=1;//descartar trama
 								//decrementar HIT de la entrada coincidente si HIT > 2
+								printf("HIT antes de restar= %d\n", args[0].shmPtr[i].hit);
 								sem_wait((sem_t*) & (args[0].shmPtr[i].semaforo));
 								if(args[0].shmPtr[i].hit>2){
 									args[0].shmPtr[i].hit=((int) (args[0].shmPtr[i].hit)) -1;
+									printf("se RESTO 1 al HIT por coincidir, valor resultante: %d\n",(int) args[0].shmPtr[i].hit);
 								}
-								printf("se RESTO 1 al HIT por coincidir, valor resultante: %d\n",(int) args[0].shmPtr[i].hit);
+								else{
+									printf("No se toca el HIT por ser  HIT <= 2: %d\n",(int) args[0].shmPtr[i].hit);
+								}
 								sem_post((sem_t*) & (args[0].shmPtr[i].semaforo));
 								break;//rompo el lazo
 							}
