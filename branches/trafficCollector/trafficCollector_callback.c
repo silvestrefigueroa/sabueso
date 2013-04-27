@@ -81,7 +81,7 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 	char *spooferDetectedMessageARP="---------------SPOOFER DETECTADO DESDE EL SABUESO: (MENSAJE ARP SPOOFEADO)!!";
 	char *spooferDetectedMessageNOARP="+++++++++++++++SPOOFER DETECTADO DESDE EL SABUEO: (TRAMAS ENVENENADAS, NO ARP)";
 
-
+	int server2guardFound=0;//DEFAULT NO
 	int i=0,u=0;//para lazos for, subindice
 	int askerSpoofed=0,destinationSpoofed=0;
 	int tableIndex=0;//para salvar el i luego cuando quiero referenciar la entrada de la tabla desde la rutina de askers
@@ -151,7 +151,7 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 
 		//UNA VEZ QUE TENGO LAS IP Y LAS MAC, PROCEDO A BUSCAR EN LA TABLA DE SERVERS LA IP Y SI LA ENCUENTRO COMPROBAR LA COINCIDENCIA DE LAS MAC
 		printf("buscando IP extraida en la tabla de servers...\n");		
-		int server2guardFound=0;//no encontrado por default
+		server2guardFound=0;//no encontrado por default
 		for(i=0;i<args[0].servers2guardTable_tableSize;i++){
 			//COMPARAR EL LARGO PRIMERO
 			printf("comparando: Leida: %s Capturada: %s \n",args[0].servers2guard_shmPtr[i].ip,ipSrc);
@@ -172,7 +172,7 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 			}//cierro else que entra si tienen el mismo largo
 
                 }//continua aqui por el break
-		printf("fuera del for, evaluo si se encontro o no el server\n");
+		printf("fuera del for, evaluo si se encontro o no al SRC en la lista de servers2guard\n");
 		if(server2guardFound==0){//no se encontro el server y se termino el lazo
 			printf("host origen %s no coincidio con ningun server monitoreado\n",ipSrc);
 			return;
@@ -430,6 +430,7 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 		//SI ES RESPUESTA:
 		destinationSpoofed=0;//antes la dejo en 0 para evaluar (default NO spoofeado)
 		if(arpType==1){
+			printf("Se detecto que es respuesta...procediendo con rutina de check correspondiente\n");
 			
 
 			//BUSCAR EN LA TABLA DE SERVERS LA IP Y SI LA ENCUENTRO COMPROBAR LA COINCIDENCIA DE LAS MAC PARA HACER CHECK DE CONSISTENCIA
@@ -461,6 +462,7 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 			printf("fuera del for, evaluo si se encontro o no el server\n");
 			if(server2guardFound==0){//no se encontro el server y se termino el lazo
 				printf("host origen %s no coincidio con ningun server monitoreado\n",ipSrc);
+				printf("al no coincidir con ningun, no se realiza el check de spoofer...\n");
 				//return;//DE NINGUNA MANERA... SINO NO ALMACENARIA NUNCA LAS PREGUNTAS ARP!!!!
 				//continua el algoritmo para comprobar redundancias y guardar
 			}
@@ -559,6 +561,8 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 		printf("PROCEDIENDO A HACER REVISION DE REDUNDANCIA Y ALMACENAR O DESCARTAR LA TRAMA(por repeticion o por ser s2g\n");
 
 		//ANTES QUE NADA, CORROBORO QUE EL SRC NO SEA UN SERVER2GUARD, YA QUE NO VOY A MONITOREAR POR PORTSTEALING A LOS SERVERS SINO A LOS CLIENTES
+		//OJO QUE ESTO LO ACABA DE HACER ANTES.. POR AHI CON SOLO EVALUAR EL FLAG DE server2guardFound seria suficiente:
+
 		for(i=0;i<args[0].servers2guardTable_tableSize;i++){
                         //COMPARAR EL LARGO PRIMERO
                         printf("comparando si lo que estoy por guardar es un server: Leida: %s Capturada: %s \n",args[0].servers2guard_shmPtr[i].ip,ipSrc);

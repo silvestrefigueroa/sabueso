@@ -140,7 +140,7 @@ int main(int argc, char *argv[]){
 	_servers2guard[3].tos=0;
 	_servers2guard[3].serverName="server-126";
 
-	_servers2guard[4].mac="0:50:56:38:7c:ae";
+	_servers2guard[4].mac="11111111111:50:56:38:7c:ae";
 	_servers2guard[4].ip="192.168.222.44";
 	_servers2guard[4].tos=0;
 	_servers2guard[4].serverName="cliente-ubuntu";
@@ -711,6 +711,7 @@ int main(int argc, char *argv[]){
 								printf("<comparacion de largo de asker antes de bloquear fallo...\n");
 								continue;//continue con el siguiente asker...
 							}
+							printf("mismo largo.. ahora comparar caracter a caracter...\n");
 							//si continua aqui...
 							//comparo por strncmp
 							if(!strncmp(arpAskers_shmPtr[a].ip,shmPtr[j].arpSrcIp,strlen(shmPtr[j].arpSrcIp))){
@@ -727,6 +728,7 @@ int main(int argc, char *argv[]){
 									askerToLockFounded=0;//no lo encontro al final
 									break;//finaliza el for sin conseguir al asker...
 								}
+								printf("Segunda comparacion de largo de asker coincidio nuevamente...\n");
 								//si continua aqui...
 								//comparo por strncmp
 								if(!strncmp(arpAskers_shmPtr[a].ip,shmPtr[j].arpSrcIp,strlen(shmPtr[j].arpSrcIp))){
@@ -764,39 +766,16 @@ int main(int argc, char *argv[]){
 
 		
 						//CONTINUAR CON EL ALGORITMO (implementacion de PoC de la Tesis)
-						printf("<>Aqui se lanzaria el hilo de portstealer capture pero lo hace el trafficCollector (ex arpCollctor\n");
-
 						printf("<<>> Comienza el loop para portstealing...\n");
 						//LOOP:
 						int pst=0;//Para el algoritmo de portstealing (contador)
 						while(arpAskers_shmPtr[a].status==2){//mientras este asker se este chekeando (y no se determine spoofed u OK)
-							sleep(10);
-
-
-
-
-
-
 
 //EN ALGUN MOMENTO, DEBERIA CORTAR SOLIDARIAMENTE, ES DECIR, SI NO LE INDICA QUE EL ASKER ESTA SPOOFEADO.. NO POR ELLO VA A SEGUIR INFINITAMENTE
 //ESTABLECER BIEN ESTE PUNTO DE CORTE
 
 
-
-
-
-
-
-
 							printf("<<>>Dentro del while del status, comenzando el portstealing\n");
-
-
-							//Arpeo por el asker
-							//arper("default","default",shmPtr[j].arpDstIp,dev);//arper crea el frame y lo envia(separar)//USO
-
-							printf("ya se ejecuto el arper!!\n");
-							//printf("ya se habria ejecutado el arper\n");
-
 							
 							//portstealing (rafaga de robo de puerto) -> Sacada del script de pruebas tester.sh
 							printf("PST-MAIN: RAFAGA...\n");
@@ -820,6 +799,9 @@ int main(int argc, char *argv[]){
 							printf("PST-MAIN: Algortimo completado!!!\n");
 
 							//demorar el siguiente ciclo
+							printf("PST-MAIN: dormir 10 segundos antes de bombardear nuevamente...\n");
+							sleep(10);
+							printf("PST-MAIN: despertar al algoritmo =) \n");
 						}//end while status == checking
 						//END LOOP
 						//INCREMENTAR EL HIT
