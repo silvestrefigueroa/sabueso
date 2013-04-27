@@ -79,7 +79,7 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
         char* ipDst=NULL;
 
 	char *spooferDetectedMessageARP="---------------SPOOFER DETECTADO DESDE EL SABUESO: (MENSAJE ARP SPOOFEADO)!!";
-	char *spooferDetectedMessageNOARP="+++++++++++++++SPOOFER DETECTADO DESDE EL SABUEO: (TRAMAS ENVENENADAS, NO ARP)";
+	char *spooferDetectedMessageNOARP="+++++++++++++++SPOOFER DETECTADO DESDE EL SABUESO: (TRAMAS ENVENENADAS, NO ARP)";
 
 	int server2guardFound=0;//DEFAULT NO
 	int i=0,u=0;//para lazos for, subindice
@@ -525,14 +525,14 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
                                         //Else continua ejecutando aqui porque no hizo el continue del IF =^.^=
                                         printf("tienen el mismo largo, pueden ser iguales, asi que las comparo...\n");
                                         //como se que si sigo aqui es porque tienen el MISMO largo, entonces comparo por strNcmp...
-                                        if(!strncmp(args[0].arpAskers_shmPtr[u].ip,ipSrc,strlen(ipDst))){
+                                        if(!strncmp(args[0].arpAskers_shmPtr[u].ip,ipDst,strlen(ipDst))){
                                                 //SI SON IGUALES, ES PORQUE TENGO AL ASKER, LO MARCO!!
-                                                printf("SI: %s == %s => Lo marco para que no lo portsteleenmas\n",ipDst,args[0].arpAskers_shmPtr[u].ip);
+                                                printf("SI: %s == %s => Lo marco para que no lo portsteleen mas\n",ipDst,args[0].arpAskers_shmPtr[u].ip);
                                                 //MARCAR EL ASKER (como spoofeado, luego al romperse el while en el sabueso(fork 2) volerlo a check
                                                         //Eso de volverlo a check es porque si otro hijo estaba esperando que se unlockeara para
                                                         //chekearlo, debera poder entrar al su while sino nunca va a entrar y nadie mas podria checkearlo
-
-                                                args[0].arpAskers_shmPtr[u].status=1;//spoofed (si, lo hace sin semaforo... asi de tenaz no mas!!       
+printf("no se marco... por pruebas\n");
+//                                              args[0].arpAskers_shmPtr[u].status=1;//spoofed (si, lo hace sin semaforo... asi de tenaz no mas!!       
                                                 //HACER EL RETURN QUE LE COMENTE DEBAJO DE SYSLOG A LOS IF'S ANTERIORES
                                                 return;
 
@@ -693,6 +693,8 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 								else{
 									printf("No se toca el HIT por ser  HIT <= 2: %d\n",(int) args[0].shmPtr[i].hit);
 								}
+								//LA MARCO PARA CHECKEAR, YA QUE NO LA INSERTO QUE CHECKEE LA QUE ESTA POR PREGUNTONA
+								args[0].shmPtr[i].nextState=1;//QUE LA CHECKEE EL HIJO DEL SERVER2GUARD CORRESPONDIENTE
 								sem_post((sem_t*) & (args[0].shmPtr[i].semaforo));
 								break;//rompo el lazo
 							}
@@ -733,6 +735,8 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 				printf("como era una pregunta arp me salteo el cruzado...\n");
 				continue;//salto
 			}
+
+			//CHECK CRUZADO (en caso de ser respuesta arp..)
 			printf("sigo aca porque no se trataba de una pregunta..ahora evaluo cruzado...\n");
 			//REVISION CRUZADA
 			//EN ESTA REVISION LO QUE HAGO ES REVISAR AL REVES LAS ENTRADAS, ES DECIR, HAGO DE CUENTA QUE EL EMISOR ES EL RECEPTOR Y COMPARO
@@ -1017,7 +1021,7 @@ int askerReplaceIndex=0;//subindice de la entrada donde se encontro el asker a r
 				printf("tienen el mismo largo, pueden ser iguales, asi que las comparo...\n");
 				//como se que si sigo aqui es porque tienen el MISMO largo, entonces comparo por strNcmp...
 				if(!strncmp(args[0].arpAskers_shmPtr[i].ip,arpSrcIp,strlen(arpSrcIp))){
-					printf("la entrada ya existe en la tabla...comprobar MAC\n");
+					printf("la entrada ya existe en la tabla de askers...comprobar MAC\n");
 					printf("compare %s con %s y me dieron IGUALES...\n",args[0].arpAskers_shmPtr[i].ip,arpSrcIp);
 					printf("comparando ahora %s con %s\n",args[0].arpAskers_shmPtr[i].mac,arpSrcMac);
 					if((int)strlen(args[0].arpAskers_shmPtr[i].mac)!=(int)strlen(arpSrcMac)){
@@ -1061,6 +1065,7 @@ int askerReplaceIndex=0;//subindice de la entrada donde se encontro el asker a r
 		}
 		//ahora bien segun sea un reemplazo o bien un ADD de asker, sigo procedimientos diferentes
 		if(askerReplace==0){//solo ADD
+			printf("Añadiendo asker... (no es reemplazo, solo ad)\n");
 		
 			//Recorrer buscando uno VACIO o iniciar algoritmo de insercion cuando la tabla esta llena (vacio ES inicializado, status:99)
 			askerSaved=0;//flag que luego si pasa a 1 indicara que se almaceno la entrada en la tabla
@@ -1086,6 +1091,8 @@ int askerReplaceIndex=0;//subindice de la entrada donde se encontro el asker a r
 			}//lazo for que ALMACENA el asker si hay entradas vacias
 		}//si era solo un ADD
 		else{//significa que tengo que reemplazar una entrada...puede ser por estar llena la tabla o por conflicto de IP por eso el WARN
+			printf("reemplazando asker...\n");
+
 			askerSaved=0;
 			printf("entrada %d contiene al asker que quiero reemplazar...\n",askerReplaceIndex);
 			//PERFECTO ACTUALIZO LA TABLA.. PERO OJO PORQUE DEBERIA TAMBIEN QUITAR LAS ENTRADAS EN LA TABLA DE DIALOGOS!!

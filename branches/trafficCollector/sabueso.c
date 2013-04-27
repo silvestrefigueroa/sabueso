@@ -183,7 +183,7 @@ int main(int argc, char *argv[]){
 	else{
 		printf("Abriendo %s en modo promiscuo\n",dev);
 	}
-	dev = "wlan0";//hardcodeo la wifi en desarrollo, luego la dejare utomatica o por parametro.
+	dev = "eth0";//hardcodeo la wifi en desarrollo, luego la dejare utomatica o por parametro.
 	//obtener la direccion de red y la netmask de la NIC en "dev"
 	if(pcap_lookupnet(dev,&netp,&maskp,errbuf)==-1){
 		printf("ERROR %s\n",errbuf);
@@ -234,7 +234,7 @@ int main(int argc, char *argv[]){
 //	return 0;
 
 	//COMPILAR FILTRO
-	if(pcap_compile(descr,&fp,"arp"/*filter*/,0,netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
+	if(pcap_compile(descr,&fp,filter,0,netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
 		fprintf(stderr,"Error compilando el filtro\n");
 		exit(1);
 	}
@@ -592,8 +592,9 @@ int main(int argc, char *argv[]){
 				int forlife=0;
 				while(live==1){//podria ser un while true, se utilizo esta variable para tener condicion de corte (aunque puedo usar break...)
 					sleep(5);//descanza 5 segundos antes de cada recorrida completa
-					printf("<<<< vuelta aquiiiii\n");
+					printf("<<<< Comenzando el bucle antes del for de comenzando el lazo blah blah...\n");
 					for(j=0;j<tableSize;j++){
+						printf("Comenzando el lazo por %d° vez\n",j);
 						printf("dentro del for con j=%d\n",j);
 						//por las dudas me fijo si la entrada en la tabla no es NULL:
 						printf("el nextState = %d\n",shmPtr[j].nextState);
@@ -769,7 +770,10 @@ int main(int argc, char *argv[]){
 						printf("<<>> Comienza el loop para portstealing...\n");
 						//LOOP:
 						int pst=0;//Para el algoritmo de portstealing (contador)
-						while(arpAskers_shmPtr[a].status==2){//mientras este asker se este chekeando (y no se determine spoofed u OK)
+						int times=0;//PARA SABER CUANTAS VECES EJECUTE EL ALGORITMO Y CORTAR PARA EVITAR INANICION
+//						while(arpAskers_shmPtr[a].status==2){//mientras este asker se este chekeando (y no se determine spoofed u OK)
+while(1==1){
+							printf("Vuelta para times=%d\n",times);
 
 //EN ALGUN MOMENTO, DEBERIA CORTAR SOLIDARIAMENTE, ES DECIR, SI NO LE INDICA QUE EL ASKER ESTA SPOOFEADO.. NO POR ELLO VA A SEGUIR INFINITAMENTE
 //ESTABLECER BIEN ESTE PUNTO DE CORTE
@@ -798,15 +802,28 @@ int main(int argc, char *argv[]){
                                                         }
 							printf("PST-MAIN: Algortimo completado!!!\n");
 
+							//EVALUAR SI FUE SUFICIENTE O SI DUERMO Y SIGO...
+							if(times==4){
+								//Esto se arreglaria con hilos concurrentes... aun asi deberan breakear cada tanto
+								//Por si OTRO hijo monitor de server2guard quiere portstelear al MISMO asker
+								printf("Ya ha sido demaciado, asi que salto al proximo asker a portstelear...\n");
+								break;
+							}
+							times++;
+							//SINO SIGUE...
 							//demorar el siguiente ciclo
 							printf("PST-MAIN: dormir 10 segundos antes de bombardear nuevamente...\n");
 							sleep(10);
 							printf("PST-MAIN: despertar al algoritmo =) \n");
 						}//end while status == checking
+						printf("PST-MAIN: atencion: saliendo del loop de portstealing. Se ha informado la deteccion de un SPOOFER\n");
 						//END LOOP
 						//INCREMENTAR EL HIT
-						shmPtr[j].hit=shmPtr[j].hit + 1;//incremento el hit para no reespoofearla al vicio no mas..
+						printf("valor del HIT antes: %d\n",shmPtr[j].hit);
+						shmPtr[j].hit=shmPtr[j].hit + 1;//incremento el hit para no reespoofearla al vicio
 						printf("incrementado el HIT para no volver a spoofear al vicio...\n");
+						printf("valor del HIT luego: %d\n",shmPtr[j].hit);
+
 						//FORZAR EL STATUS A CHECK PARA QUE SI OTRO PROCESO ESTABA ESPERANDO EL UNLOCK, PUEDA PROCEDER AL CHECKEAR
 						arpAskers_shmPtr[a].status=2;
 						//AL FINAL:::liberar:
@@ -829,7 +846,6 @@ int main(int argc, char *argv[]){
 
 						//MARCAR TRAMA ACTUAL EN LA TABLA PARA QUE SE REUTILICE (CHEQUEADA, NO LA MIRE MAS Y USELA CUANDO QUIERA :)
 						shmPtr[j].nextState=3;//Marco la tabla para descartar (la puede usar la callback del trafficCollector)
-
 						
 					}//CIERRO EL FOR QUE RECORRE LA TABLA PRINCIPAL DE DIALOGOS, AQUI SIGUE DENTRO DEL LOOP WHILE(LIVE==1)
 					//CONTINUANDO EN EL WHILE LIVE==1...
