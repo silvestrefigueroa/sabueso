@@ -845,7 +845,7 @@ while(1==1){
 						forlife++;
 
 						//MARCAR TRAMA ACTUAL EN LA TABLA PARA QUE SE REUTILICE (CHEQUEADA, NO LA MIRE MAS Y USELA CUANDO QUIERA :)
-						shmPtr[j].nextState=3;//Marco la tabla para descartar (la puede usar la callback del trafficCollector)
+//						shmPtr[j].nextState=3;//Marco la tabla para descartar (la puede usar la callback del trafficCollector)
 						
 					}//CIERRO EL FOR QUE RECORRE LA TABLA PRINCIPAL DE DIALOGOS, AQUI SIGUE DENTRO DEL LOOP WHILE(LIVE==1)
 					//CONTINUANDO EN EL WHILE LIVE==1...
