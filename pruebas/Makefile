@@ -1,6 +1,6 @@
-CFLAGS= -Wall -g -lrt -lpthread -lpcap
+CFLAGS= -Wall -g -lrt -lpthread -lpcap -lconfig
 all: sabueso
-sabueso: sabueso.o arper.o
+sabueso: sabueso.o arper.o parser.o
 	$(CC) -o $@ $^ $(CFLAGS)
 clean:
 	rm -fv *.o
