@@ -29,6 +29,7 @@
 #include <netinet/in.h>
 #include <netinet/ether.h>
 #include <netinet/ip.h>
+#include "parser.h"
 
 //HANDLERS:
 void sigchld_handler(int s){
@@ -68,13 +69,18 @@ void sigint_handler(int s){
 
 //Aqui comienza la magia =)
 int main(int argc, char *argv[]){
-	/*
-	char *cadenilla="sysloguenadooooooooooooooooooooooooooo";
-	syslog(1, "%s", cadenilla);
-	printf("syslogueado\n");
+
+	printf("ejecutando el parse...\n");
+	sleep(1);
+	parse(argv[1]);
+	printf("luego de ejecutar el parser... cierro\n");
 	return 0;
-	*/
-int i=0;
+
+
+
+
+
+	int i=0;
 
 	//manejador SIGTERM
 	signal(SIGINT , sigint_handler);
