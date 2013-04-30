@@ -37,6 +37,7 @@ int parse(char *configFileName){
 		printf("No valid value for iface provided in configuration file.\n");
 	}
 
+
 	if(config_lookup_string(&cfg, "servers2guardList", &servers2guard)){
 		printf("Server2guard:  %s\n", servers2guard);
 	}
@@ -96,6 +97,8 @@ int parse(char *configFileName){
 		}//if setting no nulll
 	}//For j=1.. del strtok_r
 	printf("---------------------------------\n");
+	
+	printf("en total fueron %d servers2guard\n",j-1);
 
 	return 0;
 }
