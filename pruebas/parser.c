@@ -13,10 +13,11 @@ int parse(char *configFileName){
 	const char *servers2guard=NULL;
 	const char *str2=NULL;
 	const char *ip=NULL;
-	long int tmp=0;
+	const char *mac=NULL;
+	long int serviceType=0;
 	
-	printf("PARSER: el nombre de fichero recibido desde el sabueso es: %s\n",configFileName);
-	char *config_file_name = "sabueso.conf";
+	//printf("PARSER: el nombre de fichero recibido desde el sabueso es: %s\n",configFileName);
+	char *config_file_name = configFileName;
 
 	//Initialization
 	config_init(&cfg);
@@ -30,17 +31,17 @@ int parse(char *configFileName){
 
 	/* Get the configuration file name. */
 	if(config_lookup_string(&cfg, "iface", &iface)){
-		printf("\nNetwork interface selected by user: %s", iface);
+		printf("Network interface selected by user: %s\n", iface);
 	}
 	else{
-		printf("\nNo valid value for iface provided in configuration file.");
+		printf("No valid value for iface provided in configuration file.\n");
 	}
 
 	if(config_lookup_string(&cfg, "servers2guardList", &servers2guard)){
-		printf("\nServer2guard:  %s", servers2guard);
+		printf("Server2guard:  %s\n", servers2guard);
 	}
 	else{
-		printf("\nNo valid value for servers2guard provided in configuration file.");
+		printf("No valid value for servers2guard provided in configuration file.\n");
 	}
 
 	//AHORA EN LO QUE SE TRAJO EN SERVERS2GUARD, PARSEO POR , Y PARA CADA UNO, EJECUTO LA LECTURA DE GRUPO:
@@ -53,52 +54,48 @@ int parse(char *configFileName){
 		if(token==NULL){
 			break;
 		}
-		printf("%d: %s\n", j, token);
-	}
+		printf("---------------------------------\n");
+
+		printf("\n\nServerName: %s\n",token);
+
+		//Read the parameter group
+		setting = config_lookup(&cfg, token);
+		if(setting != NULL){
+			//Read the string
+
+			if(config_setting_lookup_string(setting, "description",&str2)){
+				printf("description: %s\n", str2);
+			}
+			else{
+				printf("No valid 'description' setting in configuration file.\n");
+			}
+
+			if(config_setting_lookup_string(setting, "ip",&ip)){
+				printf("ip: %s\n", ip);
+			}
+			else{
+				printf("No valid 'servername' setting in configuration file.\n");
+			}
+
+			if(config_setting_lookup_string(setting, "mac",&mac)){
+				printf("mac: %s\n", mac);
+			}
+			else{
+				printf("No valid 'mac' setting in configuration file.\n");
+			}
 
 
-
-
-
-
-	//Read the parameter group
-	setting = config_lookup(&cfg, "serverweb");
-	if(setting != NULL){
-		//Read the string
-
-
-
-
-
-
-		if(config_setting_lookup_string(setting, "servername",&str2)){
-			printf("\nservername: %s", str2);
-		}
-		else{
-			printf("\nNo valid 'servername' setting in configuration file.");
-		}
-/*
-		if(config_setting_lookup_string(setting, "ip",&ip)){
-			printf("\nip: %s", ip);
-		}
-		else{
-			printf("\nNo valid 'servername' setting in configuration file.");
-		}
-
-*/
-
-
-
-		//Read the integer
-		if(config_setting_lookup_int(setting, "param2", &tmp)){
-			printf("\nParam2: %ld", tmp);
-//			printf("\n param2: %d \n", (int) tmp);
-		}
-		else{
-			printf("\nNo 'param2' setting in configuration file.");
-		}
-		printf("\n");
-	}
+			//Read the integer
+			if(config_setting_lookup_int(setting, "serviceType", &serviceType)){
+				printf("Service Type: %ld\n", serviceType);
+			}
+			else{
+				printf("No valid 'serviceType' setting in configuration file.\n");
+			}
+			printf("\n");
+		}//if setting no nulll
+	}//For j=1.. del strtok_r
+	printf("---------------------------------\n");
 
 	return 0;
 }
