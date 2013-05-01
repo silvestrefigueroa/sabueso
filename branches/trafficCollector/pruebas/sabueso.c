@@ -72,7 +72,9 @@ int main(int argc, char *argv[]){
 
 	printf("ejecutando el parse...\n");
 	sleep(1);
-	parse(argv[1]);
+	parse(argv[1],0);
+	printf("Configurando servers2guard....\n");
+	parse(argv[1],1);
 	printf("luego de ejecutar el parser... cierro\n");
 	return 0;
 

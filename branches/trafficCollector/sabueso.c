@@ -15,12 +15,9 @@
 //#include <syslog.h>
 
 //MIS PROPIAS CABECERAS
-//#include "sabueso.h"
 #include "arper.h" //LO SAQUE POR DESUSO Y PARA LIMPIAR UN POCO DE CODIGO
-//#include "parser.h"
-//#include "splitter.h" //LO SAQUE POR DESUSO Y PARA LIMPIAR UN POCO DE CODIGO
+#include "parser.h"
 #include "arpDialogStruct.h"
-//#include "arpAskerStruct.h"
 #include "trafficCollector_callback.h"
 #include "callbackArgs.h"
 
@@ -50,6 +47,7 @@
 #include <netinet/in.h>
 #include <netinet/ether.h>
 #include <netinet/ip.h>
+
 
 //HANDLERS:
 void sigchld_handler(int s){
@@ -89,12 +87,15 @@ void sigint_handler(int s){
 
 //Aqui comienza la magia =)
 int main(int argc, char *argv[]){
-	/*
-	char *cadenilla="sysloguenadooooooooooooooooooooooooooo";
-	syslog(1, "%s", cadenilla);
-	printf("syslogueado\n");
+
+	parse("sabueso.conf",0);
+	printf("SABUESO: se ejecuto el parser en modo 0\n");
+
+	parse("sabueso.conf",1);
+	printf("SABUESO: se ejecuto el parser en modo 1\n");
+
 	return 0;
-	*/
+
 
 
 	//manejador SIGTERM
@@ -537,8 +538,6 @@ int main(int argc, char *argv[]){
 			//Argumentos para la funcion callback
 			trafficCCArgs conf[2] = {
 				{tableSize, "Argumentos",shmPtr,arpAskers_shmPtr,arpAskersTable_tableSize,servers2guard_shmPtr,servers2guardTable_tableSize}
-//				{tableSize, "Argumentos",shmPtr,arpAskers_shmPtr,arpAskersTable_tableSize}
-
 			};
 			//El bucle de captura lo armo con variables que el padre ya preparo antes cuando hizo el check de la netmask
 			pcap_loop(descr,-1,(pcap_handler)trafficCollector_callback,(u_char*) conf);
