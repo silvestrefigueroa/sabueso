@@ -5,7 +5,14 @@
 //para parsear el archivo de configuracion
 #include <libconfig.h>
 
-int parse(char *configFileName,int mode){//mode: 0 config parameters, 1 servers2guard configuration
+
+//librerias propias
+#include "server2guardStruct.h"
+
+int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mode: 0 config parameters, 1 servers2guard configuration
+
+	strncpy(parametersConf->ip,"hola desde el parser",strlen("hola desde el parser"));
+	return 0;
 
 	config_t cfg;
 	config_setting_t *setting;
