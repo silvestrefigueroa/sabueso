@@ -7,9 +7,9 @@
 
 
 //librerias propias
-#include "server2guardStruct_cabra.h"
+#include "server2guardStruct.h"
 
-int parse(char *configFileName,server2guardStruct_cabra *parametersConf,int mode){//mode: 0 config parameters, 1 servers2guard configuration
+int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mode: 0 config parameters, 1 servers2guard configuration
 
 //	strncpy(parametersConf->ip,"hola desde el parser",strlen("hola desde el parser"));
 //	return 0;
@@ -49,7 +49,7 @@ int parse(char *configFileName,server2guardStruct_cabra *parametersConf,int mode
 
 			/* Get the NIC name. */
 			if(config_lookup_string(&cfg, "iface", &iface)){
-				printf("Network interface selected by user: %s\n", iface);
+				printf("PARSER: Network interface selected by user: %s\n", iface);
 			}
 			else{
 				printf("No valid value for iface provided in configuration file.\n");
