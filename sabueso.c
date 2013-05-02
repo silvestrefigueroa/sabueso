@@ -88,13 +88,59 @@ void sigint_handler(int s){
 //Aqui comienza la magia =)
 int main(int argc, char *argv[]){
 
-	parse("sabueso.conf",0);
-	printf("SABUESO: se ejecuto el parser en modo 0\n");
 
-	parse("sabueso.conf",1);
-	printf("SABUESO: se ejecuto el parser en modo 1\n");
+
+
+
+
+printf("ejecutando el parse...\n");
+        sleep(1);
+
+//creo una instancia de server2guard (struct) y se la paso al parser, donde el me va a setear en la IP el nombre de la interfaz (dev) y en tos la cantidad de servers2guard (serversQuantity)
+
+        server2guardStruct parametersConf;//aqui voy a recibir la configuracion
+        memset(parametersConf.ip,40,0);
+        memset(parametersConf.mac,40,0);
+        parametersConf.tos=0;
+
+        parse(argv[1],&parametersConf,0);
+
+        printf("se recibio del parse: NIC: %s serversQuantity: %d\n", parametersConf.ip, parametersConf.tos);
+
+
+
+
+
 
 	return 0;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
