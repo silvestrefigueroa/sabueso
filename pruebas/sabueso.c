@@ -45,9 +45,13 @@ int main(int argc, char *argv[]){
 //creo una instancia de server2guard (struct) y se la paso al parser, donde el me va a setear en la IP el nombre de la interfaz (dev) y en tos la cantidad de servers2guard (serversQuantity)
 
 	server2guardStruct parametersConf;//aqui voy a recibir la configuracion
+	memset(parametersConf.ip,40,0);
+	memset(parametersConf.mac,40,0);
+	parametersConf.tos=0;
+
 	parse(argv[1],&parametersConf,0);
 
-	printf("se recibio del parse: %s\n", parametersConf.ip);
+	printf("se recibio del parse: NIC: %s serversQuantity: %d\n", parametersConf.ip, parametersConf.tos);
 
 
 	int serversQuantity=5;//esa cantidad la tiene que levantar de parse 0
@@ -128,7 +132,7 @@ int main(int argc, char *argv[]){
 
 //FIN MEMORIA COMPARTIDA PARA LA TABLA DE SERVERS2GUARD
 
-	parse(argv[1],1);
+//	parse(argv[1],1);
 	printf("luego de ejecutar el parser... cierro\n");
 
 	return 0;

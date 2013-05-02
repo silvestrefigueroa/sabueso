@@ -11,8 +11,8 @@
 
 int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mode: 0 config parameters, 1 servers2guard configuration
 
-	strncpy(parametersConf->ip,"hola desde el parser",strlen("hola desde el parser"));
-	return 0;
+//	strncpy(parametersConf->ip,"hola desde el parser",strlen("hola desde el parser"));
+//	return 0;
 
 	config_t cfg;
 	config_setting_t *setting;
@@ -73,12 +73,12 @@ int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mo
 
 			}//cierra for que recorre la a lista y la parsea
 
-
-			//SALVAR EN LA MEMORIA COMPARTIDA LOS VALORES DE CONFIGURACION:
+			strncpy(parametersConf->ip,iface,strlen(iface));//dispositivo de red seleccionado
+			parametersConf->tos=(j-1);//cantidad de servers (para dimensionar la tabla de servers2guard o serversQuantity =)
 
 			//BIEN, EL PROXIMO PASO SERA LLAMAR DE NUEVO AL PARSER PERO EN MODO 1
 		break;
-		
+		//-------------------------------------------------------------------------------------------------------------------------------------
 		case 1://MODO DE SETEO DE SERVERS2GUARD EN LA SHM
 			puts("PARSER: modo servers2guard configuration\n");
 
@@ -131,6 +131,11 @@ int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mo
 						printf("No valid 'serviceType' setting in configuration file.\n");
 					}
 					printf("\n");
+					//ALMACENAR LOS DATOS CORRESPONDIENTES DE ESTE HOST EN LA ESTRUCTURA:
+
+
+
+	
 				}//if setting no nulll
 			}//For j=1.. del strtok_r
 
