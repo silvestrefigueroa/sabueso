@@ -169,15 +169,12 @@ int main(int argc, char *argv[]){
 
 
 
-	server2guardStruct *s2gparser=NULL;
-	server2guardStruct servers2guard_[serversQuantity];
-	s2gparser = servers2guard_;
-
+	server2guardStruct s2g[serversQuantity];
 
 //	parse(argv[1],&parametersConf,0);
-	parse(argv[1],&s2gparser,1);
+	parse(argv[1],&s2g,1);
 
-	printf("server0.ip: %s \n",servers2guard_[0].ip);
+	printf("server0.ip: %s \n",s2g[0].ip);
 
 
 return;

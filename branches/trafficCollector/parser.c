@@ -82,6 +82,11 @@ int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mo
 		case 1://MODO DE SETEO DE SERVERS2GUARD EN LA SHM
 			puts("PARSER: modo servers2guard config\n");
 
+
+			strncpy(parametersConf[0].ip,"holita",strlen("holita"));
+			return 0;
+
+
 			//AHORA EN LO QUE SE TRAJO EN SERVERS2GUARD, PARSEO POR , Y PARA CADA UNO, EJECUTO LA LECTURA DE GRUPO:
 
 			const char *ip=NULL;
