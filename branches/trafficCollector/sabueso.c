@@ -171,13 +171,25 @@ int main(int argc, char *argv[]){
 
 	server2guardStruct s2g[serversQuantity];//creo las estructuras para los servers2guard
 
+	//INICIALIZAR:
+
+	for(i=0;i<serversQuantity;i++){
+		memset(s2g[i].ip,0,40);
+		memset(s2g[i].mac,0,40);
+		memset(s2g[i].serverName,0,30);
+		s2g[i].tos=99;
+	}
+
+
 	parse(argv[1],&s2g,1);
 
-	printf("server.ip: %s \n",s2g[0].ip);
-	printf("server.mac: %s \n",s2g[0].mac);
-	printf("server.serverName: %s \n",s2g[0].serverName);
-
-
+	for(i=0;i<serversQuantity;i++){
+		printf("server.ip: %s \n",s2g[i].ip);
+		printf("server.mac: %s \n",s2g[i].mac);
+		printf("server.serverName: %s \n",s2g[i].serverName);
+		printf("server.tos: %d \n",s2g[i].tos);
+	}
+printf("FIN\n");
 return;
 
 
