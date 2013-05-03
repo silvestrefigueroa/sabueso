@@ -118,6 +118,40 @@ int main(int argc, char *argv[]){
 
 	int serversQuantity=parametersConf.tos;//cantidad de servers a cuidar
 
+
+	server2guardStruct servers2guardConf[serversQuantity];//creo las estructuras para los servers2guard
+
+	//INICIALIZAR:
+
+	for(i=0;i<serversQuantity;i++){
+		memset(servers2guardConf[i].ip,0,40);
+		memset(servers2guardConf[i].mac,0,40);
+		memset(servers2guardConf[i].serverName,0,30);
+		servers2guardConf[i].tos=99;
+	}
+
+
+	parse(argv[1],&servers2guardConf,1);
+
+	printf("\n\n\n\n\n\n\n\n\n\n\n");
+
+
+
+	for(i=0;i<serversQuantity;i++){
+		printf("server.ip: %s \n",servers2guardConf[i].ip);
+		printf("server.mac: %s \n",servers2guardConf[i].mac);
+		printf("server.serverName: %s \n",servers2guardConf[i].serverName);
+		printf("server.tos: %d \n",servers2guardConf[i].tos);
+	}
+
+
+
+
+
+
+
+/*
+
 	//Estructura de datos de argumentos del programa principal
 	typedef struct{ 
                 char *mac;
@@ -135,7 +169,7 @@ int main(int argc, char *argv[]){
 		_servers2guard[i].tos=0;
 		_servers2guard[i].serverName=NULL;
 	}
-
+*/
 
 /*
 	//invento hosts
@@ -166,35 +200,6 @@ int main(int argc, char *argv[]){
 	_servers2guard[1].tos=0;
 	_servers2guard[1].serverName="Thinkpad-100-myself";
 */
-
-
-
-	server2guardStruct s2g[serversQuantity];//creo las estructuras para los servers2guard
-
-	//INICIALIZAR:
-
-	for(i=0;i<serversQuantity;i++){
-		memset(s2g[i].ip,0,40);
-		memset(s2g[i].mac,0,40);
-		memset(s2g[i].serverName,0,30);
-		s2g[i].tos=99;
-	}
-
-
-	parse(argv[1],&s2g,1);
-
-	for(i=0;i<serversQuantity;i++){
-		printf("server.ip: %s \n",s2g[i].ip);
-		printf("server.mac: %s \n",s2g[i].mac);
-		printf("server.serverName: %s \n",s2g[i].serverName);
-		printf("server.tos: %d \n",s2g[i].tos);
-	}
-printf("FIN\n");
-return;
-
-
-
-
 
 
 
@@ -275,11 +280,11 @@ return;
 	memset(filter,0,filterLen);//inicializo
 	//ejemplo: dst host 192.168.1.1 or 192.168.1.100
 	strcpy(filter,"host ");
-	strcpy(filter+strlen(filter),_servers2guard[0].ip);//a manopla para plantarle sin el | del lazo for (comodidad ??)
+	strcpy(filter+strlen(filter),servers2guardConf[0].ip);//a manopla para plantarle sin el | del lazo for (comodidad ??)
 
 	for(i=1;i<serversQuantity;i++){
 		strcpy(filter+strlen(filter)," or ");
-		strcpy(filter+strlen(filter),_servers2guard[i].ip);
+		strcpy(filter+strlen(filter),servers2guardConf[i].ip);
 	}
 
 	printf("::::el filtro quedo %s \n",filter);
@@ -407,10 +412,10 @@ return;
 //VOY A SETEAR LA MEMORIA COMPARTIDA CON LOS MISMO DATOS QUE TENGO EN LA ESTRUCTURA (TEMPORAL, SOLO POR DEBUG, LUEGO SE GUARDARA TODO EN LA SHM DE UNA)
 
 	for(subindexCounterId=0;subindexCounterId<servers2guardTable_tableSize;subindexCounterId++){
-                strcpy(servers2guardTable[subindexCounterId].mac,_servers2guard[subindexCounterId].mac);
-                strcpy(servers2guardTable[subindexCounterId].ip,_servers2guard[subindexCounterId].ip);
-                strcpy(servers2guardTable[subindexCounterId].serverName,_servers2guard[subindexCounterId].serverName);
-                servers2guardTable[subindexCounterId].tos=_servers2guard[subindexCounterId].tos;//Type of Service
+                strcpy(servers2guardTable[subindexCounterId].mac,servers2guardConf[subindexCounterId].mac);
+                strcpy(servers2guardTable[subindexCounterId].ip,servers2guardConf[subindexCounterId].ip);
+                strcpy(servers2guardTable[subindexCounterId].serverName,servers2guardConf[subindexCounterId].serverName);
+                servers2guardTable[subindexCounterId].tos=servers2guardConf[subindexCounterId].tos;//Type of Service
         }
 
 
@@ -612,7 +617,7 @@ return;
 				_exit(EXIT_FAILURE);
 			case 0:
 				sleep(5);
-				printf("soy el HIJO PORT STEALER del server: %s\n",(_servers2guard[i].serverName));
+				printf("soy el HIJO PORT STEALER del server: %s\n",(servers2guardConf[i].serverName));
 				j=0;
 				c=0;
 //----------------------------------------
@@ -664,7 +669,7 @@ return;
 						}
 						else{//si no esta "vacia" (inicializada en realiadad.."
 							printf("<<Esta entrada no esta vacia!!! ahora va al if de si coincide con el server que cuido...\n");
-							printf("<<comparando i: %s con shmPtr: %s \n",_servers2guard[i].ip,shmPtr[j].arpDstIp);
+							printf("<<comparando i: %s con shmPtr: %s \n",servers2guardConf[i].ip,shmPtr[j].arpDstIp);
 						}
 						//continua aca porque no cayo en el if de si estaba inicializada
 
@@ -677,17 +682,17 @@ return;
 						//1.99 Si esta involucrado ESTE server:
 
 						//si es destino
-						printf("comparando i: %s con shmPtr: %s \n",_servers2guard[i].ip,shmPtr[j].arpDstIp);
+						printf("comparando i: %s con shmPtr: %s \n",servers2guardConf[i].ip,shmPtr[j].arpDstIp);
 						//PARCHE por largo..(antes de strncmp me fijo si tienen el mismo largo.. sino son distintas de una..
-						if(strlen(_servers2guard[i].ip)!=strlen(shmPtr[j].arpDstIp)){//distinta logica, mismo metodo (strlen)
+						if(strlen(servers2guardConf[i].ip)!=strlen(shmPtr[j].arpDstIp)){//distinta logica, mismo metodo (strlen)
 							printf(">> PST: NO tienen el mismo largo!! continue a la siguiente entrada...\n");
 							continue;//que no siga la ejecucion con esta entrada y pase derecho a la proxima
 						}
 						//Si sigo aca es porque tenian el mismo largo
 						printf(">> PST: SI tienen el mismo largo, ahora evaluo si son iguales (es decir, si es de este server)\n");
 						
-						if(!strncmp(_servers2guard[i].ip,shmPtr[j].arpDstIp,strlen(shmPtr[j].arpDstIp))){//ip es del server i
-							printf(">>>PST: (eran iguales) Entrada esta destinada al server %s\n",(_servers2guard[i].serverName));
+						if(!strncmp(servers2guardConf[i].ip,shmPtr[j].arpDstIp,strlen(shmPtr[j].arpDstIp))){//ip es del server i
+							printf(">>>PST:(eran iguales) Entrada destinada al server %s\n",(servers2guardConf[i].serverName));
 							//evaluo si es pregunta o respuesta
 							switch(shmPtr[j].type){
 								case 0:
@@ -929,7 +934,10 @@ while(1==1){
 
 	//fin del programa principal
 	//el siguiente sleep va a cambiar por un lazo que corre durante la vida del programa... alli ya no va a haber problema de que temrine el padre..
-	sleep(1000000);//deberia estar en el loop de verificacion de estados o monitoreo de hijos
+	while(1==1){
+		sleep(1);
+	}
+//	sleep(1000000);//deberia estar en el loop de verificacion de estados o monitoreo de hijos
 	write(1,"FIN DEL PROGRAMA PRINCIPAL\n",sizeof("FIN DEL PROGRAMA PRINCIPAL\n"));
 	//shm_unlink("./sharedMemPartidas");
 	return EXIT_FAILURE;
