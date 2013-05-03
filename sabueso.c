@@ -87,20 +87,24 @@ void sigint_handler(int s){
 
 //Aqui comienza la magia =)
 int main(int argc, char *argv[]){
+	//manejador SIGTERM
+	signal(SIGINT , sigint_handler);
+
+	if(0>=write(1,MSG_START, strlen(MSG_START)))
+		return -1;
 
 
+	int i=0;//indice utilizando en los for...
 
 
-
-
-printf("ejecutando el parse...\n");
+	printf("ejecutando el parse...\n");
         sleep(1);
 
 //creo una instancia de server2guard (struct) y se la paso al parser, donde el me va a setear en la IP el nombre de la interfaz (dev) y en tos la cantidad de servers2guard (serversQuantity)
 
         server2guardStruct parametersConf;//aqui voy a recibir la configuracion
-        memset(parametersConf.ip,40,0);
-        memset(parametersConf.mac,40,0);
+        memset(parametersConf.ip,0,40);
+        memset(parametersConf.mac,0,40);
         parametersConf.tos=0;
 
         parse(argv[1],&parametersConf,0);
@@ -109,53 +113,10 @@ printf("ejecutando el parse...\n");
 
 
 
-
-
-
-	return 0;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	//manejador SIGTERM
-	signal(SIGINT , sigint_handler);
-
-	if(0>=write(1,MSG_START, strlen(MSG_START)))
-		return -1;
-	int i=0;//indice utilizando en los for...
 //------------INICIA ZONA DE CONTROL DE PARAMETROS DE APLICACION-----------------------------------------------//
 	//PARAMETROS DE LANZAMIENTO:
 
-	//----VOY A HARDCODEAR LOS PARAMETROS DE MOMENTO:
-
-	int serversQuantity=5;//cantidad de servers a cuidar
+	int serversQuantity=parametersConf.tos;//cantidad de servers a cuidar
 
 	//Estructura de datos de argumentos del programa principal
 	typedef struct{ 
@@ -174,6 +135,9 @@ printf("ejecutando el parse...\n");
 		_servers2guard[i].tos=0;
 		_servers2guard[i].serverName=NULL;
 	}
+
+
+/*
 	//invento hosts
 
 	_servers2guard[2].mac="e0:db:55:88:66:71";
@@ -201,12 +165,36 @@ printf("ejecutando el parse...\n");
 	_servers2guard[1].ip="192.168.1.104";
 	_servers2guard[1].tos=0;
 	_servers2guard[1].serverName="Thinkpad-100-myself";
+*/
+
+
+
+	server2guardStruct *s2gparser=NULL;
+	server2guardStruct servers2guard_[serversQuantity];
+	s2gparser = servers2guard_;
+
+
+//	parse(argv[1],&parametersConf,0);
+	parse(argv[1],&s2gparser,1);
+
+	printf("server0.ip: %s \n",servers2guard_[0].ip);
+
+
+return;
+
+
+
+
+
+
 
 
 	int j=0;//otro subindice
 
 	int c=0;
 	int live=0;
+
+
 //	serversQuantity=1;//PARA DEBUGGEAR CON UN SOLO HIJO.. SINO SE ENSUCIA MUCHISIMO EL STDOUT
 
 
@@ -222,6 +210,8 @@ printf("ejecutando el parse...\n");
 	struct bpf_program fp;//aca se guardara el programa compilado de filtrado
 	bpf_u_int32 maskp;// mascara de subred
 	bpf_u_int32 netp;// direccion de red
+
+/*
 	dev = pcap_lookupdev(errbuf); //Buscamos un dispositivo del que comenzar la captura
 	printf("\nEcontro como dispositivo %s\n",dev);
 	if (dev == NULL){
@@ -230,7 +220,12 @@ printf("ejecutando el parse...\n");
 	else{
 		printf("Abriendo %s en modo promiscuo\n",dev);
 	}
-	dev = "eth0";//hardcodeo la wifi en desarrollo, luego la dejare utomatica o por parametro.
+*/
+
+	dev = parametersConf.ip;//no utiliza la que detecta automaticamente sino que usa la de la config
+
+
+
 	//obtener la direccion de red y la netmask de la NIC en "dev"
 	if(pcap_lookupnet(dev,&netp,&maskp,errbuf)==-1){
 		printf("ERROR %s\n",errbuf);

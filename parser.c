@@ -80,7 +80,7 @@ int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mo
 		break;
 		//-------------------------------------------------------------------------------------------------------------------------------------
 		case 1://MODO DE SETEO DE SERVERS2GUARD EN LA SHM
-			puts("PARSER: modo servers2guard configuration\n");
+			puts("PARSER: modo servers2guard config\n");
 
 			//AHORA EN LO QUE SE TRAJO EN SERVERS2GUARD, PARSEO POR , Y PARA CADA UNO, EJECUTO LA LECTURA DE GRUPO:
 
@@ -89,6 +89,7 @@ int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mo
 			long int serviceType=0;
 			for(j=1,str1 = (char *)servers2guard; ; j++, str1=NULL){
 				token=strtok_r(str1,",",&saveptr1);
+puts("antes de breakear\n");
 				if(token==NULL){
 					break;
 				}
@@ -96,11 +97,13 @@ int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mo
 
 				printf("\n\nServerName: %s\n",token);
 
+	puts("aca\n");
+
 				//Read the parameter group
 				setting = config_lookup(&cfg, token);
 				if(setting != NULL){
 					//Read the string
-
+puts("aca adentro\n");
 					if(config_setting_lookup_string(setting, "description",&str2)){
 						printf("description: %s\n", str2);
 					}
@@ -132,6 +135,10 @@ int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mo
 					}
 					printf("\n");
 					//ALMACENAR LOS DATOS CORRESPONDIENTES DE ESTE HOST EN LA ESTRUCTURA:
+
+					strncpy(parametersConf[0].ip,ip,strlen(ip));//dispositivo de red seleccionado
+					puts("asignado\n");
+
 
 
 
