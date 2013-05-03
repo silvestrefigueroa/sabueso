@@ -151,7 +151,8 @@ int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mo
 				strcpy(parametersConf[j-1].ip,ip);
 				strcpy(parametersConf[j-1].mac,mac);
 				strcpy(parametersConf[j-1].serverName,token);
-				return 0;
+				parametersConf[j-1].tos=serviceType;
+//				return 0;
 
 
 			}//For j=1.. del strtok_r

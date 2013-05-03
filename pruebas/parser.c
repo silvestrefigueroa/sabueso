@@ -49,7 +49,7 @@ int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mo
 
 			/* Get the NIC name. */
 			if(config_lookup_string(&cfg, "iface", &iface)){
-				printf("Network interface selected by user: %s\n", iface);
+				printf("PARSER: Network interface selected by user: %s\n", iface);
 			}
 			else{
 				printf("No valid value for iface provided in configuration file.\n");
@@ -80,13 +80,28 @@ int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mo
 		break;
 		//-------------------------------------------------------------------------------------------------------------------------------------
 		case 1://MODO DE SETEO DE SERVERS2GUARD EN LA SHM
-			puts("PARSER: modo servers2guard configuration\n");
+			puts("PARSER: modo servers2guard config\n");
+
+/*
+			strncpy(parametersConf[0].ip,"holita",strlen("holita"));
+			return 0;
+*/
 
 			//AHORA EN LO QUE SE TRAJO EN SERVERS2GUARD, PARSEO POR , Y PARA CADA UNO, EJECUTO LA LECTURA DE GRUPO:
 
 			const char *ip=NULL;
 			const char *mac=NULL;
 			long int serviceType=0;
+			
+			 //obtener la lista de servers2guard
+                        if(config_lookup_string(&cfg, "servers2guardList", &servers2guard)){
+                                printf("Server2guard:  %s\n", servers2guard);
+                        }
+                        else{
+                                printf("No valid value for servers2guard provided in configuration file.\n");
+                        }
+
+
 			for(j=1,str1 = (char *)servers2guard; ; j++, str1=NULL){
 				token=strtok_r(str1,",",&saveptr1);
 				if(token==NULL){
@@ -100,7 +115,6 @@ int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mo
 				setting = config_lookup(&cfg, token);
 				if(setting != NULL){
 					//Read the string
-
 					if(config_setting_lookup_string(setting, "description",&str2)){
 						printf("description: %s\n", str2);
 					}
@@ -131,12 +145,16 @@ int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mo
 						printf("No valid 'serviceType' setting in configuration file.\n");
 					}
 					printf("\n");
-					//ALMACENAR LOS DATOS CORRESPONDIENTES DE ESTE HOST EN LA ESTRUCTURA:
-
-
-
 	
 				}//if setting no nulll
+				//ALMACENAR LOS DATOS CORRESPONDIENTES DE ESTE HOST EN LA ESTRUCTURA:
+				strcpy(parametersConf[j-1].ip,ip);
+				strcpy(parametersConf[j-1].mac,mac);
+				strcpy(parametersConf[j-1].serverName,token);
+				parametersConf[j-1].tos=serviceType;
+//				return 0;
+
+
 			}//For j=1.. del strtok_r
 
 		break;
