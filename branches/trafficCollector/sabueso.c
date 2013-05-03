@@ -169,12 +169,13 @@ int main(int argc, char *argv[]){
 
 
 
-	server2guardStruct s2g[serversQuantity];
+	server2guardStruct s2g[serversQuantity];//creo las estructuras para los servers2guard
 
-//	parse(argv[1],&parametersConf,0);
 	parse(argv[1],&s2g,1);
 
-	printf("server0.ip: %s \n",s2g[0].ip);
+	printf("server.ip: %s \n",s2g[0].ip);
+	printf("server.mac: %s \n",s2g[0].mac);
+	printf("server.serverName: %s \n",s2g[0].serverName);
 
 
 return;
