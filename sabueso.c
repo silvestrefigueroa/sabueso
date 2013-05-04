@@ -20,10 +20,7 @@
 #include "arpDialogStruct.h"
 #include "trafficCollector_callback.h"
 #include "callbackArgs.h"
-
-//#include "arpDialoguesTableManager.h"//se removio de este branche.. tarde pero se removio
-//#include "arpDialoguesTableManagerArguments.h" //y si.. tambien se removio este por supuesto
-//#include "arpDTMWorker_arguments_struct.h"
+#include "networkSizer.h"
 
 //MENSAJES ESTATICOS
 #define MSG_START "Comienza aqui el programa principal\n"
@@ -32,9 +29,6 @@
 #define TABLE_SIZE 4
 
 //Icludes del trafficCollector.c
-//#include <unistd.h>
-//#include <stdio.h>
-//#include <stdlib.h>
 #include <string.h>
 #include <pcap.h>
 #include <arpa/inet.h>
@@ -85,8 +79,21 @@ void sigint_handler(int s){
 	kill(getpid(),SIGTERM);
 }
 
-//Aqui comienza la magia =)
+
+
+
+
+
+
+
+
+
+
+//SABUESO STARTS HERE!!!
+
+
 int main(int argc, char *argv[]){
+
 	//manejador SIGTERM
 	signal(SIGINT , sigint_handler);
 
@@ -100,7 +107,10 @@ int main(int argc, char *argv[]){
 	printf("ejecutando el parse...\n");
         sleep(1);
 
-//creo una instancia de server2guard (struct) y se la paso al parser, donde el me va a setear en la IP el nombre de la interfaz (dev) y en tos la cantidad de servers2guard (serversQuantity)
+	//Le paso al parser una estructura server2guard para que me devuelva los parametros =)
+	//EN LA IP ME VA A DEVOLVER LA NIC
+	//EN EL TOS ME DEVUELVE EL SERVERQUANTITY
+	//
 
         server2guardStruct parametersConf;//aqui voy a recibir la configuracion
         memset(parametersConf.ip,0,40);
@@ -118,7 +128,6 @@ int main(int argc, char *argv[]){
 
 	int serversQuantity=parametersConf.tos;//cantidad de servers a cuidar
 
-
 	server2guardStruct servers2guardConf[serversQuantity];//creo las estructuras para los servers2guard
 
 	//INICIALIZAR:
@@ -135,7 +144,7 @@ int main(int argc, char *argv[]){
 
 	printf("\n\n\n\n\n\n\n\n\n\n\n");
 
-
+	printf("Mostrando configuracion leida:\n");
 
 	for(i=0;i<serversQuantity;i++){
 		printf("server.ip: %s \n",servers2guardConf[i].ip);
@@ -145,67 +154,10 @@ int main(int argc, char *argv[]){
 	}
 
 
-
-
-
-
-
-/*
-
-	//Estructura de datos de argumentos del programa principal
-	typedef struct{ 
-                char *mac;
-                char *ip;
-		char *serverName;
-                int tos;//0 http,1 rdp
-        }_server2guard;
-
-	_server2guard _servers2guard[serversQuantity];//array de servers
-
-	//inicializar array de struct:
-	for(i=0;i<serversQuantity;i++){
-		_servers2guard[i].mac=NULL;
-		_servers2guard[i].ip=NULL;
-		_servers2guard[i].tos=0;
-		_servers2guard[i].serverName=NULL;
-	}
-*/
-
-/*
-	//invento hosts
-
-	_servers2guard[2].mac="e0:db:55:88:66:71";
-	_servers2guard[2].ip="192.168.222.2";
-	_servers2guard[2].tos=0;
-	_servers2guard[2].serverName="server-windows7";
-	
-
-	_servers2guard[3].mac="12:43:56:a:a:2";//hacker ubuntu por las dudas es: 00:50:56:2f:9e:e5
-	_servers2guard[3].ip="192.168.1.126";
-	_servers2guard[3].tos=0;
-	_servers2guard[3].serverName="server-126";
-
-	_servers2guard[4].mac="11111111111:50:56:38:7c:ae";
-	_servers2guard[4].ip="192.168.222.44";
-	_servers2guard[4].tos=0;
-	_servers2guard[4].serverName="cliente-ubuntu";
-
-	_servers2guard[0].mac="5c:d9:98:2c:f:b6";//seria 5c:d9:98:2c:0f:b6
-	_servers2guard[0].ip="192.168.1.1";
-	_servers2guard[0].tos=0;
-	_servers2guard[0].serverName="dd-wrt";
-
-	_servers2guard[1].mac="0:21:5c:33:9:a1";//para pcap seria 0:21:5c:33:9:a5 mientras que la real seria "00:21:5c:33:09:a5"
-	_servers2guard[1].ip="192.168.1.104";
-	_servers2guard[1].tos=0;
-	_servers2guard[1].serverName="Thinkpad-100-myself";
-*/
-
-
+	printf("---------------------------------------------------------------\n\n");
 
 
 	int j=0;//otro subindice
-
 	int c=0;
 	int live=0;
 
@@ -239,8 +191,6 @@ int main(int argc, char *argv[]){
 
 	dev = parametersConf.ip;//no utiliza la que detecta automaticamente sino que usa la de la config
 
-
-
 	//obtener la direccion de red y la netmask de la NIC en "dev"
 	if(pcap_lookupnet(dev,&netp,&maskp,errbuf)==-1){
 		printf("ERROR %s\n",errbuf);
@@ -267,9 +217,6 @@ int main(int argc, char *argv[]){
 	}
 
 
-
-
-
 	//ahora compilo el programa de filtrado para hacer un filtro para ARP o trafico supuestamente enviado por los servers2guard
 		//eso de supuestamente enviados se refiere a que me traigo las tramas que tienen ip origen la del los servers ;) asi que de ese modo
 			//voy a incluir las spoofeadas y las reales para luego evaluarlas desde el trafficCollector
@@ -288,7 +235,6 @@ int main(int argc, char *argv[]){
 	}
 
 	printf("::::el filtro quedo %s \n",filter);
-//	return 0;
 
 	//COMPILAR FILTRO
 	if(pcap_compile(descr,&fp,filter,0,netp)==-1){//luego lo cambiare para filtrar SOLO los mac2guards
@@ -300,69 +246,21 @@ int main(int argc, char *argv[]){
 		fprintf(stderr,"Error aplicando el filtro\n");
 		exit(1);
 	}
+
+
 	//calculo el tamaño de la table para askers en funcion de la mascara de subred:
-	int maskTooBig=1;
 	int arpAskersTable_tableSize=0;
-	for(i=0;i<1;i++){
-		if(!strncmp(mask,"255.255.255.254",strlen("255.255.255.254"))){
-			printf("en cidr es una /31\n");
-			maskTooBig=0;
-			arpAskersTable_tableSize=2;
-			break;//rompe el bucle
-		}
-		if(!strncmp(mask,"255.255.255.252",strlen("255.255.255.252"))){
-			printf("en cidr es una /30\n");
-			maskTooBig=0;
-			arpAskersTable_tableSize=4;
-			break;//rompe el bucle
-		}
-		if(!strncmp(mask,"255.255.255.248",strlen("255.255.255.248"))){
-			printf("en cidr es una /29\n");
-			arpAskersTable_tableSize=8;
-			maskTooBig=0;
-			break;//rompe el bucle
-		}
-		if(!strncmp(mask,"255.255.255.240",strlen("255.255.255.240"))){
-			printf("en cidr es una /28\n");
-			arpAskersTable_tableSize=16;
-			maskTooBig=0;
-			break;//rompe el bucle
-		}
-		if(!strncmp(mask,"255.255.255.224",strlen("255.255.255.224"))){
-			printf("en cidr es una /27\n");
-			arpAskersTable_tableSize=32;
-			maskTooBig=0;
-			break;//rompe el bucle
-		}
-		if(!strncmp(mask,"255.255.255.192",strlen("255.255.255.192"))){
-			printf("en cidr es una /26\n");
-			arpAskersTable_tableSize=64;
-			maskTooBig=0;
-			break;//rompe el bucle
-		}
-		if(!strncmp(mask,"255.255.255.128",strlen("255.255.255.128"))){
-			printf("en cidr es una /25\n");
-			arpAskersTable_tableSize=128;
-			maskTooBig=0;
-			break;//rompe el bucle
-		}
-		if(!strncmp(mask,"255.255.255.0",strlen("255.255.255.0"))){
-			printf("en cidr es una /24\n");
-			arpAskersTable_tableSize=256;
-			maskTooBig=0;
-			break;//rompe el bucle
-		}
-		if(!strncmp(mask,"255.255.254.0",strlen("255.255.254.0"))){
-			printf("en cidr es una /23\n");
-			arpAskersTable_tableSize=512;
-			maskTooBig=0;
-			break;//rompe el bucle
-		}
-	}
-	if(maskTooBig==1){
+
+	arpAskersTable_tableSize=networkSize(mask);//Funcion que me devulve cantidad de host segun la mascara de subred
+
+	if(arpAskersTable_tableSize>512){
 		printf("ERROR: La red es muy grande...intente con una subred mas chica\n");
-		_exit(EXIT_SUCCESS);
-	}
+                _exit(EXIT_SUCCESS);
+        }
+
+	printf("el tamaño de la red es de %d hosts \n",arpAskersTable_tableSize);
+	
+
 	--arpAskersTable_tableSize,2;//ajusto el tamaño
 	//FIN PARAMETROS DE CAPTURA
 
