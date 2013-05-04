@@ -44,6 +44,46 @@ int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mo
 		case 0://MODO DE LECTURA DE PARAMETROS DE CONFIGURACION
 			puts("PARSER: modo config parameters\n");
 
+			//PRIMERO PARAMETROS DEL PORT STEALER:
+			long int pstlRepeatLimit=0;
+                        long int pstlPoolingTime=0;
+                        long int pstlSleepTime=0;
+
+                        //Read the integer
+                        if(config_lookup_int(&cfg, "pstlRepeatLimit", &pstlRepeatLimit)){
+                                printf("pstlRepeatLimit: %ld\n", pstlRepeatLimit);
+                        }
+                        else{
+                                printf("No valid 'pstlRepeatLimit' setting in configuration file.\n");
+                                return -1;
+                        }
+                        if(config_lookup_int(&cfg, "pstlPoolingTime", &pstlPoolingTime)){
+                                printf("pstlPoolingTime: %ld\n", pstlPoolingTime);
+                        }
+                        else{
+                                printf("No valid 'pstlPoolingTime' setting in configuration file.\n");
+                                return -1;
+                        }
+                        if(config_lookup_int(&cfg, "pstlSleepTime", &pstlSleepTime)){
+                                printf("pstlSleepTime: %ld\n", pstlSleepTime);
+                        }
+                        else{
+                                printf("No valid 'pstlSleepTime' setting in configuration file.\n");
+                                return -1;
+                        }
+
+
+			//GUARDAR:
+
+
+                        parametersConf->pstlRepeatLimit=pstlRepeatLimit;
+                        parametersConf->pstlPoolingTime=pstlPoolingTime;
+                        parametersConf->pstlSleepTime=pstlSleepTime;
+
+
+			//LUEGO PARAMETROS DEL PROGRAMA MAIN:
+
+
 			const char *iface=NULL;
 
 
@@ -73,8 +113,8 @@ int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mo
 
 			}//cierra for que recorre la a lista y la parsea
 
-			strncpy(parametersConf->ip,iface,strlen(iface));//dispositivo de red seleccionado
-			parametersConf->tos=(j-1);//cantidad de servers (para dimensionar la tabla de servers2guard o serversQuantity =)
+			strncpy(parametersConf->nic,iface,strlen(iface));//dispositivo de red seleccionado
+			parametersConf->serversQuantity=(j-1);//cantidad de servers (para dimensionar la tabla de servers2guard o serversQuantity =)
 
 			//BIEN, EL PROXIMO PASO SERA LLAMAR DE NUEVO AL PARSER PERO EN MODO 1
 		break;

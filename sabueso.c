@@ -116,19 +116,38 @@ int main(int argc, char *argv[]){
         memset(parametersConf.ip,0,40);
         memset(parametersConf.mac,0,40);
         parametersConf.tos=0;
+	parametersConf.pstlRepeatLimit=0;
+	parametersConf.pstlPoolingTime=0;
+	parametersConf.pstlSleepTime=0;
+
+
 
         parse(argv[1],&parametersConf,0);
 
-        printf("se recibio del parse: NIC: %s serversQuantity: %d\n", parametersConf.ip, parametersConf.tos);
+        printf("se recibio del parse: NIC: %s serversQuantity: %d\n", parametersConf.nic, parametersConf.serversQuantity);
+	printf("tambien parametros del pst: pstlRepeatLimit= %d, pstlPoolingTime= %d, pstlSleepTime=%d \n", parametersConf.pstlRepeatLimit,parametersConf.pstlPoolingTime,parametersConf.pstlSleepTime);
 
-
+	printf("\n\n\n");
+	printf("-------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+	printf("FINALIZADA LA CARGA DE PARAMETROS COMIENZA EL LANZAMIENTO DEL PROGRAMA PRINCIPAL...\n");
+	printf("-------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+	sleep(2);
 
 //------------INICIA ZONA DE CONTROL DE PARAMETROS DE APLICACION-----------------------------------------------//
 	//PARAMETROS DE LANZAMIENTO:
 
-	int serversQuantity=parametersConf.tos;//cantidad de servers a cuidar
+	int serversQuantity=0;
+	serversQuantity = parametersConf.serversQuantity;//cantidad de servers a cuidar
 
 	server2guardStruct servers2guardConf[serversQuantity];//creo las estructuras para los servers2guard (luego van a parar a la shm)
+
+
+	//PARAMETROS DEL PORT STEALER:
+
+	int pstlRepeatLimit=parametersConf.pstlRepeatLimit;
+	int pstlPoolingTime=parametersConf.pstlPoolingTime;
+	int pstlSleepTime=parametersConf.pstlSleepTime;
+
 
 	//INICIALIZAR:
 
@@ -179,7 +198,7 @@ int main(int argc, char *argv[]){
 	bpf_u_int32 netp;// direccion de red
 
 /*
-	dev = pcap_lookupdev(errbuf); //Buscamos un dispositivo del que comenzar la captura
+	cdev = pcap_lookupdev(errbuf); //Buscamos un dispositivo del que comenzar la captura
 	printf("\nEcontro como dispositivo %s\n",dev);
 	if (dev == NULL){
 		fprintf(stderr," %s\n",errbuf); exit(1);
@@ -189,7 +208,7 @@ int main(int argc, char *argv[]){
 	}
 */
 
-	dev = parametersConf.ip;//no utiliza la que detecta automaticamente sino que usa la de la config
+	dev = parametersConf.nic;//no utiliza la que detecta automaticamente sino que usa la de la config
 
 	//obtener la direccion de red y la netmask de la NIC en "dev"
 	if(pcap_lookupnet(dev,&netp,&maskp,errbuf)==-1){
@@ -526,9 +545,6 @@ int main(int argc, char *argv[]){
 
 
 
-
-
-
 	//Ahora por cada uno de los hosts a monitorear lanzar un HIJO
 
 	for(i=0;i<serversQuantity;i++){
@@ -782,9 +798,11 @@ int main(int argc, char *argv[]){
 								arper(shmPtr[j].ethSrcMac,shmPtr[j].arpSrcIp,shmPtr[j].arpDstIp,dev);
 								usleep(100);
 							}
-							printf("PST-MAIN: PORTSTEALING 7 SEGUNDOS....\n");
+//							printf("PST-MAIN: PORTSTEALING 7 SEGUNDOS....\n");
+							printf("PST-MAIN: PORTSTEALING %d SEGUNDOS....\n",pstlPoolingTime);
+
 							//portstealing (robo de tramas)
-							for(pst=0;pst<7;pst++){//7 o el pstlPoolingTime
+							for(pst=0;pst<pstlPoolingTime;pst++){//7 o el pstlPoolingTime es la cantidad de mensajes, pero como sin cada 1 seg .. resulta en tiempo igual :/
 								arper(shmPtr[j].ethSrcMac,shmPtr[j].arpSrcIp,shmPtr[j].arpDstIp,dev);//LLAMADA OK
 								printf("PST-MAIN: PORTSTEALING MESSSAGE %d\n",pst);
 								usleep(1000000);
@@ -798,7 +816,7 @@ int main(int argc, char *argv[]){
 							printf("PST-MAIN: Algortimo completado!!!\n");
 
 							//EVALUAR SI FUE SUFICIENTE O SI DUERMO Y SIGO...
-							if(times==4){//aqui es donde entra en juego el pstlRepeaterLimit
+							if(times==pstlRepeatLimit){//aqui es donde entra en juego el pstlRepeatLimit
 								printf("Ya ha sido demaciado, asi que salto al proximo asker a portstelear...\n");
 								break;
 							}
@@ -808,7 +826,7 @@ int main(int argc, char *argv[]){
 
 							printf("PST-MAIN: dormir antes de bombardear nuevamente...\n");
 
-							sleep(10);//este es el pstlSleepTime
+							sleep(pstlSleepTime);//este es el pstlSleepTime (10 para las prubeas en debug)
 
 							printf("PST-MAIN: despertar al algoritmo =) \n");
 						}//end while status == checking
