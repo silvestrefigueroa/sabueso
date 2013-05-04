@@ -8,4 +8,17 @@ typedef struct{
 	char ip[40];
 	int tos; //para indicar el tipo de servicio, por ej 1 para RDP, 2 para http, etc...
 	char serverName[30];//ver especificaciones RFC o algo que sustente este limite (igual es para debug la info del hostname)
+
+	//para configuracion de portStealer:
+
+	int pstlRepeatLimit;
+        int pstlPoolingTime;
+        int pstlSleepTime;
+
+	//para configuracion de sabueso:
+
+	char nic[40];
+	int serversQuantity;
+
+
 }server2guardStruct;
