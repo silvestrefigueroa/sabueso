@@ -21,6 +21,7 @@
 #include "trafficCollector_callback.h"
 #include "callbackArgs.h"
 #include "networkSizer.h"
+#include "pstFunction.h"
 
 //MENSAJES ESTATICOS
 #define MSG_START "Comienza aqui el programa principal\n"
@@ -576,6 +577,14 @@ int main(int argc, char *argv[]){
 
 				//ALGORITMO:
 				//1|Examinar entrada por entrada de la tabla de dialogos y para cada una analizar si su destino es ESTE server2guard
+				//tableSize, shmPtr[j], servers2guardConf[i] (lo mismo que la shm de s2g),arpAskersTable_tableSize, arpAskers_shmPtr[a],dev, pstlRepeatLimit,pstlPoolingTime,pstlSleepTime
+
+				
+				pstFunction(tableSize, shmPtr, servers2guardConf,arpAskersTable_tableSize, arpAskers_shmPtr,dev, pstlRepeatLimit,pstlPoolingTime,pstlSleepTime);
+
+/*
+				return;
+
 				live=1;
 				int forlife=0;
 				while(live==1){//podria ser un while true, se utilizo esta variable para tener condicion de corte (aunque puedo usar break...)
@@ -868,6 +877,10 @@ int main(int argc, char *argv[]){
 
 					printf("Descanzare 5 segs y de nuevo lanzo el for...\n");
 				}//CIERRO EL WHILE LIVE ==1
+
+
+				*/
+
 
 				_exit(EXIT_SUCCESS);//del hijo de este ciclo del for
 
