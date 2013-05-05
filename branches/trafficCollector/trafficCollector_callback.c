@@ -78,8 +78,8 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 	char* ipSrc=NULL;
         char* ipDst=NULL;
 
-	char *spooferDetectedMessageARP="---------------SPOOFER DETECTADO DESDE EL SABUESO: (MENSAJE ARP SPOOFEADO)!!";
-	char *spooferDetectedMessageNOARP="+++++++++++++++SPOOFER DETECTADO DESDE EL SABUESO: (TRAMAS ENVENENADAS, NO ARP)";
+//	char *spooferDetectedMessageARP="---------------SPOOFER DETECTADO DESDE EL SABUESO: (MENSAJE ARP SPOOFEADO)!!";
+//	char *spooferDetectedMessageNOARP="+++++++++++++++SPOOFER DETECTADO DESDE EL SABUESO: (TRAMAS ENVENENADAS, NO ARP)";
 
 	int server2guardFound=0;//DEFAULT NO
 	int i=0,u=0;//para lazos for, subindice
@@ -87,7 +87,6 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 	int tableIndex=0;//para salvar el i luego cuando quiero referenciar la entrada de la tabla desde la rutina de askers
 	int offset=0;//desplazamiento para aritmetica de punteros en cabecera IP
 
-//	fflush(stdout);
 	
 	//si.. muy lindo el contador.. pero me gustaria que:
 		//muestre datos de la captura:
@@ -186,7 +185,14 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 
 		if(strlen(ethSrcMac)!=strlen(args[0].servers2guard_shmPtr[i].mac)){
 			printf("SPD: SPOOFER NO ARP DETECTADO!! LAS MAC NO COINCIDEN EN LARGO...\n");
-			syslog(1, "%s", spooferDetectedMessageNOARP);
+
+			//syslog(1, "%s", spooferDetectedMessageNOARP);
+
+			char *syslogAlert = NULL;
+                        syslogAlert="SPOOFER DETECTADO! DATAGRAMA:";
+			syslog(1,"%s SRC: %s (%s) %s -> DST: %s %s", syslogAlert,ethSrcMac,args[0].servers2guard_shmPtr[i].mac,ipSrc,ethDstMac,ipDst);
+
+			
 			//return;//ANtes de retornar debo indicar que el asker status es 1, para ello me espero y hago el return mas a bajo
 			askerSpoofed=1;//indicar que el asker se detecto como spoofeado
 		}
@@ -197,7 +203,11 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 			}
 			else{//no coinciden
 				printf("SPD: SPOOFER NO ARP DETECTADO POR SER DISTINTAS LAS MACS A PESAR DE TENER EL MISMO LARGO!!!!!!\n");
-				syslog(1, "%s", spooferDetectedMessageNOARP);
+				//syslog(1, "%s", spooferDetectedMessageNOARP);
+				char *syslogAlert = NULL;
+	                        syslogAlert="SPOOFER DETECTADO! DATAGRAMA:";
+        	                syslog(1,"%s SRC: %s (%s) %s -> DST: %s %s", syslogAlert,ethSrcMac,args[0].servers2guard_shmPtr[i].mac,ipSrc,ethDstMac,ipDst);
+
 				//return;//return;//ANtes de retornar debo indicar que el asker status es 1, para ello me espero y hago el return mas a bajo
 				askerSpoofed=1;//indicar que el asker se detecto como spoofeado
 			}
@@ -476,7 +486,14 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 
 				if(strlen(ethSrcMac)!=strlen(args[0].servers2guard_shmPtr[i].mac)){
 					printf("SPD: SPOOFER DETECTADO!! LAS MAC NO COINCIDEN EN LARGO...\n");
-					syslog(1,"%s",spooferDetectedMessageARP);
+//					syslog(1,"%s",spooferDetectedMessageARP);
+
+					char *syslogAlert = NULL;
+		                        syslogAlert="SPOOFER DETECTADO! ARP MSG:";
+                		        syslog(1,"%s SRC: %s (%s) %s -> DST: %s %s", syslogAlert,ethSrcMac,args[0].servers2guard_shmPtr[i].mac,ipSrc,ethDstMac,ipDst);
+
+
+
 					//return;//EN LUGAR DE HACER RETURN AQUI, MODIFICO EL VALOR DEL ASKER MAS ABAJO Y LUEGO HAGO RETURN
 					destinationSpoofed=1;//like askerSpoofed
 				}
@@ -489,7 +506,13 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 					}
 					else{//no coinciden
 						printf("SPD: SPOOFER DETECTADO POR SER DISTINTAS LAS MACS A PESAR DE TENER EL MISMO LARGO!!!!!!\n");
-						syslog(1,"%s",spooferDetectedMessageARP);
+//						syslog(1,"%s",spooferDetectedMessageARP);
+						char *syslogAlert = NULL;
+	                                        syslogAlert="SPOOFER DETECTADO! ARP MSG:";
+        	                                syslog(1,"%s SRC: %s (%s) %s -> DST: %s %s", syslogAlert,ethSrcMac,args[0].servers2guard_shmPtr[i].mac,ipSrc,ethDstMac,ipDst);
+
+
+
 						//return;//EN LUGAR DE HACER RETURN AQUI, MODIFICO EL VALOR DEL ASKER MAS ABAJO Y LUEGO HAGO RETURN
 						destinationSpoofed=1;//like askerSpoofed
 					}
@@ -1114,6 +1137,10 @@ int askerReplaceIndex=0;//subindice de la entrada donde se encontro el asker a r
 		if(askerSaved==0){
 			printf("no se pudo almacenar al asker.. quiza la tabla este llena\n");
 			printf("en realidad esta situacion no deberia ocurrir por principio... si estamos aca no funciono el algoritmo de actualizacion\n");
+
+
+			//IMPORTANTE: PARA QUE NO SE LLENE LA TABLA DE DIALOGOS
+
 			//Sucede que cuando la tabla esta llena es porque TODAS las ip del rango estan almacenadas.
 			//Lo que va a pasar seguro es que si cambio un host por uno nuevo, va a cambiar la MAC pero la ip sera la del viejo host
 			//En este caso, lo que tengo que hacer es evaluar cuando encuentro al asker en la tabla -> si la MAC coincide para saber
