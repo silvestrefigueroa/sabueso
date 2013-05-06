@@ -391,8 +391,9 @@ int main(int argc, char *argv[]){
 	int fdshm;
 	//sharedMem
 //	int subindexCounterId = 0;//es para indizar (o dar ID) a cada entrada de la tabla
-//	int tableSize=(arpAskersTable_tableSize*arpAskersTable_tableSize)/2;//maximo de preguntas ARp permitidas por el tamaño de la red
-	int tableSize=TABLE_SIZE;
+	int tableSize=((arpAskersTable_tableSize - serversQuantity) * serversQuantity);//tabla de dialogos (preguntas ARP)
+	printf("el tableSize quedo %d y nada mas que eso!\n",tableSize);
+//	int tableSize=TABLE_SIZE;//POR DEBUG SE ACHICA CON LA MACRO LA TABLA (EL LAZO NO SE HACE ETERNO DE DEPURAR)
 	//malloqueo para el puntero de la shm
 	shmPtr = (struct arpDialog *)malloc(sizeof(struct arpDialog)*TABLE_SIZE);
 	struct arpDialog arpDialoguesTable[tableSize];//CONSULTAR: AQUI NO DEBERIA MALLOQUEAR?? COREDUMP SI TABLESIZE ES MUY GRANDE!!
