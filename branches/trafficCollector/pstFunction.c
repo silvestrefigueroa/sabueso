@@ -48,7 +48,7 @@
 int pstFunction(int tableSize, struct arpDialog* shmPtr, server2guardStruct *servers2guardConf, int arpAskersTable_tableSize, arpAsker *arpAskers_shmPtr, char *dev, int pstlRepeatLimit, int pstlPoolingTime, int pstlSleepTime){
 
 
-	printf("pstFunction: me llego: ts: %d, entrada 0: shmPtr[0].ethSrcMac %s, servers2guardConf[0].ip= %s, arpAskers_tableSize= %d, arpAskers_shmPtr[0].ip=%s, dev=%s, plimit=%d, pool=%d, sleept=%d \n",tableSize, shmPtr[0].ethSrcMac, servers2guardConf[0].ip, arpAskersTable_tableSize, arpAskers_shmPtr[0].ip, dev, pstlRepeatLimit, pstlPoolingTime, pstlSleepTime);
+	printf("pstFunction: me llego: tableSize: %d, shmPtr[0].ethSrcMac %s, servers2guardConf[0].ip= %s, arpAskers_tableSize= %d, arpAskers_shmPtr[0].ip=%s, dev=%s, plimit=%d, pool=%d, sleept=%d \n",tableSize, shmPtr[0].ethSrcMac, servers2guardConf[0].ip, arpAskersTable_tableSize, arpAskers_shmPtr[0].ip, dev, pstlRepeatLimit, pstlPoolingTime, pstlSleepTime);
 
 
 
