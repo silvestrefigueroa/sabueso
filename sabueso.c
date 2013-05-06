@@ -114,8 +114,8 @@ int main(int argc, char *argv[]){
 	//
 
         server2guardStruct parametersConf;//aqui voy a recibir la configuracion
-        memset(parametersConf.ip,0,40);
-        memset(parametersConf.mac,0,40);
+//        memset(parametersConf.ip,0,sizeof(char*) * 40);
+//        memset(parametersConf.mac,0,sizeof(char*) * 40);
         parametersConf.tos=0;
 	parametersConf.pstlRepeatLimit=0;
 	parametersConf.pstlPoolingTime=0;
@@ -154,9 +154,9 @@ int main(int argc, char *argv[]){
 	//INICIALIZAR:
 
 	for(i=0;i<serversQuantity;i++){
-		memset(servers2guardConf[i].ip,0,40);
-		memset(servers2guardConf[i].mac,0,40);
-		memset(servers2guardConf[i].serverName,0,30);
+//		memset(servers2guardConf[i].ip,0,sizeof(char*) * 40);
+//		memset(servers2guardConf[i].mac,0,sizeof(char*) * 40);
+//		memset(servers2guardConf[i].serverName,0,sizeof(char*) * 30);
 		servers2guardConf[i].tos=99;
 	}
 
@@ -210,8 +210,7 @@ int main(int argc, char *argv[]){
 	}
 */
 
-//	dev = parametersConf.nic;//no utiliza la que detecta automaticamente sino que usa la de la config
-dev ="eth0";
+	dev = parametersConf.nic;//no utiliza la que detecta automaticamente sino que usa la de la config
 
 	//obtener la direccion de red y la netmask de la NIC en "dev"
 	if(pcap_lookupnet(dev,&netp,&maskp,errbuf)==-1){
@@ -256,7 +255,7 @@ dev ="eth0";
 		strcpy(filter+strlen(filter),servers2guardConf[i].ip);
 	}
 
-	printf("::::el filtro quedo %s \n",filter);
+	printf("::::el filtro quedo %s y la estructura: %s \n",filter,servers2guardConf[0].ip);
 
 
 
@@ -579,7 +578,8 @@ dev ="eth0";
 				}
 				//------------------------------------------
 				//FUNCION PARA ESTE HIJO:(VER PROCEDIMIENTO DEL ALGORTIMO ALLI ADENTRO)
-				pstFunction(tableSize, shmPtr, &servers2guardConf,arpAskersTable_tableSize, arpAskers_shmPtr,dev, pstlRepeatLimit,pstlPoolingTime,pstlSleepTime);
+				printf("enviando al pstFunction: servers2guardConf[0].ip= %s pero podria enviar: %s \n",servers2guardConf[0].ip,servers2guardTable[0].ip);
+				pstFunction(tableSize, shmPtr, servers2guardTable ,arpAskersTable_tableSize, arpAskers_shmPtr,dev, pstlRepeatLimit,pstlPoolingTime,pstlSleepTime);
 				_exit(EXIT_SUCCESS);//del hijo de este ciclo del for
 
 		}//CIERRO EL SWITCH FORK (tiene doble identacion del switch case fork
