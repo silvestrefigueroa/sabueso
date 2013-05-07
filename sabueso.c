@@ -602,7 +602,7 @@ int main(int argc, char *argv[]){
 	while(1==1){
 		sleep(1);//el padre no muere.. sino me quedan los hijos ahi colgados!!
 	}
-
+	//SABUESO ENDS HERE!! (6-MAY-2013)
 	write(1,"FIN DEL PROGRAMA PRINCIPAL\n",sizeof("FIN DEL PROGRAMA PRINCIPAL\n"));
 	return EXIT_FAILURE;//_exit(EXIT_SUCCESS);
 }//fin del programa

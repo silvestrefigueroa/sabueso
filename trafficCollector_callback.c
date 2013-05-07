@@ -272,7 +272,7 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 		arpSrcIp=(char *)inet_ntop(AF_INET,arpPtr->arp_spa, arpSrcIpBuf, /*INET_ADDRSTRLEN*/ sizeof arpSrcIpBuf );
 		arpDstIp=(char *)inet_ntop(AF_INET,arpPtr->arp_tpa, arpDstIpBuf, sizeof arpDstIpBuf );
 
-	
+
 		printf("ARP: MAC Origen:               %s\n",ether_ntoa((const struct ether_addr*) arpPtr->arp_sha));
 		printf("ARP: MAC Destino:              %s\n",ether_ntoa((const struct ether_addr*) arpPtr->arp_tha));
 
@@ -301,7 +301,20 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 		int comparacion=11;//el numero minimo de elementos de una mac segun pcap =) (lo uso en los for..un capricho)
 		int savedFlag=0;//se utiliza para saber si se almacenaron o no los datos... en el for de almacenamiento..
 		int writableFlag=0;
+
+
+
 		//Ahora como minimo reviso consistencias menores en la trama y el mensaje ARP
+		//Si es una pregunta ARP de configuracion (cuando levanta la interfaz pregunta por si mismo) hago DROP de una
+		if(! (strcmp(arpSrcIp,"0.0.0.0")) ){
+			printf("MENSAJE DE AUTOCONFIGURACION, DROPEAR SIN ANALIZAR\n");
+			return;
+
+		}
+	
+		//SIN NO ES ESE TIPO DE MENSAJE.. CONTINUAR NORMALMENTE...
+
+
 		if(strncmp(ethSrcMac,arpSrcMac,strlen(arpSrcMac))){
 			printf("LOG:se ha detectado inconsistencia entre la MAC origen de la trama y la MAC origen del mensaje ARP\n");
 			//podria haber sido proxyARP???
