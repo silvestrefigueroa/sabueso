@@ -206,6 +206,8 @@ int arper(char *src_mac,char *src_ip,char *dst_ip,char *if_name){
 	// Write the Ethernet frame to the interface.
 	printf("escribiendo la trama en el cable...\n");
 	//ACA LO PONGO EN UN FOR SEGUN EL ARGUMENTO QUE RECIBA, PARA SABER CUANTAS VECES INYECTAR
+	//No se implemento esto, pero esta bueno porque haciendo el for aca y no desde el portStealer me evito rearmar el mensaje arp cada vez que 
+		//quiero inyectar, es decir, optimizo muchisimo delegando la repeticion de tramas en este punto con un for (1 ciclo por defecto y listo)
 	if (pcap_inject(pcap,frame,sizeof(frame))==-1) {
 	        pcap_perror(pcap,0);
         	pcap_close(pcap);
