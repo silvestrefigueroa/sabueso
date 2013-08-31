@@ -93,6 +93,7 @@ int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mo
 			}
 			else{
 				printf("No valid value for iface provided in configuration file.\n");
+				return -1;
 			}
 
 			//obtener la lista de servers2guard
@@ -101,6 +102,7 @@ int parse(char *configFileName,server2guardStruct *parametersConf,int mode){//mo
 			}
 			else{
 				printf("No valid value for servers2guard provided in configuration file.\n");
+				return -1;
 			}
 
 			//Parsear la lista y obtener la cantidad de servers2guard para devolver el parametro de tamaño de la shm para los servers2guard
