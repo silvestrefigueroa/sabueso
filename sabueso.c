@@ -123,7 +123,10 @@ int main(int argc, char *argv[]){
 
 
 
-        parse(argv[1],&parametersConf,0);
+        if(0!=parse(argv[1],&parametersConf,0)){
+		printf("Error en el archivo de configuracion\n");
+		return -1;
+	}
 
         printf("se recibio del parse: NIC: %s serversQuantity: %d\n", parametersConf.nic, parametersConf.serversQuantity);
 	printf("tambien parametros del pst: pstlRepeatLimit= %d, pstlPoolingTime= %d, pstlSleepTime=%d \n", parametersConf.pstlRepeatLimit,parametersConf.pstlPoolingTime,parametersConf.pstlSleepTime);
@@ -140,7 +143,6 @@ int main(int argc, char *argv[]){
 
 	int serversQuantity=0;
 	serversQuantity = parametersConf.serversQuantity;//cantidad de servers a cuidar
-
 	server2guardStruct servers2guardConf[serversQuantity];//creo las estructuras para los servers2guard (luego van a parar a la shm)
 
 
