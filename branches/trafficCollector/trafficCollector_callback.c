@@ -276,6 +276,19 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 		printf("ARP: MAC Origen:               %s\n",ether_ntoa((const struct ether_addr*) arpPtr->arp_sha));
 		printf("ARP: MAC Destino:              %s\n",ether_ntoa((const struct ether_addr*) arpPtr->arp_tha));
 
+		//Ahora muestro si es pregunta o respuesta ARP:
+		switch(arpPtr->arp_op/256){
+			case ARPOP_REQUEST:
+				printf("Es una Consulta ARP\n");
+			break;
+			case ARPOP_REPLY:
+				printf("Es una Respuesta ARP\n");
+			break;
+			default:
+				printf("Caso anomalo ARP, o bien mensjae RARP\n");
+			break;
+		}
+
 		//utilizando las reentrantes:		
 		arpSrcMac=ether_ntoa_r( ((const struct ether_addr*) arpPtr->arp_sha), arpSrcMacBuf);
 		arpDstMac=ether_ntoa_r( ((const struct ether_addr*) arpPtr->arp_tha), arpDstMacBuf);
@@ -397,38 +410,54 @@ void trafficCollector_callback(trafficCCArgs args[],const struct pcap_pkthdr* pk
 			//o bien son tramas ARP que cayeron en el filtro (y vienen del portstealing) pero spoofeadas tambien por que no?
 			//primero que nada chekeo si las MAC origen son iguales (primer verificacion, leo el resultado directamente)
 			//si son iguales, veo el match MAC-IP del origen para ver si es ataque (consulto info real)
-			
-			switch(srcMacEquals){//lo puse en switch porque podria ser casos especiales de MAC Reservadas, 
-						//de momento funciona igual q con IF-else
-				case 1:
-						//trama OK, debera verificar capa de red IP
-						//si no matchea, entonces ALERTO EL ATAQUE!!!
-						//SI MATCHEA, tenemos origen OK, destino OK.... nada raro.. me robe un ARP..
-						printf("LOG:[Taxonomia de respuesta o ATAQUE], par[%s]-[%s]\n",ethDstMac,arpDstMac);
-						//marcar para portstelear y GUARDAR el dialogo en la tabla
-						doCheckIpI=1;//siempre primero, es la trivial.si conozco la info real, no noecesito el stealer.
-						type=1;//Campo que indica en la trama si se trata de una respuesta arp
-						nextState=1;
-						arpType=1;//ES UNA RESPUESTA (podria consultar el tipo de arp desde el header...)
-						//Normalmente a no ser que sea una respuesta dirigida al sabueso, no veria estas tramas...(si..con el portstl)
-						//es por ello que lo mas seguro es que esta trama sean robadas del porstealing
-				break;
-				case 0:
-						//no son iguales las MAC origen
-						//Puede ser proxyARP????(ojo que esta filtrado) o bien 
-							//el origen (sender) esta haciendo algo raro
-						//WARNING-> inconsistencia en las MAC origen
-						printf("LOG:macs origen no coinciden, posible proxyARP o trama anomala\n");
-//						type="WARN";
-						nextState=2;
-				break;
-				default:
-					printf("LOG:caso anomalo no tratado, no pudo determinarse igualdad de mac origen\n");
-					nextState=98;//DEBUG
-					//en estos casos, podria meter en la primer evaluacion respecto a las srcMac, numero superiores
-					//para casos especiales, de momento no se trata este tipo de "mac reservada"
-				break;
-			}//case
+
+			//para el caso de la consulta ARP con destino ff:ff:ff:ff:ff:ff igual al broadcast eth, se implementa el siguiente parche
+			//se evalua con el codigo de operacion y se determina si es pregunta o respuesta ARP.
+			//Esto se usa a modo de parche, pero la idea es migrar todas las evaluaciones a este modo (apropiado y simple)
+
+			if(arpPtr->arp_op/256==ARPOP_REQUEST){
+				printf("LOG:puede que sea una pregunta ARP legitima proveniente de arping [detectado mediante PARCHE]\n");
+                                //bien, esta trama esta marcada para verificarse integridad IP, luego steal en busqueda de spoofers
+ 				doCheckIpI=1;
+                        	doCheckSpoofer=1;
+                                nextState=1;
+                                askFlag=1;//porque supongo es pregunta ARP (se usa en el programa como flag)
+	                        type=0;//campo que indica que se trata de una pregunta (se usa en la trama no en el programa como flag)
+        	                printf("Finalizada la evaluacion [PARCHE], continua con la carga de datos...\n");
+			}
+			else{
+				switch(srcMacEquals){//lo puse en switch porque podria ser casos especiales de MAC Reservadas, 
+							//de momento funciona igual q con IF-else
+					case 1:
+							//trama OK, debera verificar capa de red IP
+							//si no matchea, entonces ALERTO EL ATAQUE!!!
+							//SI MATCHEA, tenemos origen OK, destino OK.... nada raro.. me robe un ARP..
+							printf("LOG:[Taxonomia de respuesta o ATAQUE], par[%s]-[%s]\n",ethDstMac,arpDstMac);
+							//marcar para portstelear y GUARDAR el dialogo en la tabla
+							doCheckIpI=1;//siempre primero, es la trivial.si conozco la info real, no noecesito el stealer.
+							type=1;//Campo que indica en la trama si se trata de una respuesta arp
+							nextState=1;
+							arpType=1;//ES UNA RESPUESTA (podria consultar el tipo de arp desde el header...)
+							//Normalmente a no ser que sea una respuesta dirigida al sabueso, no veria estas tramas...(si..con el portstl)
+							//es por ello que lo mas seguro es que esta trama sean robadas del porstealing
+					break;
+					case 0:
+							//no son iguales las MAC origen
+							//Puede ser proxyARP????(ojo que esta filtrado) o bien 
+								//el origen (sender) esta haciendo algo raro
+							//WARNING-> inconsistencia en las MAC origen
+							printf("LOG:macs origen no coinciden, posible proxyARP o trama anomala\n");
+	//						type="WARN";
+							nextState=2;
+					break;
+					default:
+						printf("LOG:caso anomalo no tratado, no pudo determinarse igualdad de mac origen\n");
+						nextState=98;//DEBUG
+						//en estos casos, podria meter en la primer evaluacion respecto a las srcMac, numero superiores
+						//para casos especiales, de momento no se trata este tipo de "mac reservada"
+					break;
+				}//case
+			}//else del parche oparp
 		}//else en el que son IGUALES las mac destino (viene del if de si son distintas)
 		//antes de hacer el intento de almacenarlo en la tabla, me fijo si fue marcado para dropearlo!! (optimizacion)
 		if(dropFlag==1){//drop trama
